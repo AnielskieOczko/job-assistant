@@ -1,0 +1,16 @@
+Full Stack Developer
+
+Small product team, lots of ownership.
+
+You should have:
+- Commercial experience with TypeScript
+- Built production interfaces with React
+- Backend experience with Node.js
+- Worked with a document database, we use MongoDB
+- Written tests you actually trust
+- Good communication skills — you will talk to customers directly
+
+Would be great if you also had:
+- Next.js
+- Some AWS exposure
+- An eye for design; we work closely with Figma files

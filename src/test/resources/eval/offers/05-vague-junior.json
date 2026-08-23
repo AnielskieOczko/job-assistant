@@ -1,0 +1,7 @@
+{
+  "title": "Junior Software Engineer",
+  "detectedLanguage": "en",
+  "mustHaves": ["Java", "Kotlin", "SQL"],
+  "niceToHaves": ["Spring Boot", "PostgreSQL", "Git", "Code Review"],
+  "languages": [{"language": "English", "level": "B2"}]
+}

@@ -1,13 +1,13 @@
 package com.jankowski.rafal.jobassistant
 
+import com.jankowski.rafal.jobassistant.support.IntegrationTest
 import org.junit.jupiter.api.Test
-import org.springframework.boot.test.context.SpringBootTest
 
-@SpringBootTest
+@IntegrationTest
 class JobAssistantApplicationTests {
 
     @Test
-    fun contextLoads() {
+    fun `context loads and migrations apply`() {
+        // Startup exercises Flyway against a real Postgres; failure here means a broken migration.
     }
-
 }

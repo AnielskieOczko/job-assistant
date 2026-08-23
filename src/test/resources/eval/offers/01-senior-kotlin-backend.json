@@ -1,0 +1,7 @@
+{
+  "title": "Senior Backend Engineer (Kotlin)",
+  "detectedLanguage": "en",
+  "mustHaves": ["Kotlin", "Spring Boot", "PostgreSQL", "REST", "Docker", "Kubernetes"],
+  "niceToHaves": ["Apache Kafka", "Terraform", "Domain-Driven Design"],
+  "languages": [{"language": "English", "level": "C1"}]
+}

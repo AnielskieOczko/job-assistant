@@ -1,0 +1,68 @@
+spring:
+  application:
+    name: job-assistant
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/jobassistant}
+    username: ${DB_USER:jobassistant}
+    password: ${DB_PASSWORD:jobassistant}
+    hikari:
+      # Neon scales compute to zero after 5 min idle, so keep the pool small and
+      # tolerant of a cold start on the first request.
+      maximum-pool-size: 3
+      minimum-idle: 0
+      connection-timeout: 30000
+      initialization-fail-timeout: -1
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  threads:
+    virtual:
+      enabled: true
+
+server:
+  # Decision 12: single-user MVP, bound to loopback only.
+  address: 127.0.0.1
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+
+logging:
+  level:
+    com.jankowski.rafal.jobassistant: DEBUG
+
+job-assistant:
+  llm:
+    # Named model profiles. All three endpoints are OpenAI-compatible, so switching
+    # provider is base-url + key only (decision 6).
+    profiles:
+      openrouter:
+        base-url: https://openrouter.ai/api/v1
+        api-key: ${OPENROUTER_API_KEY:}
+        model: anthropic/claude-sonnet-4.5
+        temperature: 0.2
+        strict-schema: true
+        timeout: PT120S
+      requesty:
+        base-url: https://router.requesty.ai/v1
+        api-key: ${REQUESTY_API_KEY:}
+        model: anthropic/claude-sonnet-4.5
+        temperature: 0.2
+        strict-schema: true
+        timeout: PT120S
+      local:
+        base-url: http://localhost:11434/v1
+        api-key: ollama
+        model: qwen3:8b
+        temperature: 0.2
+        # Small local models rarely honour strict JSON schema; rely on parse-repair.
+        strict-schema: false
+        timeout: PT300S
+    # Which profile serves which task (decision 22: all remote by default).
+    tasks:
+      extraction: openrouter
+      narrative: openrouter
+      document: openrouter

@@ -1,0 +1,13 @@
+Platform Engineer
+
+You will look after the infrastructure our product teams deploy onto.
+
+Requirements:
+- Strong scripting ability in Python
+- Hands-on experience with container orchestration at production scale
+- You have built continuous integration and delivery pipelines before
+- Familiarity with at least one major public cloud provider, ideally Amazon Web Services
+- You understand infrastructure as code and have used a declarative tool for it
+- Comfortable working in a Unix environment
+
+Bonus points for observability work: metrics, dashboards, alerting.

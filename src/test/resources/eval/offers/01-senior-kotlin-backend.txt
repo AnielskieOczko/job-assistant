@@ -1,0 +1,20 @@
+Senior Backend Engineer (Kotlin)
+Helsinki / Remote within EU
+
+We run a payments platform processing several million transactions a day. You will join a team
+of six engineers owning the settlement domain end to end.
+
+What we expect from you:
+- At least 5 years of professional backend experience on the JVM, with strong Kotlin
+- Deep familiarity with Spring Boot and the wider Spring ecosystem
+- Solid relational database skills; we run PostgreSQL and care about query performance
+- Experience designing and consuming REST APIs
+- Comfortable with Docker; our services run on Kubernetes in production
+- Fluent English (C1 or better) for daily work with a distributed team
+
+Nice to have:
+- Exposure to Apache Kafka or another event streaming platform
+- Terraform, or infrastructure-as-code generally
+- An interest in domain-driven design
+
+We offer a competitive salary, 30 days of leave and a hardware budget.

@@ -1,0 +1,7 @@
+{
+  "title": "Platform Engineer",
+  "detectedLanguage": "en",
+  "mustHaves": ["Python", "Kubernetes", "CI/CD", "AWS", "Terraform", "Linux"],
+  "niceToHaves": ["Observability", "Prometheus", "Grafana"],
+  "languages": []
+}
