@@ -33,4 +33,8 @@ build/
 .vscode/
 
 
-.DS_STORE
+.DS_STORE.DS_Store
+**/.DS_Store
+
+# Personal Claude Code settings (permissions, enabled plugins)
+.claude/settings.local.json

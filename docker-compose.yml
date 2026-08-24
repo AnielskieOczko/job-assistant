@@ -1,0 +1,23 @@
+# Local development database. Production/staging uses Neon (serverless Postgres).
+services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: job-assistant-db
+    environment:
+      POSTGRES_DB: jobassistant
+      POSTGRES_USER: jobassistant
+      POSTGRES_PASSWORD: jobassistant
+    ports:
+      - "5432:5432"
+    volumes:
+      # Postgres 18+ wants a single mount at /var/lib/postgresql, not .../data — the older path
+      # makes the image refuse to start with an "unused mount/volume" error.
+      - job-assistant-pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jobassistant -d jobassistant"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  job-assistant-pgdata:

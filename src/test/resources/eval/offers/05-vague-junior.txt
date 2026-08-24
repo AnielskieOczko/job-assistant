@@ -1,0 +1,13 @@
+Junior Software Engineer
+
+We are hiring a junior engineer to join our backend team. This is a role for someone early in
+their career who wants to learn quickly.
+
+You will need:
+- Some experience writing Java or Kotlin, whether commercial, academic or personal projects
+- An understanding of how relational databases work and the ability to write SQL
+- Willingness to learn and take feedback
+- English good enough to read documentation and participate in code review
+
+We do not expect you to know our whole stack. We use Spring Boot, Postgres and Git, and we will
+teach you what you do not know.

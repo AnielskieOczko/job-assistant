@@ -1,0 +1,7 @@
+{
+  "title": "Starszy Programista Java",
+  "detectedLanguage": "pl",
+  "mustHaves": ["Java", "Spring Boot", "Hibernate", "PostgreSQL", "Docker", "Kubernetes", "JUnit", "Mockito"],
+  "niceToHaves": ["Apache Kafka", "Microservices"],
+  "languages": [{"language": "English", "level": "B2"}, {"language": "Polish", "level": "C1"}]
+}

@@ -1,0 +1,31 @@
+package com.jankowski.rafal.jobassistant.document.internal
+
+import org.springframework.data.annotation.Id
+import org.springframework.data.jdbc.repository.query.Query
+import org.springframework.data.relational.core.mapping.Table
+import org.springframework.data.repository.CrudRepository
+import java.time.Instant
+
+@Table("generated_document")
+internal data class GeneratedDocumentRow(
+    @Id val id: Long? = null,
+    val jobOfferId: Long,
+    val analysisId: Long?,
+    val type: String,
+    val language: String,
+    val html: String,
+    val selectionJson: String,
+    val createdAt: Instant = Instant.now(),
+)
+
+internal interface GeneratedDocumentRepository : CrudRepository<GeneratedDocumentRow, Long> {
+
+    @Query(
+        """
+        select * from generated_document
+        where job_offer_id = :offerId and type = :type
+        order by created_at desc limit 1
+        """
+    )
+    fun findLatest(offerId: Long, type: String): GeneratedDocumentRow?
+}

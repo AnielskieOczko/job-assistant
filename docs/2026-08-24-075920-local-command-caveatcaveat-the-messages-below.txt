@@ -1,0 +1,2137 @@
+ ▐▛███▜▌   Claude Code v2.1.231
+▝▜█████▛▘  Opus 5 · Claude Pro
+  ▘▘ ▝▝    /Volumes/my-data/Developer/Projects/job-assistant
+
+
+❯ /skills 
+  ⎿  No changes
+
+❯ /plan                                                                         
+  ⎿  Enabled plan mode
+
+❯ /model 
+  ⎿  Kept model as Sonnet 5 (default)
+
+❯ /model                                                                        
+  ⎿  Set model to Opus 5 and saved as your default for new sessions
+
+❯  /grill-with-docs ok lets start new project. I initialized spring boot        
+  project. (fresh one). The project goal: create job assistant which helps me   
+  in process of job finding. The key features: 1) Analzyze                      
+    job offer list key skills required for this specific offer. Analyze my      
+  current skills, job experience, education and language skills. Compare job    
+  offer requirements and my current skills. Generate report                     
+    which helps me understand what skills I already have, what is missing (show 
+  the gap in transparent way). Helps create a plan to improve my skills or      
+  posess new ones which are missing. (build a plan) App                         
+    should be able to generate or update my CV which will be tailored for       
+  specific job offer. App should use predefined template so each time CV layout 
+  will be same and standarized. The flow should be AI                           
+    based. The basic flow. (1) user finds a offer on web (2) user copy paste    
+  the offer text to app (3) user click analyze button to allow AI agent review  
+  the offer. (4) app creates report for user (5) user                           
+    review report and decide if user want to generate CV or not (6) in case     
+  user want generate CV - user click generate CV button Tech stack: kotlin,     
+  spring boot, neon DB (postgress), frontend React (astro                       
+    framework) I want to host app for free (TODO: reaserch where) as for now it 
+  will be hosted locally. For AI agent management I want to use langchain(I     
+  want to learn this framework), AI providers: OpenRouter                       
+    and requesty and locally hosted (architecture should be prepared for more   
+  providers) The application should be lighweight, this is MVP (prototype), as  
+  for now user will manually searhc for job offers copy                         
+    paste offer text. In future we may think on webscraping or integrating with 
+  appis (if any job portal serves api) First we focus on backend then           
+  frontend. Please review my idea, please propose on how this                   
+    may be improved (other potential app features) which I missed.              
+
+  Searched for 1 pattern, listed 1 directory (ctrl+o to expand)
+
+⏺ Skill(mattpocock-skills:grilling)
+  ⎿  Successfully loaded skill
+
+⏺ Web Search("LangChain4j Spring Boot 4 compatibility 2026")
+  ⎿  Did 1 search in 6s
+
+⏺ Web Search("Spring AI 2.0 Spring Boot 4 release compatibility")
+  ⎿  Did 1 search in 7s
+
+⏺ Web Search("OpenRouter Requesty OpenAI-compatible API base url")
+  ⎿  Did 1 search in 6s
+
+⏺ Web Search("Requesty AI router API base url openai compatible
+            router.requesty.ai")
+  ⎿  Did 1 search in 6s
+
+⏺ Web Search("free hosting Spring Boot Docker 2026 Koyeb Render Fly.io free tier
+            JVM")
+  ⎿  Did 1 search in 8s
+
+⏺ Web Search("Neon postgres free tier limits 2026 autosuspend")
+  ⎿  Did 1 search in 6s
+
+⏺ Web Search("langchain4j Kotlin coroutines support AiServices structured output
+            json schema")
+  ⎿  Did 1 search in 7s
+
+⏺ Before questions, here's what I verified — a few things change your plan.
+
+  Fact-checks that matter:
+
+  1. "LangChain" doesn't exist on the JVM. LangChain is Python/JS. On Kotlin
+  your options are LangChain4j
+  (https://docs.langchain4j.dev/tutorials/spring-boot-integration/) (an
+  independent, LangChain-inspired framework — 1.17.2, ships a dedicated
+  -spring-boot4-starter) or Spring AI 2.0
+  (https://spring.io/blog/2026/06/12/spring-ai-2-0-0-GA-available-now/) (GA June
+  2026, requires Boot 4 — matches your 4.1.1 parent). Learning LangChain4j will
+  not transfer cleanly to LangChain/LangGraph interviews or tutorials. That's a
+  real fork in the road.
+  2. Your "multi-provider architecture" is mostly free already. OpenRouter
+  (https://openrouter.ai/api/v1), Requesty (https://docs.requesty.ai/quickstart)
+  (https://router.requesty.ai/v1), and local Ollama/LM Studio are all
+  OpenAI-compatible. Swapping them is base-URL + key config, not an abstraction
+  layer. Building a provider SPI on day one would be speculative generality.
+  3. Free hosting is worse than you assume. Koyeb's free tier closed to new
+  users (https://www.srvrlss.io/provider/koyeb/) after the Mistral acquisition;
+  Fly.io dropped free for new accounts. Render's free tier survives but sleeps,
+  and a JVM eats 200–300MB of a 512MB box before your code runs.
+  4. Neon free: 0.5 GB/project, 100 compute-hours, scale-to-zero after 5 min
+  idle (https://neon.com/blog/how-to-make-the-most-of-neons-free-plan) — your
+  connection pool must survive cold starts.
+
+  Gaps in the idea itself: there's no notion of tracking applications over time
+  (you'll analyze 50 offers — where do they live?); no cover letter generation,
+  which is cheaper than a CV and higher leverage; no skill taxonomy, so "React"
+  in one offer and "ReactJS" in another become different gaps and your report is
+  noise; and critically — nothing stops the AI from inventing experience you 
+  don't have on the tailored CV.
+
+  Let me write this down, then grill you.
+
+⏺ Updated plan
+  ⎿  /plan to preview
+⏺ Round 1
+
+  ❓ Q1 — "I want to learn LangChain" vs. "I want a Kotlin app": These are in
+  tension and you can't have both cheaply. LangChain4j shares vocabulary with
+  LangChain (chains, memory, tools, retrievers) but is a different codebase with
+  different APIs — you'd learn the concepts, not the framework. Spring AI 2.0
+  is the better-integrated Boot 4 citizen but shares even less DNA. A Python
+  sidecar running real LangChain/LangGraph gets you the actual framework, but
+  you now run two processes, two deploy targets, and a network hop — which kills
+  "lightweight MVP". Which do you actually want: the concepts on the JVM, the
+  best Kotlin integration, or genuinely LangChain?
+
+  ➡️ LangChain4j. You get the LangChain mental model (AiServices, tools, memory,
+  structured output) inside one Kotlin process. If you later want real
+  LangChain, the concepts port; the code never would anyway.
+
+  ---
+  ❓ Q2 — Where does "my profile" live, and who authors it?: The gap report is
+  only as good as your profile data. Options: (a) hand-authored structured
+  entities in Postgres, edited via API/UI; (b) upload your existing CV once, AI
+  parses it into the structured profile; (c) a YAML file in the repo, no DB for
+  profile. Note (b) sounds great but means your source of truth is AI-extracted
+  and possibly wrong — you'd be comparing offers against a hallucinated version
+  of yourself.
+
+  ➡️ (a), with a one-shot JSON/YAML import endpoint to seed it. Profile is
+  verified ground truth; never AI-written. (b) becomes a convenience importer
+  later, always with human confirmation.
+
+  ---
+  ❓ Q3 — Can the AI write CV content, or only select from verified facts?: This
+  is the trust boundary of the whole product. If the model freely generates
+  bullet points tailored to an offer, it will eventually claim you used Kafka.
+  Options: (a) strict — the AI only chooses which profile items to include,
+  their order, and rephrases within a bounded rewrite (no new
+  nouns/technologies); (b) free generation with a human review screen. (b) is
+  more impressive in demos and is how you end up lying on a CV by accident.
+
+  ➡️ (a) strict. Every technology on the rendered CV must trace to a profile
+  record. Make it a testable invariant, not a prompt instruction.
+
+  ---
+  ❓ Q4 — CV rendering pipeline: You want a fixed, standardized template.
+  Options: (a) Thymeleaf HTML → PDF via openhtmltopdf (pure JVM, no native
+  binary, works on a 512 MB box); (b) Typst or LaTeX → PDF (beautiful, needs an
+  external binary — awkward on free hosting); (c) DOCX via docx4j (many ATS
+  parse DOCX best, but templating is painful). Worth knowing: some ATS still
+  mangle multi-column PDFs, so single-column is the safe layout regardless.
+
+  ➡️ (a) Thymeleaf → openhtmltopdf, single-column. Same HTML doubles as the
+  browser preview in the Astro frontend later, so you build the template once.
+
+⏺ User answered Claude's questions:
+  ⎿  · LangChain isn't available on the JVM. Which AI framework do you actually 
+     want to build on? → LangChain4j (Recommended)
+     · Where does your profile (skills, experience, education, languages) live, 
+     and who authors it? → Hand-authored in Postgres (Recommended)
+     · On a tailored CV, may the AI write new content, or only select and 
+     reorder verified facts? → Strict: select + bounded rephrase (Recommended)
+     · How should the standardized CV be rendered? → Thymeleaf HTML → 
+     openhtmltopdf (Recommended)
+
+⏺ Round 1 settled: LangChain4j, hand-authored profile in Postgres, strict CV 
+  trust boundary, Thymeleaf → PDF. That unblocks the next layer.
+
+  Round 2
+
+  ❓ Q1 — How does matching actually work?: This decides whether your gap report
+  is trustworthy or vibes. (a) Pure LLM — hand it the offer and your profile,
+  ask for the gap. Simple, one call, but non-deterministic: the same offer gives
+  different gaps on Tuesday, and you can't unit-test it. (b) Deterministic over
+  a canonical catalog — you maintain a skill catalog with aliases (React ←
+  ReactJS, React.js), the LLM's only job is extracting offer requirements and
+  snapping them to catalog entries, then Kotlin does a plain set-diff. Testable,
+  reproducible, but you curate a catalog. (c) Hybrid — (b) for the gap
+  computation, plus one LLM call that turns the computed diff into readable
+  narrative and the improvement plan.
+
+  ➡️ (c) hybrid. The facts (what's missing) are deterministic and testable; the
+  prose is generated. This is also the only version where "you have 7 of 10
+  required skills" means the same thing twice.
+
+  ---
+  ❓ Q2 — How much provider abstraction do you build?: OpenRouter, Requesty,
+  Ollama and LM Studio are all OpenAI-compatible, so LangChain4j's
+  OpenAiChatModel with an overridden baseUrl already talks to all four. (a)
+  Config-only — a ModelProfile record (base-url, key, model-id, temperature) in
+  application.yaml, a factory that builds a ChatModel per profile, providers
+  selectable per-task ("extraction uses local Qwen, narrative uses Claude via
+  OpenRouter"). (b) Custom provider SPI — a LlmProvider interface with
+  per-vendor implementations, ready for a non-OpenAI-shaped vendor. You said
+  "architecture should be prepared for more providers" — but (b) is an
+  abstraction over an abstraction that already exists.
+
+  ➡️ (a) config-only, with per-task profiles. You get local + OpenRouter +
+  Requesty today for ~40 lines. If a genuinely non-OpenAI-shaped provider ever
+  appears, LangChain4j already abstracts it — that's what the framework is for.
+
+  ---
+  ❓ Q3 — Does an analyzed offer have a life after the report?: Right now the
+  flow ends at "generate CV". After 30 offers you'll have 30 reports and no
+  memory of which you applied to. (a) Fire-and-forget — persist offer + report,
+  no status. (b) Minimal lifecycle — an Application with a status enum (ANALYZED
+  → APPLIED → INTERVIEWING → REJECTED/OFFER), a date, and free-text notes.
+  Costs one table and one endpoint. (c) Full tracker — reminders, follow-up
+  scheduling, kanban.
+
+  ➡️ (b) minimal lifecycle. One enum column now; it's the difference between a
+  toy and something you actually use in a real job hunt. (c) is a separate
+  product.
+
+  ---
+  ❓ Q4 — What else is in the MVP?: You asked what you missed. Pick what ships
+  in v1 vs. backlog. Candidates: cover letter generation (same profile data,
+  ~20% of CV effort, arguably higher ROI per application); aggregate gap 
+  analysis across all analyzed offers ("Kubernetes appeared in 8 of your 12
+  target roles" — far more actionable for a learning plan than any single
+  offer); offer dedup by content hash (you'll re-paste the same posting);
+  evaluation fixtures (5–10 saved offers with hand-labelled expected skills, so
+  you can change prompts/models without silently regressing); red-flag 
+  extraction (no salary, unrealistic seniority-vs-stack mismatch).
+
+  ➡️ Cover letter + aggregate gap analysis + dedup + eval fixtures. Aggregate
+  analysis in particular is the feature your original spec is missing most — a
+  per-offer gap tells you what you lack today; the cross-offer histogram tells
+  you what to actually learn.
+
+  Called plugin:context7:context7 (ctrl+o to expand)
+
+⏺ User answered Claude's questions:
+  ⎿  · How should the offer-vs-profile gap actually be computed? → Hybrid: 
+     deterministic diff + LLM prose (Recommended)
+     · How much provider abstraction should the architecture carry on day one? →
+     Config-only model profiles (Recommended)
+     · Should an analyzed offer have a lifecycle after the report is generated? 
+     → Minimal lifecycle (Recommended)
+     · Which additional features ship in the MVP rather than the backlog? → 
+     Offer dedup by content hash, Eval fixtures for prompts, Cover letter 
+     generation, Aggregate gap analysis, Each offer should be saved in DB
+
+⏺ Noted — offers persisted in full, including raw pasted text. Round 2 settled:
+  hybrid matching, config-only model profiles, minimal lifecycle, and all four
+  extras in scope.
+
+  Round 3
+
+  ❓ Q1 — How does a skill string become a canonical skill?: The hybrid diff
+  only works if "container orchestration experience" and "K8s" both resolve to
+  the same catalog entry. (a) Curated catalog + in-prompt snapping — you seed
+  ~150–250 skills with aliases in a Flyway migration; the extractor receives the
+  catalog and must return catalog IDs, emitting UNMATCHED for anything novel,
+  which lands in a review queue you approve into the catalog. ~2k tokens per
+  call, fully deterministic downstream. (b) pgvector embeddings — embed catalog
+  entries and extracted strings, cosine-match above a threshold. Handles
+  paraphrase without a big prompt, but adds an embedding model, a vector column,
+  and a threshold to tune. (c) Alias map only, no semantic step — brittle,
+  misses every paraphrase.
+
+  ➡️ (a), with the review queue. The catalog grows organically from real offers
+  instead of you guessing 200 skills upfront. Move to (b) only when the catalog
+  outgrows the prompt — the review queue means you'll know when that happens.
+
+  ---
+  ❓ Q2 — Persistence stack: (a) Spring Data JDBC + Flyway — immutable Kotlin
+  data classes, explicit aggregates (Offer owns its Requirements), no
+  lazy-loading or session surprises, fast startup on a 512 MB box. (b)
+  JPA/Hibernate + Flyway — the conventional Spring choice and probably what you
+  know, but Kotlin needs the no-arg/allopen plugins, entities go mutable, and
+  you inherit open-session-in-view foot-guns. (c) jOOQ — best SQL ergonomics,
+  extra codegen step in the build.
+
+  ➡️ (a) Spring Data JDBC + Flyway. Your aggregates are small and clearly
+  bounded, and immutable Kotlin data classes map to it cleanly. Take (b) instead
+  only if you specifically want JPA practice.
+
+  ---
+  ❓ Q3 — Sync or async analysis?: An analysis is two LLM calls plus a Neon cold
+  start — realistically 10–40s. (a) Sync POST /analyses returns the finished
+  report. Simplest, but a 40s HTTP request will hit proxy timeouts on free
+  hosting and gives the frontend nothing to show. (b) Async job — POST returns
+  202 + jobId, GET /analyses/{id} polls PENDING → EXTRACTING → MATCHING → 
+  DONE/FAILED. More code, survives timeouts, gives the Astro UI a real progress
+  state, and makes retries sane. (c) SSE stream of tokens — nicest demo, most
+  fiddly.
+
+  ➡️ (b) async job with status polling. It's ~30 extra lines, and it's what
+  makes the frontend and the free-tier deploy both work.
+
+  ---
+  ❓ Q4 — Users and auth: Everything above assumes one person: you. (a)
+  Single-user, no auth, bound to localhost; no user_id columns anywhere. Adding
+  multi-tenancy later is a migration plus a filter — genuinely cheap, and you'd
+  redo the auth story anyway. (b) Single-user but a user_id column everywhere 
+  from day one — hedges, but you carry a column that's always 1. (c) Real 
+  multi-user with Spring Security + OAuth from the start.
+
+  ➡️ (a) single-user, no auth, localhost-bound, with a single static API key
+  added when you first deploy publicly. Anything more is building for users who
+  don't exist.
+
+  Called plugin:context7:context7 (ctrl+o to expand)
+
+⏺ User declined to answer questions
+  ⎿  · How should an extracted requirement string resolve to a canonical skill? 
+     (Curated catalog + review queue (Recommended) / pgvector embeddings / Alias
+     map only, no semantic step)
+     · Which persistence stack? (Spring Data JDBC + Flyway (Recommended) / JPA /
+     Hibernate + Flyway / jOOQ + Flyway)
+     · Should analysis be a synchronous request or an async job? (Async job + 
+     status polling (Recommended) / Synchronous request / SSE token streaming)
+     · How should users and auth be handled in the MVP? (Single-user, no auth 
+     (Recommended) / Single-user but user_id everywhere / Real multi-user with 
+     Spring Security)
+
+⏺ Round 3 Q1 is settled (curated catalog + review queue) — I'll hold the other
+  three.
+
+  One useful thing the docs turned up while you were reading: LangChain4j's
+  Spring Boot starter binds one model per type via
+  langchain4j.open-ai.chat-model.* (including base-url, which confirms the
+  OpenRouter/Requesty/Ollama story works). But named per-task profiles —
+  "extraction on local Qwen, narrative on Claude via OpenRouter" — means
+  bypassing the starter's autoconfig and building OpenAiChatModel.builder()
+  beans yourself from your own @ConfigurationProperties. Still small, but it's
+  hand-rolled config, not free.
+
+  What would you like to clarify? If it's about the three unanswered questions —
+  persistence stack, sync vs async, auth — tell me which one and what's
+  bothering you about the options, and I'll reframe them.
+
+✻ Baked for 4m 58s
+
+❯ lets get back to round 3 questions                                            
+
+⏺ Round 3 (continued)
+
+  Q1 is settled — curated catalog + review queue. Three left.
+
+  ❓ Q2 — Persistence stack: (a) Spring Data JDBC + Flyway — immutable Kotlin
+  data classes, explicit aggregates (Offer owns its Requirements), no
+  lazy-loading or session surprises, fast startup on a small box. (b)
+  JPA/Hibernate + Flyway — the conventional Spring choice and probably what you
+  already know, but Kotlin needs the no-arg/allopen plugins, entities go
+  mutable, and open-session-in-view foot-guns come with it. (c) jOOQ — best SQL
+  ergonomics, extra codegen step in the Maven build.
+
+  ➡️ (a) Spring Data JDBC + Flyway. Your aggregates are small and clearly
+  bounded. Take (b) instead only if you specifically want JPA practice out of
+  this project.
+
+  ---
+  ❓ Q3 — Sync or async analysis?: Two LLM calls plus a Neon cold start is
+  realistically 10–40s. (a) Sync — POST /analyses blocks and returns the report.
+  Simplest, but that request will hit proxy timeouts once deployed, and the
+  frontend gets nothing but a spinner. (b) Async job — POST returns 202 + jobId;
+  GET /analyses/{id} polls PENDING → EXTRACTING → MATCHING → DONE/FAILED.
+  Survives timeouts, gives the Astro UI real progress, makes retries sane. (c)
+  SSE streaming — best perceived latency, most fiddly.
+
+  ➡️ (b) async job with polling. Roughly 30 extra lines, and it's what makes
+  both the frontend and the eventual free-tier deploy work.
+
+  ---
+  ❓ Q4 — Users and auth: (a) Single-user, no auth, localhost-bound, no user_id
+  columns anywhere; add one static API key when you first deploy publicly. (b)
+  Single-user but user_id everywhere — hedges against a future migration at the
+  cost of a column that's always 1. (c) Real multi-user with Spring Security + 
+  OAuth.
+
+  ➡️ (a). Adding multi-tenancy later is a migration plus a filter — genuinely
+  cheap, and you'd redesign the auth story then anyway.
+
+⏺ User answered Claude's questions:
+  ⎿  · Which persistence stack? → Spring Data JDBC + Flyway (Recommended)
+     · Should analysis be a synchronous request or an async job? → Async job + 
+     status polling (Recommended)
+     · How should users and auth be handled in the MVP? → Single-user, no auth 
+     (Recommended)
+
+⏺ Round 3 settled: Spring Data JDBC + Flyway, async job + polling, single-user 
+  no auth. Recording progress, then the next layer.
+
+⏺ Updated plan
+  ⎿  /plan to preview
+
+⏺ Round 4
+
+  ❓ Q1 — What is actually in the report?: This is your product. (a) Rich 
+  structured — each extracted requirement tagged MUST_HAVE/NICE_TO_HAVE, each
+  with a status MET/PARTIAL/MISSING plus evidence (which profile record proves
+  it), a transparent match score (met must-haves / total must-haves, stated as
+  the formula so it's not a black box), and an ordered learning plan with
+  per-item effort estimates. (b) Minimal — three lists (have / partial /
+  missing) and a prose summary. (c) (a) without the score.
+
+  ➡️ (a). The MUST_HAVE/NICE_TO_HAVE split is what makes a gap report useful
+  rather than discouraging — half of what looks "missing" is decoration. And the
+  evidence field is what makes it transparent, which was your stated goal. The
+  score matters because you need it to rank offers in the aggregate view.
+
+  ---
+  ❓ Q2 — How are LLM calls structured?: (a) LangChain4j AiServices — one typed
+  interface per task (OfferExtractor, ReportNarrator, CvTailor,
+  CoverLetterWriter), JSON-schema structured output, prompts in
+  @SystemMessage/@UserMessage backed by resource files so they're diffable. (b)
+  Low-level ChatModel with hand-written prompts and Jackson parsing — more
+  control, more boilerplate, no free schema enforcement.
+
+  Either way I'd add an llm_call table persisting model, prompt, raw response,
+  token counts and latency for every call — you cannot debug a bad report
+  without seeing what the model actually returned. Caveat worth knowing now:
+  strict JSON-schema support varies by underlying model on OpenRouter/Requesty,
+  and most local models don't do it properly — so you need a retry-with-repair
+  fallback, not just faith in the schema.
+
+  ➡️ (a) AiServices + structured output + llm_call audit table + a parse-repair 
+  fallback.
+
+  ---
+  ❓ Q3 — Package structure: CLAUDE.md explicitly says to choose deliberately
+  rather than assume. (a) Feature-sliced — profile/, offer/, catalog/,
+  analysis/, document/, llm/, each owning its own controller/service/repository.
+  (b) Layered — controller/, service/, repository/, domain/. (c) Feature-sliced
+  plus Spring Modulith to enforce the boundaries with a verification test.
+
+  ➡️ (a) feature-sliced, plain packages. Layered packages stop scaling the
+  moment you have six features. Modulith is tempting and would enforce it, but
+  it's a dependency and a concept to learn on top of LangChain4j — add it later
+  if boundaries actually start leaking.
+
+  ---
+  ❓ Q4 — How do you test something non-deterministic?: (a) Two tiers — fast
+  tests with a stubbed ChatModel returning canned responses (covers all
+  matching/diff/CV-invariant logic deterministically, runs in CI) plus a
+  separate @Tag("eval") suite you run manually that hits a real model against
+  your 5–10 labelled offers and scores precision/recall on extracted skills. (b)
+  Stubbed only — fast, but prompt quality regressions go unnoticed. (c) Live 
+  only — slow, flaky, costs tokens on every run.
+
+  Note: tests must run against real Postgres via Testcontainers, not H2 — your
+  Flyway migrations will be Postgres-specific and Neon is Postgres.
+
+  ➡️ (a) two tiers + Testcontainers. The stubbed tier is where the strict-CV
+  invariant gets enforced, which is the single most valuable test in the
+  codebase.
+
+⏺ User answered Claude's questions:
+  ⎿  · What should the gap report actually contain? → Rich structured report 
+     (Recommended)
+     · How should the LLM calls be structured in code? → AiServices + structured
+     output (Recommended)
+     · How should the backend packages be organised? → Feature-sliced + Spring 
+     Modulith
+     · What testing strategy for non-deterministic AI behaviour? → Two tiers + 
+     Testcontainers (Recommended)
+
+⏺ Round 4 settled — including Spring Modulith for enforced boundaries. Last
+  major round.
+
+  Round 5
+
+  ❓ Q1 — What language is everything in?: You're job-hunting from Poland, so
+  you'll paste a mix of Polish and English offers, and tech CVs are usually
+  English. Nothing in the design has addressed this. (a) Profile stored in 
+  English; output always English; offers accepted in any language (the extractor
+  normalises to English catalog IDs). (b) Output language matches the offer's 
+  language — needs your profile in both languages, or AI translation. (c)
+  Profile in English, output language chosen per generation, defaulting to
+  English; translation treated as a bounded rephrase.
+
+  Worth noting: translation is compatible with your strict invariant (same
+  facts, different words), but the invariant test gets harder — though
+  technology names stay in English anyway, which saves you.
+
+  ➡️ (c). Extraction always normalises to English catalog IDs regardless of
+  offer language; output language is an explicit parameter. One flag now, no
+  rework when you hit a Polish-only employer.
+
+  ---
+  ❓ Q2 — What does "tailored" concretely mean, and how is the invariant 
+  enforced?: (a) Tailoring may change the summary line, which experience bullets
+  are included, their order, and which skills are listed and in what order —
+  sections and layout always identical; bounded rewording allowed. (b) Same,
+  plus free rewording of bullets. (c) Pure selection and reordering, zero
+  rewording — safest, reads generically.
+
+  Enforcement mechanism for (a): after rendering, extract every technology token
+  from the CV and assert each one is in your profile's skill set (plus a
+  stopword allowlist). That's a real test, not a prompt hope.
+
+  ➡️ (a) with the token-extraction invariant test. It's the difference between
+  "the prompt says don't lie" and "the build fails if it lies."
+
+  ---
+  ❓ Q3 — Does the learning plan name actual resources?: (a) Resource-free — per
+  missing skill: why it matters for this offer, a suggested practice project, a
+  rough effort estimate, ordered by impact. (b) Named courses and links — most
+  useful when right, but LLMs invent plausible dead URLs constantly, and you
+  won't notice until you click. (c) Named resources drawn only from a 
+  learning_resource table you curate, joined by skill.
+
+  ➡️ (a) for v1, (c) as the growth path. (b) is the one place left in this
+  design where the model can quietly fabricate, and you already closed that door
+  on the CV — don't reopen it here.
+
+  ---
+  ❓ Q4 — Hosting (your TODO — researched): (a) Local only for now — Docker
+  Compose with Postgres + Ollama; decide when the MVP actually works. (b) Render
+  free web service + Neon free — no card, but sleeps after idle and 512 MB is
+  tight for a JVM. (c) Oracle Cloud Always Free — ARM instances with genuinely
+  large RAM, the only free tier that could host both your JVM and a local model;
+  needs a credit card and account approval that's known to be flaky. Ruled out
+  by research: Koyeb (free tier closed to new signups after the Mistral
+  acquisition) and Fly.io (no free tier for new accounts).
+
+  ➡️ (a) local only, and design for (b). Keep the app a plain Docker image with
+  all config externalised, so deploying later is a decision, not a refactor.
+  Pick between Render and Oracle when you have something worth deploying.
+
+⏺ Web Search("Spring Modulith 2.0 Spring Boot 4 compatibility version")
+  ⎿  Did 1 search in 5s
+
+⏺ Web Search("openhtmltopdf maintained 2026 alternative flying saucer HTML to
+            PDF Java")
+  ⎿  Did 1 search in 7s
+
+⏺ User answered Claude's questions:
+  ⎿  · How should languages be handled (Polish vs English offers and CV output)?
+     → English profile, per-generation output language (Recommended)
+     · What may tailoring change on the CV, and how is the no-lying rule 
+     enforced? → Select + reorder + bounded rewording (Recommended)
+     · Should the learning plan name specific resources? → Resource-free plan 
+     (Recommended)
+     · Where should this be hosted? → Local only, design for Render 
+     (Recommended)
+
+⏺ Two corrections from the docs before the last round:
+
+  - openhtmltopdf's original repo (com.openhtmltopdf, danfickle) has been 
+  abandoned since ~2022. The live artifact is the community fork
+  io.github.openhtmltopdf (https://github.com/openhtmltopdf) (v1.1.31,
+  PDFBox 3). Use that groupId. The real constraint: it's CSS 2.1 only — no 
+  flexbox, no grid. Your CV template will be tables and floats. Single-column
+  ATS-safe layout is fine that way, but plan for it rather than discovering it.
+  (Flying Saucer (https://en.wikipedia.org/wiki/Flying_Saucer_(library)) v10.0.6
+  is the actively-maintained alternative and has the identical CSS 2.1 limit.)
+  - Spring Modulith 2.0 GA requires Boot 4 — your 4.1.1 parent is exactly right,
+  no version gymnastics.
+
+  Round 6 (final)
+
+  ❓ Q1 — What's the first thing you build?: (a) Walking skeleton — paste offer
+  → persist → stubbed LLM → report JSON → rendered PDF, end to end in week one,
+  then swap the stub for a real model. You hit every integration boundary before
+  any of them can surprise you. (b) Depth-first — profile + catalog complete
+  and polished, then extraction, then matching, then CV. (c) LLM-first — get
+  extraction working against a real model, build the app around it.
+
+  ➡️ (a) walking skeleton. It also means your stubbed test tier exists from day
+  one instead of being retrofitted, which is where the CV invariant lives.
+
+  ---
+  ❓ Q2 — Which model handles which task by default?: Slightly
+  counter-intuitive: (a) Everything via OpenRouter on a cheap capable model,
+  with local Ollama as an opt-in profile you can flip per task. (b) Extraction 
+  local, narrative remote — feels right (extraction is high-volume and
+  mechanical) but extraction is precisely the task needing strict JSON schema,
+  which is what small local models are worst at. (c) Everything local, remote as
+  fallback.
+
+  ➡️ (a). Put the hard structured-output work on a remote model where schema
+  mode actually works, and treat local as the thing you experiment with once the
+  parse-repair fallback is proven.
+
+⏺ User answered Claude's questions:
+  ⎿  · What should be built first? → Depth-first by feature
+     · Which model should handle which task by default? → All remote via 
+     OpenRouter, local opt-in (Recommended)
+⏺ Frontier's empty — every branch is settled. Writing the final plan.
+
+  You went depth-first against my recommendation; that's your call and I've
+  structured the milestones that way. I've kept the one mitigation that matters:
+  the stubbed ChatModel and Testcontainers harness land in M3, before any
+  feature depends on a live model, so integration risk doesn't all arrive at the
+  end.
+
+⏺ Updated plan
+  ⎿  /plan to preview
+
+⏺ Plan written. Summary of what came out of the grilling:
+
+  Three things changed materially from your original idea:
+  - "Use LangChain" became LangChain4j, with the explicit understanding that
+  you're learning the concepts, not the framework — the Python APIs won't
+  transfer.
+  - Your provider abstraction shrank from an SPI to ~40 lines of config, because
+  OpenRouter, Requesty and Ollama are all the same wire protocol.
+  - The gap computation became deterministic Kotlin over a curated catalog, with
+  the LLM confined to extraction and prose — so "you match 7 of 10 must-haves"
+  means the same thing twice.
+
+  Four things were added that your spec didn't have: aggregate cross-offer gap
+  analysis (the histogram is what should actually drive your learning plan, not
+  any single offer), cover letters, offer lifecycle tracking, and a hard
+  invariant test that fails the build if a technology appears on your CV that
+  isn't in your profile.
+
+  Two corrections from the docs you'd have hit later: com.openhtmltopdf is
+  abandoned — use the io.github.openhtmltopdf fork, and accept CSS 2.1 (tables
+  and floats, no flexbox). Boot 4 also ships Jackson 3, so imports are
+  tools.jackson.*.
+
+  Sources: LangChain4j Spring Boot
+  (https://docs.langchain4j.dev/tutorials/spring-boot-integration/) · Spring AI
+  2.0 GA (https://spring.io/blog/2026/06/12/spring-ai-2-0-0-GA-available-now/) ·
+  Spring Modulith 2.0 (https://spring.io/blog/2025/11/21/spring-modulith-2-0-ga
+  -1-4-5-and-1-3-11-released/) · Requesty quickstart
+  (https://docs.requesty.ai/quickstart) · OpenRouter base URL
+  (https://openrouter.ai/docs/quickstart) · Neon free plan
+  (https://neon.com/blog/how-to-make-the-most-of-neons-free-plan) ·
+  openhtmltopdf fork (https://github.com/openhtmltopdf) · Render free tiers 2026
+  (https://render.com/articles/platforms-with-a-real-free-tier-for-developers-i
+  n-2026)
+  ⎿  User rejected Claude's plan:
+     ╭─────────────────────────────────────────────────────────────────────────╮
+     │ Job Assistant — MVP Implementation Plan                                 │
+     │                                                                         │
+     │ Context                                                                 │
+     │                                                                         │
+     │ Fresh Spring Boot 4.1.1 + Kotlin 2.3.21 (Java 21) scaffold at           │
+     │ com.jankowski.rafal.jobassistant.                                       │
+     │ Only JobAssistantApplication.kt and a smoke test exist — no packages,   │
+     │ no layering, no dependencies                                            │
+     │ beyond spring-boot-starter. Every structural decision below is being    │
+     │ made for the first time.                                                │
+     │                                                                         │
+     │ The problem being solved: job hunting is a repetitive manual            │
+     │ comparison. For each offer you                                          │
+     │ re-read the requirements, guess how well you match, and hand-edit a CV. │
+     │ This app makes that                                                     │
+     │ mechanical: paste an offer, get a transparent skill-gap report with     │
+     │ evidence, an improvement plan,                                          │
+     │ and — on demand — a CV and cover letter tailored to that offer from a   │
+     │ fixed template.                                                         │
+     │                                                                         │
+     │ The core risk this design is built around: an AI that invents           │
+     │ experience you don't have. Every                                        │
+     │ architectural choice below that looks conservative exists to make       │
+     │ fabrication impossible, not                                             │
+     │ merely discouraged.                                                     │
+     │                                                                         │
+     │ Backend first; Astro/React frontend afterwards. Local-only for now.     │
+     │                                                                         │
+     │ ---                                                                     │
+     │ Settled decisions                                                       │
+     │                                                                         │
+     │ ┌─────┬───────────────┬──────────────────────────────────────────────── │
+     │ ───┐                                                                    │
+     │ │  #  │   Decision    │                      Choice                     │
+     │   │                                                                     │
+     │ ├─────┼───────────────┼──────────────────────────────────────────────── │
+     │ ───┤                                                                    │
+     │ │     │               │ LangChain4j (LangChain is Python/JS only;       │
+     │   │                                                                     │
+     │ │ 1   │ AI framework  │ LangChain4j is a separate, LangChain-inspired   │
+     │ JVM │                                                                   │
+     │ │     │               │  framework)                                     │
+     │   │                                                                     │
+     │ ├─────┼───────────────┼──────────────────────────────────────────────── │
+     │ ───┤                                                                    │
+     │ │     │ Profile       │ Hand-authored records in Postgres, seeded via a │
+     │   │                                                                     │
+     │ │ 2   │ source of     │ JSON/YAML import endpoint. Never AI-written.    │
+     │   │                                                                     │
+     │ │     │ truth         │                                                 │
+     │   │                                                                     │
+     │ ├─────┼───────────────┼──────────────────────────────────────────────── │
+     │ ───┤                                                                    │
+     │ │     │ CV trust      │ Strict: AI selects, orders and rephrases only.  │
+     │   │                                                                     │
+     │ │ 3   │ boundary      │ Every technology on the CV must trace to a      │
+     │   │                                                                     │
+     │ │     │               │ profile record — enforced by a test.            │
+     │   │                                                                     │
+     │ ├─────┼───────────────┼──────────────────────────────────────────────── │
+     │ ───┤                                                                    │
+     │ │ 4   │ CV rendering  │ Thymeleaf HTML → io.github.openhtmltopdf,       │
+     │   │                                                                     │
+     │ │     │               │ single-column, ATS-safe                         │
+     │   │                                                                     │
+     │ ├─────┼───────────────┼──────────────────────────────────────────────── │
+     │ ───┤                                                                    │
+     │ │     │               │ Hybrid: LLM extracts + snaps to catalog →       │
+     │   │                                                                     │
+     │ │ 5   │ Matching      │ deterministic Kotlin set-diff → LLM writes      │
+     │   │                                                                     │
+     │ │     │               │ narrative                                       │
+     │   │                                                                     │
+     │ ├─────┼───────────────┼──────────────────────────────────────────────── │
+     │ ───┤                                                                    │
+     │ │ 6   │ Provider      │ Config-only ModelProfiles. No bespoke SPI.      │
+     │   │                                                                     │
+     │ │     │ abstraction   │                                                 │
+     │   │                                                                     │
+     │ ├─────┼───────────────┼──────────────────────────────────────────────── │
+     │ ───┤                                                                    │
+     │ │ 7   │ Offer         │ Application with status enum + date + notes     │
+     │   │                                                                     │
+     │ │     │ lifecycle     │                                                 │
+     │   │                                                                     │
+     │ ├─────┼───────────────┼──────────────────────────────────────────────── │
+     │ ───┤                                                                    │
+     │ │     │               │ Aggregate cross-offer gap analysis, cover       │
+     │   │                                                                     │
+     │ │ 8   │ Extra MVP     │ letters, eval fixtures, offer dedup by content  │
+     │   │                                                                     │
+     │ │     │ scope         │ hash. Every offer persisted in full including   │
+     │ raw │                                                                   │
+     │ │     │               │  text.                                          │
+     │   │                                                                     │
+     │ ├─────┼───────────────┼──────────────────────────────────────────────── │
+     │ ───┤                                                                    │
+     │ │     │ Skill         │ Curated catalog + aliases, seeded via Flyway;   │
+     │   │                                                                     │
+     │ │ 9   │ resolution    │ novel terms → UNMATCHED review queue. No        │
+     │   │                                                                     │
+     │ │     │               │ embeddings in v1.                               │
+     │   │                                                                     │
+     │ ├─────┼───────────────┼──────────────────────────────────────────────── │
+     │ ───┤                                                                    │
+     │ │ 10  │ Persistence   │ Spring Data JDBC + Flyway, immutable Kotlin     │
+     │ data  │                                                                 │
+     │ │     │               │ classes                                         │
+     │   │                                                                     │
+     │ ├─────┼───────────────┼──────────────────────────────────────────────── │
+     │ ───┤                                                                    │
+     │ │ 11  │ Analysis API  │ Async job + status polling                      │
+     │   │                                                                     │
+     │ ├─────┼───────────────┼──────────────────────────────────────────────── │
+     │ ───┤                                                                    │
+     │ │ 12  │ Auth          │ Single-user, no auth, localhost-bound. No       │
+     │ user_id │                                                               │
+     │ │     │               │  columns.                                       │
+     │   │                                                                     │
+     │ ├─────┼───────────────┼──────────────────────────────────────────────── │
+     │ ───┤                                                                    │
+     │ │     │               │ Requirements tagged MUST_HAVE/NICE_TO_HAVE ×    │
+     │   │                                                                     │
+     │ │ 13  │ Report shape  │ MET/PARTIAL/MISSING, each with evidence, plus   │
+     │   │                                                                     │
+     │ │     │               │ transparent match score and ordered learning    │
+     │ plan │                                                                  │
+     │ ├─────┼───────────────┼──────────────────────────────────────────────── │
+     │ ───┤                                                                    │
+     │ │     │               │ LangChain4j AiServices + JSON-schema structured │
+     │   │                                                                     │
+     │ │ 14  │ LLM calls     │ output, llm_call audit table, parse-repair      │
+     │   │                                                                     │
+     │ │     │               │ fallback                                        │
+     │   │                                                                     │
+     │ ├─────┼───────────────┼──────────────────────────────────────────────── │
+     │ ───┤                                                                    │
+     │ │ 15  │ Structure     │ Feature-sliced packages + Spring Modulith       │
+     │   │                                                                     │
+     │ │     │               │ boundary verification                           │
+     │   │                                                                     │
+     │ ├─────┼───────────────┼──────────────────────────────────────────────── │
+     │ ───┤                                                                    │
+     │ │ 16  │ Testing       │ Two tiers: stubbed ChatModel + Testcontainers   │
+     │   │                                                                     │
+     │ │     │               │ Postgres in CI; @Tag("eval") suite run manually │
+     │   │                                                                     │
+     │ ├─────┼───────────────┼──────────────────────────────────────────────── │
+     │ ───┤                                                                    │
+     │ │     │               │ Profile in English; offers accepted in any      │
+     │   │                                                                     │
+     │ │ 17  │ Language      │ language and normalised to English catalog IDs; │
+     │   │                                                                     │
+     │ │     │               │ output language is a per-generation parameter   │
+     │   │                                                                     │
+     │ │     │               │ defaulting to English                           │
+     │   │                                                                     │
+     │ ├─────┼───────────────┼──────────────────────────────────────────────── │
+     │ ───┤                                                                    │
+     │ │ 18  │ Tailoring     │ Select + reorder + bounded rewording. Sections  │
+     │   │                                                                     │
+     │ │     │               │ and layout fixed.                               │
+     │   │                                                                     │
+     │ ├─────┼───────────────┼──────────────────────────────────────────────── │
+     │ ───┤                                                                    │
+     │ │ 19  │ Learning plan │ Resource-free (no URLs — the last place         │
+     │   │                                                                     │
+     │ │     │               │ fabrication was still possible)                 │
+     │   │                                                                     │
+     │ ├─────┼───────────────┼──────────────────────────────────────────────── │
+     │ ───┤                                                                    │
+     │ │     │               │ Local only. Plain Docker image, all config      │
+     │   │                                                                     │
+     │ │ 20  │ Hosting       │ externalised, so deploying to Render later is a │
+     │   │                                                                     │
+     │ │     │               │ decision not a refactor.                        │
+     │   │                                                                     │
+     │ ├─────┼───────────────┼──────────────────────────────────────────────── │
+     │ ───┤                                                                    │
+     │ │ 21  │ Build order   │ Depth-first by feature (user's choice, against  │
+     │   │                                                                     │
+     │ │     │               │ recommendation — see Risks)                     │
+     │   │                                                                     │
+     │ ├─────┼───────────────┼──────────────────────────────────────────────── │
+     │ ───┤                                                                    │
+     │ │ 22  │ Model routing │ All tasks via OpenRouter by default; Ollama     │
+     │   │                                                                     │
+     │ │     │               │ profiles opt-in per task                        │
+     │   │                                                                     │
+     │ └─────┴───────────────┴──────────────────────────────────────────────── │
+     │ ───┘                                                                    │
+     │                                                                         │
+     │ ---                                                                     │
+     │ Verified facts (Aug 2026) that shape the design                         │
+     │                                                                         │
+     │ - Spring Modulith 2.0 GA requires Boot 4 — 4.1.1 is exactly right, no   │
+     │ version gymnastics.                                                     │
+     │ - com.openhtmltopdf (danfickle) is abandoned since ~2022. Use the       │
+     │ community fork                                                          │
+     │ io.github.openhtmltopdf (v1.1.31, PDFBox 3). It is CSS 2.1 only — no    │
+     │ flexbox, no grid, no JS.                                                │
+     │ The CV template must use tables/floats. Flying Saucer 10.x is the       │
+     │ alternative with the same limit.                                        │
+     │ - OpenRouter https://openrouter.ai/api/v1, Requesty                     │
+     │ https://router.requesty.ai/v1                                           │
+     │ (EU: router.eu.requesty.ai/v1), Ollama http://localhost:11434/v1 are    │
+     │ all OpenAI-compatible.                                                  │
+     │ Provider switching is base-url + key.                                   │
+     │ - LangChain4j's Spring Boot starter binds one model per type, so named  │
+     │ per-task profiles mean                                                  │
+     │ skipping its autoconfig and building OpenAiChatModel.builder() beans    │
+     │ from own properties.                                                    │
+     │ - LangChain4j Kotlin tools need javaParameters = true in the Kotlin     │
+     │ compiler args.                                                          │
+     │ - Boot 4 ships Jackson 3 — imports are tools.jackson.*, not             │
+     │ com.fasterxml.jackson.*.                                                │
+     │ - Neon free: 0.5 GB storage/project, 100 compute-hours/month,           │
+     │ scale-to-zero after 5 min idle.                                         │
+     │ Hikari must be small and retry-tolerant; do not store PDF bytes in the  │
+     │ DB.                                                                     │
+     │                                                                         │
+     │ ---                                                                     │
+     │ Module structure                                                        │
+     │                                                                         │
+     │ Feature-sliced under com.jankowski.rafal.jobassistant, each a Spring    │
+     │ Modulith module with an                                                 │
+     │ internal subpackage and a narrow public API:                            │
+     │                                                                         │
+     │ ┌──────────┬─────────────────────────────────────────────────────────── │
+     │ ────┐                                                                   │
+     │ │  Module  │                             Owns                           │
+     │    │                                                                    │
+     │ ├──────────┼─────────────────────────────────────────────────────────── │
+     │ ────┤                                                                   │
+     │ │ profile  │ Candidate profile: skills, work experience + bullets,      │
+     │    │                                                                    │
+     │ │          │ education, language skills. Import endpoint.               │
+     │    │                                                                    │
+     │ ├──────────┼─────────────────────────────────────────────────────────── │
+     │ ────┤                                                                   │
+     │ │ catalog  │ CanonicalSkill, aliases, skill relations, UNMATCHED review │
+     │    │                                                                    │
+     │ │          │ queue                                                      │
+     │    │                                                                    │
+     │ ├──────────┼─────────────────────────────────────────────────────────── │
+     │ ────┤                                                                   │
+     │ │ offer    │ JobOffer (raw text, content hash, title, company, source   │
+     │ URL, │                                                                  │
+     │ │          │  detected language), Application lifecycle                 │
+     │    │                                                                    │
+     │ ├──────────┼─────────────────────────────────────────────────────────── │
+     │ ────┤                                                                   │
+     │ │ analysis │ Async analysis job, extraction, deterministic diff,        │
+     │    │                                                                    │
+     │ │          │ narrative, learning plan, aggregate cross-offer analysis   │
+     │    │                                                                    │
+     │ ├──────────┼─────────────────────────────────────────────────────────── │
+     │ ────┤                                                                   │
+     │ │ document │ CV + cover letter: selection, Thymeleaf templates, PDF     │
+     │    │                                                                    │
+     │ │          │ rendering, invariant enforcement                           │
+     │    │                                                                    │
+     │ ├──────────┼─────────────────────────────────────────────────────────── │
+     │ ────┤                                                                   │
+     │ │ llm      │ ModelProfile config, ChatModel factory, AiServices         │
+     │    │                                                                    │
+     │ │          │ declarations, llm_call audit, parse-repair                 │
+     │    │                                                                    │
+     │ └──────────┴─────────────────────────────────────────────────────────── │
+     │ ────┘                                                                   │
+     │                                                                         │
+     │ ApplicationModules.of(JobAssistantApplication::class.java).verify() as  │
+     │ a test enforces this.                                                   │
+     │ llm and catalog are shared/open modules; document and analysis depend   │
+     │ on profile and                                                          │
+     │ catalog but never on each other's internals.                            │
+     │                                                                         │
+     │ ---                                                                     │
+     │ Data model (Flyway, Postgres)                                           │
+     │                                                                         │
+     │ - V1 profile — profile_skill, work_experience, experience_bullet,       │
+     │ experience_bullet_skill, education, language_skill.                     │
+     │ experience_bullet_skill is what makes the CV invariant checkable: every │
+     │ bullet declares which                                                   │
+     │ canonical skills it evidences.                                          │
+     │ - V2 catalog — canonical_skill(name, category),                         │
+     │ skill_alias(canonical_skill_id, alias),                                 │
+     │ skill_relation(from_id, to_id, kind IMPLIES|RELATED),                   │
+     │ unmatched_term(raw_term, occurrences, status).                          │
+     │ skill_relation is how PARTIAL stays deterministic: you have a RELATED   │
+     │ skill, not the exact one.                                               │
+     │ - V3 offer — job_offer(content_hash UNIQUE, raw_text, title, company,   │
+     │ source_url, detected_language),                                         │
+     │ application(offer_id, status, applied_at, notes).                       │
+     │ - V4 analysis — analysis(offer_id, state, error, model_profile,         │
+     │ timestamps),                                                            │
+     │ offer_requirement(analysis_id, raw_text, canonical_skill_id NULL,       │
+     │ importance, status, evidence_ref, rationale),                           │
+     │ learning_plan_item(analysis_id, canonical_skill_id, why,                │
+     │ practice_project, effort_estimate, priority),                           │
+     │ analysis_narrative(analysis_id, summary_md, match_score).               │
+     │ - V5 llm — llm_call(analysis_id NULL, task, model_profile, model_name,  │
+     │ request_json, response_text, prompt_tokens, completion_tokens,          │
+     │ latency_ms).                                                            │
+     │ - V6 document — generated_document(offer_id, type CV|COVER_LETTER,      │
+     │ language, html, selection_json).                                        │
+     │ HTML is persisted; PDF is rendered on demand — keeps Neon's 0.5 GB      │
+     │ intact.                                                                 │
+     │                                                                         │
+     │ ---                                                                     │
+     │ Key mechanisms                                                          │
+     │                                                                         │
+     │ Match score — (metMustHaves + 0.5 × partialMustHaves) / totalMustHaves, │
+     │ with the formula shown                                                  │
+     │ in the report. Nice-to-haves reported but excluded from the score.      │
+     │                                                                         │
+     │ The diff is deterministic. Given extracted requirements with canonical  │
+     │ skill IDs and the profile's                                             │
+     │ skill set: exact match → MET; skill_relation match → PARTIAL; neither → │
+     │ MISSING;                                                                │
+     │ canonical_skill_id IS NULL → surfaced separately and queued as an       │
+     │ unmatched term. No LLM involved,                                        │
+     │ so the same offer scores identically every time and it is all plain     │
+     │ unit-testable Kotlin.                                                   │
+     │                                                                         │
+     │ AiServices interfaces (llm module, prompts in                           │
+     │ src/main/resources/prompts/*.md so they diff):                          │
+     │ - OfferExtractor → title, company, seniority, requirements (raw text +  │
+     │ canonical skill ID +                                                    │
+     │ importance + rationale), detected language, red flags                   │
+     │ - ReportNarrator → summary markdown + learning plan items, from the     │
+     │ already-computed diff                                                   │
+     │ - CvTailor → bullet IDs to include, their order, skill IDs to list,     │
+     │ summary line, reworded bullet                                           │
+     │ text keyed by bullet ID (so every output line traces to an input        │
+     │ record)                                                                 │
+     │ - CoverLetterWriter → same contract                                     │
+     │                                                                         │
+     │ Parse-repair fallback — strict JSON schema support varies by model on   │
+     │ OpenRouter and is mostly                                                │
+     │ absent locally. On schema violation: one repair round-trip with the     │
+     │ validation error, then fail the                                         │
+     │ job with the raw response preserved in llm_call.                        │
+     │                                                                         │
+     │ The CV invariant test — after rendering, tokenize the CV text and       │
+     │ assert that every token                                                 │
+     │ matching a canonical_skill name or alias is present in the profile's    │
+     │ skill set. Any skill on the                                             │
+     │ CV that you don't have fails the build. This is the single most         │
+     │ valuable test in the codebase.                                          │
+     │                                                                         │
+     │ Async execution — @Async on a bounded ThreadPoolTaskExecutor; state     │
+     │ lives in analysis.state                                                 │
+     │ so a restart can sweep orphaned RUNNING rows to FAILED at startup.      │
+     │                                                                         │
+     │ ---                                                                     │
+     │ Configuration shape                                                     │
+     │                                                                         │
+     │ job-assistant:                                                          │
+     │   llm:                                                                  │
+     │     profiles:                                                           │
+     │       openrouter: { base-url: "https://openrouter.ai/api/v1", api-key:  │
+     │ "${OPENROUTER_API_KEY}", model: "...", temperature: 0.2, strict-schema: │
+     │ true }                                                                  │
+     │       requesty:   { base-url: "https://router.requesty.ai/v1", api-key: │
+     │ "${REQUESTY_API_KEY}",  model: "...", strict-schema: true }             │
+     │       local:      { base-url: "http://localhost:11434/v1",     api-key: │
+     │ "ollama",               model: "qwen3:8b", strict-schema: false }       │
+     │     tasks: { extraction: openrouter, narrative: openrouter, document:   │
+     │ openrouter }                                                            │
+     │                                                                         │
+     │ A ChatModelFactory builds one OpenAiChatModel bean per profile;         │
+     │ task→profile lookup is a map.                                           │
+     │ LangChain4j autoconfiguration is not used — add                         │
+     │ dev.langchain4j:langchain4j and                                         │
+     │ dev.langchain4j:langchain4j-open-ai directly rather than the starter.   │
+     │                                                                         │
+     │ ---                                                                     │
+     │ Dependencies to add to pom.xml                                          │
+     │                                                                         │
+     │ spring-boot-starter-web, -data-jdbc, -thymeleaf, -validation,           │
+     │ -actuator;                                                              │
+     │ org.postgresql:postgresql; flyway-core + flyway-database-postgresql;    │
+     │ spring-modulith-bom + spring-modulith-starter-core;                     │
+     │ dev.langchain4j:langchain4j + langchain4j-open-ai;                      │
+     │ io.github.openhtmltopdf:openhtmltopdf-pdfbox.                           │
+     │ Test: spring-boot-testcontainers, testcontainers:postgresql,            │
+     │ spring-modulith-starter-test.                                           │
+     │ Kotlin plugin: add -java-parameters to the existing <args> block.       │
+     │                                                                         │
+     │ ---                                                                     │
+     │ Milestones (depth-first, per decision 21)                               │
+     │                                                                         │
+     │ 1. M1 profile — entities, repositories, JSON import endpoint, CRUD,     │
+     │ tests.                                                                  │
+     │ 2. M2 catalog — seed migration (~150–250 skills, aliases, relations),   │
+     │ resolver, review queue.                                                 │
+     │ 3. M3 llm — model profiles, factory, AiServices declarations, audit     │
+     │ table, parse-repair, and                                                │
+     │ the stubbed ChatModel + Testcontainers harness. Do not defer the stub;  │
+     │ it is what keeps the                                                    │
+     │ depth-first ordering from concentrating all integration risk in M4.     │
+     │ 4. M4 analysis — async job, extraction, deterministic diff, narrative,  │
+     │ report API.                                                             │
+     │ 5. M5 document — Thymeleaf CV template (CSS 2.1, single column), PDF    │
+     │ rendering, invariant                                                    │
+     │ test, cover letter.                                                     │
+     │ 6. M6 offer — lifecycle statuses, content-hash dedup, aggregate         │
+     │ cross-offer gap analysis.                                               │
+     │ 7. M7 eval — 5–10 labelled offers, @Tag("eval") precision/recall suite. │
+     │ 8. M8 — Astro/React frontend (separate effort).                         │
+     │                                                                         │
+     │ ---                                                                     │
+     │ Verification                                                            │
+     │                                                                         │
+     │ - ./mvnw clean install — compiles, Modulith boundary test passes,       │
+     │ Testcontainers integration tests                                        │
+     │ green (Docker must be running).                                         │
+     │ - ./mvnw test -Dtest=CvInvariantTest — the fabrication guard            │
+     │ specifically.                                                           │
+     │ - ./mvnw spring-boot:run with OPENROUTER_API_KEY set, then end-to-end:  │
+     │   a. POST /api/profile/import with a profile JSON → GET /api/profile    │
+     │ returns it                                                              │
+     │   b. POST /api/offers with pasted offer text → returns offer ID;        │
+     │ re-post the same text → same ID (dedup)                                 │
+     │   c. POST /api/offers/{id}/analyses → 202 + job ID; poll GET            │
+     │ /api/analyses/{id} until DONE                                           │
+     │   d. Inspect the report: must-have/nice-to-have split, per-requirement  │
+     │ evidence, score, learning plan                                          │
+     │   e. POST /api/offers/{id}/documents?type=CV&language=en → GET .../pdf  │
+     │ renders single-column PDF                                               │
+     │   f. Cross-check SELECT task, model_name, prompt_tokens, latency_ms     │
+     │ FROM llm_call — every call audited                                      │
+     │   g. GET /api/analyses/aggregate → skill frequency histogram across all │
+     │ analysed offers                                                         │
+     │ - ./mvnw test -Dgroups=eval (manual, costs tokens) — extraction         │
+     │ precision/recall against fixtures.                                      │
+     │                                                                         │
+     │ ---                                                                     │
+     │ Risks                                                                   │
+     │                                                                         │
+     │ - Depth-first ordering means the first real end-to-end run happens at   │
+     │ M5. M3's stub harness is                                                │
+     │ the mitigation; if integration pain shows up anyway, cut a thin         │
+     │ vertical slice early.                                                   │
+     │ - Catalog curation is the hidden cost. Start at ~150 skills for your    │
+     │ target roles only and let                                               │
+     │ the review queue grow it — resist seeding a taxonomy of everything.     │
+     │ - CSS 2.1 rendering will feel primitive. Design the template for it     │
+     │ from the start rather than                                              │
+     │ writing modern CSS and porting.                                         │
+     │ - Neon cold starts add seconds to the first request after idle. Keep    │
+     │ Hikari at 2–3 connections                                               │
+     │ with generous connection timeouts.                                      │
+     ╰─────────────────────────────────────────────────────────────────────────╯
+
+⏺ Fair push-back — that's a real product requirement, not a nice-to-have. Let me
+  check what's actually achievable before I revise.
+
+⏺ Web Search("Playwright Java headless Chromium generate PDF Spring Boot Docker
+            image size 2026")
+  ⎿  Did 1 search in 7s
+
+⏺ Web Search("Typst CV resume template PDF generation from JVM 2026")
+  ⎿  Did 1 search in 7s
+
+⏺ Web Search("openhtmltopdf CSS support flexbox grid web fonts limitations
+            2026")
+  ⎿  Did 1 search in 8s
+
+⏺ You're right, and the research makes it worse than I'd stated: openhtmltopdf
+  also has no OpenType font support and no alpha transparency, on top of no
+  flex/grid. That's not a template you can make look modern — that's 2005.
+  Decision 4 needs reopening.
+
+  Round 7 — CV rendering, revisited
+
+  ❓ Q1 — How do you get a genuinely modern CV?
+
+  (a) Playwright + headless Chromium. Thymeleaf → real Chromium print engine.
+  You get everything: grid, flexbox, variable fonts, gradients, @page rules —
+  and the PDF is pixel-identical to what the browser preview shows, because it
+  is the browser. Cost is severe: a Chromium-bearing Docker image is ~2 GB and
+  each render holds ~300 MB RAM. That definitively ends the Render-free-tier
+  path and pushes you to Oracle Cloud or paid hosting.
+
+  (b) Typst. A modern typesetting engine — a single ~30 MB static binary,
+  renders in well under a second, negligible RAM. Output quality is better than
+  HTML-to-PDF, not worse: this is a typesetting system, so kerning, baseline
+  grids, and page breaks are handled properly. There's a mature CV-specific
+  template ecosystem to start from (modern-cv
+  (https://typst.app/universe/package/modern-cv/), clickworthy-resume
+  (https://typst.app/universe/package/clickworthy-resume), impressive-impression
+  (https://typst.app/universe/package/impressive-impression/)). Cost: it's
+  Typst markup, not HTML, so you learn a small new syntax and you lose the "same
+  template serves as the web preview" idea — the frontend would embed the
+  generated PDF instead, which is actually higher fidelity.
+
+  (c) Keep openhtmltopdf — ruled out by your requirement.
+
+  ➡️ (b) Typst. It's the only option that satisfies both of your constraints — a
+  genuinely modern-looking CV and a lightweight, free-hostable app. Chromium
+  buys you HTML familiarity at the price of a 2 GB image and your hosting plan.
+  And for a CV specifically, a typesetting engine is the right tool: those
+  templates already look better than what you or I would hand-build in CSS.
+
+  One knock-on if you pick (b): the Astro frontend previews the CV as an
+  embedded PDF rather than rendering HTML, and generated_document stores the
+  generated .typ source plus the selection JSON instead of HTML.
+
+⏺ User answered Claude's questions:
+  ⎿  · openhtmltopdf can't produce a modern CV (no flex/grid, no OpenType fonts,
+     no transparency). What should render the CV instead? → Playwright + 
+     headless Chromium
+
+⏺ Your call — you're buying HTML familiarity and a pixel-exact preview, and
+  paying for it in image size and hosting. Folding the consequences through the
+  plan.
+
+⏺ Updated plan
+  ⎿  /plan to preview
+
+⏺ Updated plan
+  ⎿  /plan to preview
+
+⏺ Updated plan
+  ⎿  /plan to preview
+
+⏺ Updated plan
+  ⎿  /plan to preview
+
+⏺ Updated plan
+  ⎿  /plan to preview
+
+⏺ Updated plan
+  ⎿  /plan to preview
+
+⏺ Updated plan
+  ⎿  /plan to preview
+
+⏺ Updated plan
+  ⎿  /plan to preview
+
+⏺ Plan updated for Chromium. What changed and what it costs you:
+
+  - CV template is now unconstrained — grid, flexbox, variable fonts, gradients,
+  @page pagination. Build it as a modern web page; the PDF is that page.
+  - The preview problem disappears — the Astro frontend renders the same HTML,
+  and it's pixel-identical to the PDF by construction.
+  - The invariant test runs against the HTML, not the PDF, so the fabrication
+  guard stays in the fast CI tier with no browser. A separate @Tag("pdf") test
+  covers the Chromium path.
+  - Browser lifecycle matters: one long-lived Browser bean (launch is 1–2s),
+  fresh context per render, Semaphore(2) to bound memory.
+  - Fonts must be embedded or base64-inlined — no CDN, or your rendering stops
+  being deterministic and stops working offline.
+
+  One consequence you should object to now if you disagree: decision 20 changed.
+  Render's free tier is dead for this — 512 MB can't hold a JVM plus Chromium.
+  The realistic deploy targets are Oracle Cloud Always Free or a ~$5–7/month
+  VPS. I've noted Typst behind a DocumentRenderer interface as the escape hatch
+  if hosting cost later outweighs template freedom.
+⏺ User approved Claude's plan
+  ⎿  Plan saved to: 
+     ~/.claude/plans/grill-with-docs-ok-lets-start-sharded-oasis.md · /plan to 
+     edit
+     Job Assistant — MVP Implementation Plan
+
+     Context
+
+     Fresh Spring Boot 4.1.1 + Kotlin 2.3.21 (Java 21) scaffold at
+     com.jankowski.rafal.jobassistant.
+     Only JobAssistantApplication.kt and a smoke test exist — no packages, no
+     layering, no dependencies
+     beyond spring-boot-starter. Every structural decision below is being made
+     for the first time.
+
+     The problem being solved: job hunting is a repetitive manual comparison.
+     For each offer you
+     re-read the requirements, guess how well you match, and hand-edit a CV.
+     This app makes that
+     mechanical: paste an offer, get a transparent skill-gap report with
+     evidence, an improvement plan,
+     and — on demand — a CV and cover letter tailored to that offer from a fixed
+     template.
+
+     The core risk this design is built around: an AI that invents experience
+     you don't have. Every
+     architectural choice below that looks conservative exists to make
+     fabrication impossible, not
+     merely discouraged.
+
+     Backend first; Astro/React frontend afterwards. Local-only for now.
+
+     ---
+     Settled decisions
+
+     #: 1
+     Decision: AI framework
+     Choice: LangChain4j (LangChain is Python/JS only; LangChain4j is a
+     separate,
+     LangChain-inspired JVM framework)
+     ────────────────────────────────────────
+     #: 2
+     Decision: Profile source of truth
+     Choice: Hand-authored records in Postgres, seeded via a JSON/YAML import
+     endpoint. Never AI-written.
+     ────────────────────────────────────────
+     #: 3
+     Decision: CV trust boundary
+     Choice: Strict: AI selects, orders and rephrases only. Every technology on
+     the
+     CV must trace to a profile record — enforced by a test.
+     ────────────────────────────────────────
+     #: 4
+     Decision: CV rendering
+     Choice: Thymeleaf HTML → Playwright headless Chromium page.pdf(). Full
+     modern
+     CSS (grid, flexbox, variable fonts); the preview is pixel-identical because
+
+     it is the browser.
+     ────────────────────────────────────────
+     #: 5
+     Decision: Matching
+     Choice: Hybrid: LLM extracts + snaps to catalog → deterministic Kotlin
+     set-diff
+     → LLM writes narrative
+     ────────────────────────────────────────
+     #: 6
+     Decision: Provider abstraction
+     Choice: Config-only ModelProfiles. No bespoke SPI.
+     ────────────────────────────────────────
+     #: 7
+     Decision: Offer lifecycle
+     Choice: Application with status enum + date + notes
+     ────────────────────────────────────────
+     #: 8
+     Decision: Extra MVP scope
+     Choice: Aggregate cross-offer gap analysis, cover letters, eval fixtures,
+     offer
+     dedup by content hash. Every offer persisted in full including raw text.
+     ────────────────────────────────────────
+     #: 9
+     Decision: Skill resolution
+     Choice: Curated catalog + aliases, seeded via Flyway; novel terms →
+     UNMATCHED
+     review queue. No embeddings in v1.
+     ────────────────────────────────────────
+     #: 10
+     Decision: Persistence
+     Choice: Spring Data JDBC + Flyway, immutable Kotlin data classes
+     ────────────────────────────────────────
+     #: 11
+     Decision: Analysis API
+     Choice: Async job + status polling
+     ────────────────────────────────────────
+     #: 12
+     Decision: Auth
+     Choice: Single-user, no auth, localhost-bound. No user_id columns.
+     ────────────────────────────────────────
+     #: 13
+     Decision: Report shape
+     Choice: Requirements tagged MUST_HAVE/NICE_TO_HAVE × MET/PARTIAL/MISSING,
+     each
+     with evidence, plus transparent match score and ordered learning plan
+     ────────────────────────────────────────
+     #: 14
+     Decision: LLM calls
+     Choice: LangChain4j AiServices + JSON-schema structured output, llm_call
+     audit
+     table, parse-repair fallback
+     ────────────────────────────────────────
+     #: 15
+     Decision: Structure
+     Choice: Feature-sliced packages + Spring Modulith boundary verification
+     ────────────────────────────────────────
+     #: 16
+     Decision: Testing
+     Choice: Two tiers: stubbed ChatModel + Testcontainers Postgres in CI;
+     @Tag("eval") suite run manually
+     ────────────────────────────────────────
+     #: 17
+     Decision: Language
+     Choice: Profile in English; offers accepted in any language and normalised
+     to
+     English catalog IDs; output language is a per-generation parameter
+     defaulting
+      to English
+     ────────────────────────────────────────
+     #: 18
+     Decision: Tailoring
+     Choice: Select + reorder + bounded rewording. Sections and layout fixed.
+     ────────────────────────────────────────
+     #: 19
+     Decision: Learning plan
+     Choice: Resource-free (no URLs — the last place fabrication was still
+     possible)
+     ────────────────────────────────────────
+     #: 20
+     Decision: Hosting
+     Choice: Local only for now. Chromium rules out 512 MB free tiers (decision
+     4
+     was taken knowing this), so the eventual target is Oracle Cloud Always Free
+
+     or a small paid VPS — not Render free. Keep all config externalised
+     regardless.
+     ────────────────────────────────────────
+     #: 21
+     Decision: Build order
+     Choice: Depth-first by feature (user's choice, against recommendation — see
+
+     Risks)
+     ────────────────────────────────────────
+     #: 22
+     Decision: Model routing
+     Choice: All tasks via OpenRouter by default; Ollama profiles opt-in per
+     task
+
+     ---
+     Verified facts (Aug 2026) that shape the design
+
+     - Spring Modulith 2.0 GA requires Boot 4 — 4.1.1 is exactly right, no
+     version gymnastics.
+     - Pure-JVM HTML→PDF cannot produce a modern CV. Both openhtmltopdf and
+     Flying Saucer are
+     CSS 2.1 only — no flexbox, no grid, no OpenType fonts, no alpha
+     transparency. Ruled out.
+     - Playwright PDF generation only works in headless Chromium (not
+     Firefox/WebKit). A
+     Chromium-bearing image is ~2 GB; bake the binaries in and set
+     PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=true so nothing downloads at runtime.
+     Budget ~300 MB RAM
+     per concurrent render on top of the JVM.
+     - OpenRouter https://openrouter.ai/api/v1, Requesty
+     https://router.requesty.ai/v1
+     (EU: router.eu.requesty.ai/v1), Ollama http://localhost:11434/v1 are all
+     OpenAI-compatible.
+     Provider switching is base-url + key.
+     - LangChain4j's Spring Boot starter binds one model per type, so named
+     per-task profiles mean
+     skipping its autoconfig and building OpenAiChatModel.builder() beans from
+     own properties.
+     - LangChain4j Kotlin tools need javaParameters = true in the Kotlin
+     compiler args.
+     - Boot 4 ships Jackson 3 — imports are tools.jackson.*, not
+     com.fasterxml.jackson.*.
+     - Neon free: 0.5 GB storage/project, 100 compute-hours/month, scale-to-zero
+     after 5 min idle.
+     Hikari must be small and retry-tolerant; do not store PDF bytes in the DB.
+
+     ---
+     Module structure
+
+     Feature-sliced under com.jankowski.rafal.jobassistant, each a Spring
+     Modulith module with an
+     internal subpackage and a narrow public API:
+
+     ┌──────────┬───────────────────────────────────────────────────────────────
+     ┐
+     │  Module  │                             Owns
+     │
+     ├──────────┼───────────────────────────────────────────────────────────────
+     ┤
+     │ profile  │ Candidate profile: skills, work experience + bullets,
+     │
+     │          │ education, language skills. Import endpoint.
+     │
+     ├──────────┼───────────────────────────────────────────────────────────────
+     ┤
+     │ catalog  │ CanonicalSkill, aliases, skill relations, UNMATCHED review
+     │
+     │          │ queue
+     │
+     ├──────────┼───────────────────────────────────────────────────────────────
+     ┤
+     │ offer    │ JobOffer (raw text, content hash, title, company, source URL,
+     │
+     │          │  detected language), Application lifecycle
+     │
+     ├──────────┼───────────────────────────────────────────────────────────────
+     ┤
+     │ analysis │ Async analysis job, extraction, deterministic diff,
+     │
+     │          │ narrative, learning plan, aggregate cross-offer analysis
+     │
+     ├──────────┼───────────────────────────────────────────────────────────────
+     ┤
+     │ document │ CV + cover letter: selection, Thymeleaf templates, PDF
+     │
+     │          │ rendering, invariant enforcement
+     │
+     ├──────────┼───────────────────────────────────────────────────────────────
+     ┤
+     │ llm      │ ModelProfile config, ChatModel factory, AiServices
+     │
+     │          │ declarations, llm_call audit, parse-repair
+     │
+     └──────────┴───────────────────────────────────────────────────────────────
+     ┘
+
+     ApplicationModules.of(JobAssistantApplication::class.java).verify() as a
+     test enforces this.
+     llm and catalog are shared/open modules; document and analysis depend on
+     profile and
+     catalog but never on each other's internals.
+
+     ---
+     Data model (Flyway, Postgres)
+
+     - V1 profile — profile_skill, work_experience, experience_bullet,
+     experience_bullet_skill, education, language_skill.
+     experience_bullet_skill is what makes the CV invariant checkable: every
+     bullet declares which
+     canonical skills it evidences.
+     - V2 catalog — canonical_skill(name, category),
+     skill_alias(canonical_skill_id, alias),
+     skill_relation(from_id, to_id, kind IMPLIES|RELATED),
+     unmatched_term(raw_term, occurrences, status).
+     skill_relation is how PARTIAL stays deterministic: you have a RELATED
+     skill, not the exact one.
+     - V3 offer — job_offer(content_hash UNIQUE, raw_text, title, company, 
+     source_url, detected_language),
+     application(offer_id, status, applied_at, notes).
+     - V4 analysis — analysis(offer_id, state, error, model_profile, 
+     timestamps),
+     offer_requirement(analysis_id, raw_text, canonical_skill_id NULL, 
+     importance, status, evidence_ref, rationale),
+     learning_plan_item(analysis_id, canonical_skill_id, why, practice_project, 
+     effort_estimate, priority),
+     analysis_narrative(analysis_id, summary_md, match_score).
+     - V5 llm — llm_call(analysis_id NULL, task, model_profile, model_name, 
+     request_json, response_text, prompt_tokens, completion_tokens, latency_ms).
+     - V6 document — generated_document(offer_id, type CV|COVER_LETTER, 
+     language, html, selection_json).
+     HTML is persisted; PDF is rendered on demand — keeps Neon's 0.5 GB intact.
+
+     ---
+     Key mechanisms
+
+     Match score — (metMustHaves + 0.5 × partialMustHaves) / totalMustHaves,
+     with the formula shown
+     in the report. Nice-to-haves reported but excluded from the score.
+
+     The diff is deterministic. Given extracted requirements with canonical
+     skill IDs and the profile's
+     skill set: exact match → MET; skill_relation match → PARTIAL; neither →
+     MISSING;
+     canonical_skill_id IS NULL → surfaced separately and queued as an unmatched
+     term. No LLM involved,
+     so the same offer scores identically every time and it is all plain
+     unit-testable Kotlin.
+
+     AiServices interfaces (llm module, prompts in
+     src/main/resources/prompts/*.md so they diff):
+     - OfferExtractor → title, company, seniority, requirements (raw text +
+     canonical skill ID +
+     importance + rationale), detected language, red flags
+     - ReportNarrator → summary markdown + learning plan items, from the
+     already-computed diff
+     - CvTailor → bullet IDs to include, their order, skill IDs to list, summary
+     line, reworded bullet
+     text keyed by bullet ID (so every output line traces to an input record)
+     - CoverLetterWriter → same contract
+
+     Parse-repair fallback — strict JSON schema support varies by model on
+     OpenRouter and is mostly
+     absent locally. On schema violation: one repair round-trip with the
+     validation error, then fail the
+     job with the raw response preserved in llm_call.
+
+     The CV invariant test — tokenize the rendered Thymeleaf HTML text (not the
+     PDF) and assert
+     that every token matching a canonical_skill name or alias is present in the
+     profile's skill set.
+     Any skill on the CV that you don't have fails the build. Running against
+     HTML keeps this in the fast
+     CI tier with no browser needed — the single most valuable test in the
+     codebase must never be slow
+     enough to skip. A separate @Tag("pdf") test checks that Chromium actually
+     produces a valid PDF.
+
+     PDF rendering — a single long-lived Browser bean (launch costs ~1–2 s, so
+     never per request),
+     a fresh BrowserContext + Page per render, closed in a finally. A
+     Semaphore(2) caps concurrent
+     renders so memory stays bounded. page.pdf() with printBackground = true,
+     A4, explicit margins;
+     CSS @page rules control pagination. Fonts must be embedded locally or
+     base64-inlined — no CDN
+     references, so rendering stays deterministic and works offline.
+
+     Async execution — @Async on a bounded ThreadPoolTaskExecutor; state lives
+     in analysis.state
+     so a restart can sweep orphaned RUNNING rows to FAILED at startup.
+
+     ---
+     Configuration shape
+
+     job-assistant:
+       llm:
+         profiles:
+           openrouter: { base-url: "https://openrouter.ai/api/v1", api-key:
+     "${OPENROUTER_API_KEY}", model: "...", temperature: 0.2, strict-schema:
+     true }
+           requesty:   { base-url: "https://router.requesty.ai/v1", api-key:
+     "${REQUESTY_API_KEY}",  model: "...", strict-schema: true }
+           local:      { base-url: "http://localhost:11434/v1",     api-key:
+     "ollama",               model: "qwen3:8b", strict-schema: false }
+         tasks: { extraction: openrouter, narrative: openrouter, document:
+     openrouter }
+
+     A ChatModelFactory builds one OpenAiChatModel bean per profile;
+     task→profile lookup is a map.
+     LangChain4j autoconfiguration is not used — add dev.langchain4j:langchain4j
+     and
+     dev.langchain4j:langchain4j-open-ai directly rather than the starter.
+
+     ---
+     Dependencies to add to pom.xml
+
+     spring-boot-starter-web, -data-jdbc, -thymeleaf, -validation, -actuator;
+     org.postgresql:postgresql; flyway-core + flyway-database-postgresql;
+     spring-modulith-bom + spring-modulith-starter-core;
+     dev.langchain4j:langchain4j + langchain4j-open-ai;
+     com.microsoft.playwright:playwright.
+     Test: spring-boot-testcontainers, testcontainers:postgresql,
+     spring-modulith-starter-test.
+     Kotlin plugin: add -java-parameters to the existing <args> block.
+
+     ---
+     Milestones (depth-first, per decision 21)
+
+     1. M1 profile — entities, repositories, JSON import endpoint, CRUD, tests.
+     2. M2 catalog — seed migration (~150–250 skills, aliases, relations),
+     resolver, review queue.
+     3. M3 llm — model profiles, factory, AiServices declarations, audit table,
+     parse-repair, and
+     the stubbed ChatModel + Testcontainers harness. Do not defer the stub; it
+     is what keeps the
+     depth-first ordering from concentrating all integration risk in M4.
+     4. M4 analysis — async job, extraction, deterministic diff, narrative,
+     report API.
+     5. M5 document — Thymeleaf CV template using modern CSS (grid/flexbox,
+     embedded web fonts,
+     single-column body for ATS safety), Playwright browser bean + PDF
+     rendering, invariant test,
+     cover letter.
+     6. M6 offer — lifecycle statuses, content-hash dedup, aggregate cross-offer
+     gap analysis.
+     7. M7 eval — 5–10 labelled offers, @Tag("eval") precision/recall suite.
+     8. M8 — Astro/React frontend (separate effort).
+
+     ---
+     Verification
+
+     - ./mvnw clean install — compiles, Modulith boundary test passes,
+     Testcontainers integration tests
+     green (Docker must be running).
+     - ./mvnw test -Dtest=CvInvariantTest — the fabrication guard specifically.
+     - ./mvnw spring-boot:run with OPENROUTER_API_KEY set, then end-to-end:
+       a. POST /api/profile/import with a profile JSON → GET /api/profile
+     returns it
+       b. POST /api/offers with pasted offer text → returns offer ID; re-post
+     the same text → same ID (dedup)
+       c. POST /api/offers/{id}/analyses → 202 + job ID; poll GET 
+     /api/analyses/{id} until DONE
+       d. Inspect the report: must-have/nice-to-have split, per-requirement
+     evidence, score, learning plan
+       e. POST /api/offers/{id}/documents?type=CV&language=en → GET .../html for
+     the preview and
+     GET .../pdf for the Chromium render; open both and confirm they are
+     visually identical
+       f. Cross-check SELECT task, model_name, prompt_tokens, latency_ms FROM 
+     llm_call — every call audited
+       g. GET /api/analyses/aggregate → skill frequency histogram across all
+     analysed offers
+     - ./mvnw test -Dgroups=eval (manual, costs tokens) — extraction
+     precision/recall against fixtures.
+
+     ---
+     Risks
+
+     - Depth-first ordering means the first real end-to-end run happens at M5.
+     M3's stub harness is
+     the mitigation; if integration pain shows up anyway, cut a thin vertical
+     slice early.
+     - Catalog curation is the hidden cost. Start at ~150 skills for your target
+     roles only and let
+     the review queue grow it — resist seeding a taxonomy of everything.
+     - Chromium is the heaviest thing in this stack and it was chosen
+     deliberately for CV quality.
+     Consequences to accept: ~2 GB image, ~300 MB RAM per render, slow PDF tests
+     (keep them tagged and
+     out of the fast tier), and no 512 MB free-tier deploy. If hosting cost
+     later matters more than
+     template freedom, Typst is the fallback — hide the renderer behind a
+     DocumentRenderer interface
+     in M5 so that swap stays cheap.
+     - First Playwright.create() on a dev machine downloads Chromium to
+     ~/.cache/ms-playwright.
+     Document this in CLAUDE.md so a fresh clone doesn't look broken.
+     - Neon cold starts add seconds to the first request after idle. Keep Hikari
+     at 2–3 connections
+     with generous connection timeouts.
+
+⏺ Plan approved. Let me set up tracking and start with the foundation.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Docker isn't running — Testcontainers tests will need it later; I'll flag that
+  when we get there. Setting up tasks.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+✻ Sautéed for 8m 27s
+
+❯ /model 
+  ⎿  Kept model as Opus 5
+
+❯ /effort                                                                       
+  ⎿  Set effort level to high (saved as your default for new sessions):
+     Comprehensive implementation with extensive testing and documentation ·
+     burns fastest — medium handles most tasks
+
+❯ please continue                                                               
+
+  Listed 1 directory, ran 1 shell command (ctrl+o to expand)
+
+⏺ Boot 4.1.1 manages Flyway 12.4.0, Jackson 3.1.5, Testcontainers 2.0.5,
+  Postgres 42.7.13. Modulith isn't managed — I need explicit versions for it,
+  LangChain4j and Playwright.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Solr index looks stale. Let me hit the authoritative metadata.
+
+  Ran 4 shell commands (ctrl+o to expand)
+⏺ Boot 4 renamed things — spring-boot-starter-webmvc is the new name, and there
+  are granular -test starters. Let me check a couple of specifics before writing
+  the POM.
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+⏺ All coordinates confirmed. Writing the POM.
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+⏺ Testcontainers 2.x renamed its artifacts (testcontainers-postgresql). Fixing.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ All dependencies resolve — Modulith 2.1.0, LangChain4j 1.19.0, Playwright
+  1.62.0. Now the skeleton, config and local Postgres.
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+⏺ Testcontainers 2.x moved the class to org.testcontainers.postgresql. Writing
+  the test harness, then I'll start Docker.
+
+  Ran 5 shell commands (ctrl+o to expand)
+
+⏺ Modulith 2.1.0 verified working on Boot 4.1.1. Checking Docker before the
+  integration test.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+⏺ Foundation is green — 3 tests pass, Testcontainers Postgres works, Flyway
+  runs.
+
+  One sequencing correction: profile_skill must FK to canonical_skill, so
+  catalog has to be built before profile. Swapping M1/M2 — same scope,
+  dependency-correct order.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Now the seed. I'll generate it from a compact definition so the normalisation
+  rule is applied consistently.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ The collision guard caught real duplicates. Fixing.
+
+  Ran 1 shell command (ctrl+o to expand)
+⏺ Those are redundant-but-harmless (same skill). The check should only reject
+  collisions across different skills.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ 210 skills, 362 aliases, 201 relation edges. Now the catalog module code.
+
+  Ran 7 shell commands (ctrl+o to expand)
+
+⏺ All 31 pass — including "container orchestration" → Kubernetes, which was the
+  paraphrase case that justified the catalog. Full build check:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Catalog module complete: 34 tests green, Modulith verifies. Moving to profile.
+
+  One gap I need to close first: the profile import will reference skills by
+  name, and the human needs a way to add a skill the 210-entry seed doesn't
+  have. Adding a create endpoint to the catalog.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Now the profile schema.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Now the profile module. Public API first — analysis and document both depend
+  on these types.
+
+  Ran 6 shell commands (ctrl+o to expand)
+
+⏺ All 15 profile tests pass. Adding a sample profile document so the import
+  endpoint is usable, then updating project docs.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+⏺ 49 tests green, Modulith verifying. Good checkpoint — let me record the
+  preference that reshaped decision 4.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Progress checkpoint — foundation plus two modules are built and green.
+
+  Done (49 tests passing, Modulith boundaries verified):
+
+  Build foundation — resolved every version against Maven Central rather than
+  guessing, which caught four things the plan couldn't have known: Boot 4 ships
+  Jackson 3 (tools.jackson.*), the web starter is now
+  spring-boot-starter-webmvc, Testcontainers 2.x renamed its artifacts and made
+  PostgreSQLContainer non-generic, and Modulith isn't in the Boot BOM. Modulith
+  2.1.0 does work on Boot 4.1.1. Surefire excludes the eval and pdf groups by
+  default.
+
+  catalog module — 210 canonical skills, 362 aliases, 201 relation edges, seeded
+  via Flyway. SkillNormalizer collapses spellings onto one key and expands +/#
+  first so C, C++ and C# stay distinct — the generator's collision check caught
+  that before it shipped. coverageFor() expands held skills through
+  IMPLIES/RELATED once, so the gap diff is a pure lookup. "container 
+  orchestration" resolves to Kubernetes, which was the paraphrase case that
+  justified the whole catalog. A drift test re-normalises every stored alias and
+  fails if the seed SQL and the Kotlin rule ever disagree.
+
+  profile module — full-replace import from a JSON document, skills given by
+  name and resolved through the catalog. Two rules are enforced at import: every
+  skill name must resolve, and a bullet may only be tagged with skills the 
+  profile declares. That second one is what makes the CV invariant checkable
+  later. A rejected import leaves nothing behind. Sample document in
+  docs/sample-profile.json, format notes in docs/profile-format.md.
+
+  Three deviations from the approved plan, all deliberate:
+  1. Catalog was built before profile — profile_skill has an FK to
+  canonical_skill, so the plan's M1/M2 order was dependency-inverted.
+  2. Added POST /api/catalog/skills — the plan had no way for you to add a skill
+  the 210-entry seed misses, which would have made profile import a dead end.
+  3. Natural languages are not canonical skills. Polish/English/German live in
+  language_skill with CEFR levels and are compared by ordinal (atLeast).
+  Shoehorning "English B2" into the skill catalog would have made that
+  comparison a model's opinion instead of arithmetic.
+
+  Next up is M3, the llm module — model profiles, the ChatModel factory, the
+  call-audit table and the stubbed harness. It needs no API key; the key only
+  matters at M4 when analysis first calls a live model.
+
+  One design question I'll verify against the LangChain4j docs before writing
+  it: AiServices does the JSON parsing internally, so the parse-repair fallback
+  doesn't have an obvious seam. I'll check whether to wrap it or use a
+  ChatModelListener for the audit and handle repair around the service call.
+
+✻ Sautéed for 20m 27s
+
+❯ /auto-mode-setup 
+  ⎿  Gathering data and drafting your auto-mode setup; back soon
+
+⏺ Saved to /Users/rafal/.claude/settings.json (environment, allow, 
+  soft_deny). Run `claude auto-mode config` to see the effective result.
+
+※ recap: Building the job-assistant backend from the approved plan. Foundation plus the catalog and profile modules are done with 49 tests passing. Next I'll build the llm module: model profiles, ChatModel factory, call-audit table and stubbed test harness. (disable recaps in /config)
+
+❯ lets continue                                                                 
+
+⏺ Continuing with M3. First, verifying the LangChain4j APIs rather than guessing
+  at them.
+  Called plugin:context7:context7, ran 3 shell commands (ctrl+o to expand)
+
+⏺ outputGuardrails — that's the built-in reprompt seam for parse-repair. Let me
+  confirm its API.
+
+  Ran 4 shell commands (ctrl+o to expand)
+
+⏺ All APIs confirmed — outputGuardrails gives me a real reprompt seam, and
+  ChatModelListener gives token counts for the audit. Writing the llm module.
+
+  Ran 4 shell commands (ctrl+o to expand)
+
+⏺ Compiles. Now the stubbed harness — the piece that keeps every later milestone
+  testable without a network call.
+
+  Ran 4 shell commands (ctrl+o to expand)
+
+⏺ Kotlin won't let the test config expose internal types. That's a real signal:
+  the model-substitution seam belongs in the module's public API, not hidden in
+  internal.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Now the end-to-end test — this also tells me whether LangChain4j can
+  deserialise Kotlin data classes, which every later DTO depends on.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ All 10 pass first try. Two things confirmed that matter for every later
+  module: LangChain4j does deserialise Kotlin data classes provided every
+  property has a default, and the guardrail repair costs exactly one extra round
+  trip. Recording both.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ 70 tests green — M3 done. Next dependency-correct step is offer (analysis FKs
+  to job_offer), so swapping again as before.
+
+  Ran 4 shell commands (ctrl+o to expand)
+
+⏺ Spring Data JDBC sends the nullable createdAt as an explicit NULL, overriding
+  the DB default. That same bug is latent in catalog.createSkill, which I never
+  covered — fixing both and adding the missing test.
+
+  Ran 2 shell commands (ctrl+o to expand)
+⏺ All green. Recording the Spring Data JDBC gotcha, since it will recur on every
+  table with a default now().
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ 92 tests green. Now M4 — the analysis module, where the deterministic diff
+  lives.
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+⏺ fromResource is supported — prompts can live in versioned files as planned.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+⏺ The narrative prompt promises to "name the adjacent skill they do have" for
+  PARTIAL matches — but SkillCoverage only records that something covers a
+  skill, not what. Adding provenance.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ The heredoc broke on Kotlin's triple-quoted string. Redoing with different
+  Python quoting.
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+⏺ Now the deterministic matcher — the piece that makes the report reproducible.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+⏺ 18 matcher tests green, all pure logic. Now persistence and the async job
+  runner.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+⏺ Now the job runner itself.
+
+  Ran 4 shell commands (ctrl+o to expand)
+
+⏺ Adding Awaitility for polling the async job, then the end-to-end analysis
+  test.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+⏺ All 18 pass first try, including the aggregate de-duplication. Full suite
+  check:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ 133 green. Now M5 — the document module, where the fabrication guard actually
+  gets enforced.
+  Ran 4 shell commands (ctrl+o to expand)
+
+⏺ The guard works. Now the CV template — modern CSS, since Chromium is doing the
+  rendering.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+⏺ That lazy-initialisation check I wrote is fake — it always returns true, so
+  close() would force-start a browser it's trying to shut down. Replacing it
+  with honest state.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Now the document service that ties tailoring, the invariant and rendering
+  together.
+
+  Ran 4 shell commands (ctrl+o to expand)
+
+⏺ Now the document integration test — including the case where the model tries
+  to fabricate.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ A real bug, and exactly the kind the test was for: the invariant was scanning
+  raw markup, so <!DOCTYPE html> and the <style> block tripped the "HTML" and
+  "CSS" catalog entries. The guard must scan what a reader sees, not the source.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ 14 of 15 pass. The last failure is a genuine design conflict I introduced: the
+  cover-letter prompt encourages honestly naming a skill you lack ("I have not
+  used Quarkus, though..."), while the invariant forbids naming unheld skills at
+  all. A model following that prompt would have every letter thrown away.
+
+  Resolving in favour of the invariant — the prompt was the wrong half.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ All 16 pass. Now the tagged PDF test — and I want to actually run it rather
+  than ship the Playwright path unverified.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+⏺ excludedGroups wins over -Dgroups in JUnit 5, so the tier never ran. Making
+  the tiers real Maven profiles instead.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Chromium downloaded and rendered real PDFs — the Playwright path is verified,
+  not assumed. Full suite check:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ 170 green, PDF tier correctly excluded. Last milestone — the eval fixtures.
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+⏺ Eval tier discovered and correctly skipped without a key; default tier is 170
+  and excludes both. Finishing the docs.
+
+  Ran 1 shell command (ctrl+o to expand)
+⏺ Clean install passes. Let me verify the app actually boots and serves, which
+  I've claimed but not yet proven.
+
+  Read 1 file, ran 3 shell commands (ctrl+o to expand)
+
+⏺ Genuine bug in my docker-compose.yml — Postgres 18 changed the recommended
+  volume mount point, so the container exits on start. Exactly what running it
+  was for.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+⏺ App boots against local Postgres, all 7 migrations applied, 210 skills seeded,
+  and alias resolution works over HTTP. Completing the smoke test.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Everything works over HTTP, including the import rejection path. Cleaning up
+  the smoke-test state.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ The whole backend is built. All 8 milestones complete: 170 tests green in the 
+  fast tier, plus 2 in the PDF tier, and the app verified running against local 
+  Postgres.
+
+  What's there
+
+  Six Spring Modulith modules, boundaries enforced by a build-failing test:
+
+  ┌──────────┬───────────────────────────────────────────────────────────────┐
+  │  Module  │                         What it does                          │
+  ├──────────┼───────────────────────────────────────────────────────────────┤
+  │ catalog  │ 210 canonical skills, 362 aliases, 201 IMPLIES/RELATED edges. │
+  │          │  "container orchestration" → Kubernetes.                      │
+  ├──────────┼───────────────────────────────────────────────────────────────┤
+  │ profile  │ Hand-authored ground truth, full-replace JSON import, two     │
+  │          │ rejection rules                                               │
+  ├──────────┼───────────────────────────────────────────────────────────────┤
+  │ offer    │ Paste + content-hash dedup, application lifecycle             │
+  ├──────────┼───────────────────────────────────────────────────────────────┤
+  │ llm      │ Per-task model profiles, audit of every call, JSON            │
+  │          │ parse-repair guardrail                                        │
+  ├──────────┼───────────────────────────────────────────────────────────────┤
+  │ analysis │ Async job, extraction → deterministic diff → narrative,       │
+  │          │ aggregate gap histogram                                       │
+  ├──────────┼───────────────────────────────────────────────────────────────┤
+  │ document │ Tailored CV + cover letter, Chromium PDF, fabrication guard   │
+  └──────────┴───────────────────────────────────────────────────────────────┘
+
+  7 Flyway migrations, 92 Kotlin files. Everything is uncommitted on main — I
+  didn't commit since you didn't ask.
+
+  Five bugs the tests and the smoke run actually caught
+
+  1. docker compose up -d was broken. Postgres 18 changed its expected mount
+  point; the container exited immediately. Found only by running it — nothing in
+  the test suite would have.
+  2. The CV guard rejected every honest CV. It scanned raw markup, so <!DOCTYPE 
+  html> and the <style> block tripped the "HTML" and "CSS" catalog entries. Now
+  scans visible text via HtmlText.
+  3. The cover-letter prompt contradicted the guard. It encouraged honest
+  negatives ("I have not used Kubernetes") which the invariant rejects outright.
+  A model obeying that prompt would have had every letter thrown away. Prompt
+  rewritten to lead with adjacent strengths instead.
+  4. default now() silently broken — Spring Data JDBC sends nullable properties
+  as explicit NULL. Hit job_offer, and was latent in catalog.createSkill, which
+  I'd shipped with no test.
+  5. The test tiers never ran. JUnit applies exclusions before inclusions, so
+  -Dgroups=pdf was a no-op. They're Maven profiles now: ./mvnw test -Ppdf,
+  -Peval.
+
+  Deviations from the approved plan
+
+  - Built in dependency order, not plan order — catalog before profile (FK),
+  offer before analysis (FK). Same scope.
+  - Added POST /api/catalog/skills — the plan gave you no way to add a skill the
+  seed misses, which made profile import a dead end.
+  - Natural languages aren't catalog skills. They live in language_skill with
+  CEFR levels, compared by ordinal. Shoehorning "English B2" into the skill
+  catalog would have made that comparison a model's opinion.
+  - SkillCoverage carries provenance — the narrative prompt promises to name the
+  adjacent skill behind a PARTIAL, and it couldn't without it.
+
+  To run it
+
+  docker compose up -d
+  export OPENROUTER_API_KEY=sk-or-...
+  ./mvnw spring-boot:run
+  curl -X POST localhost:8080/api/profile/import -H 'Content-Type: 
+  application/json' --data @docs/sample-profile.json
+
+  Full walkthrough in docs/api-flow.md; profile format in
+  docs/profile-format.md.
+
+  What I'd flag before you go further
+
+  The eval suite has never run against a live model. It's wired, discovers
+  correctly, and skips without a key — but the recall thresholds (0.6) are
+  guesses, and the extraction prompt has only ever been tested against JSON I
+  wrote myself. ./mvnw test -Peval with your key is the first real signal on
+  whether the prompt works, and I'd expect to tune it. That's the highest-value
+  next hour, ahead of the Astro frontend.
+
+  Also: docs/sample-profile.json is placeholder data. The gap reports are only
+  as good as what replaces it.
+
+✻ Baked for 16m 51s
+
+※ recap: Your job-assistant backend is fully built and green: 170 tests passing, six modules, app verified running on local Postgres. Next: run the eval suite against a live model with your OpenRouter key (./mvnw test -Peval) to see whether the extraction prompt actually works. (disable recaps in /config)
+
+❯ lets commit all these changes                                                 
+
+⏺ Let me check what's staged-worthy first — particularly the .claude/ directory
+  and any secrets.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ No secrets — application.yaml uses ${OPENROUTER_API_KEY:} placeholders only.
+  Confirming that, then branching (we're on main).
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ All clean — the only literal is ollama, a required dummy for the local
+  OpenAI-compatible endpoint. Branching and committing.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+⏺ Committed on a new branch, working tree clean.
+
+  feat/backend-mvp → 6b0d5ea — 130 files, +8387 / −22.
+
+  Two things I decided rather than asked:
+
+  - Branched instead of committing to main. You were on the default branch. If
+  you'd rather this just live on main, it's a fast-forward: git checkout main &&
+  git merge feat/backend-mvp.
+  - Excluded .claude/settings.local.json and added it to .gitignore — it holds
+  your personal permission allowlist and enabled plugins. .claude/skills/ and
+  skills-lock.json are committed, since those define project tooling a
+  collaborator would want.
+
+  I scanned for credentials before staging: every API key in application.yaml is
+  an env placeholder (${OPENROUTER_API_KEY:}). The one literal, api-key: 
+  ollama, is the dummy value the OpenAI client requires when pointing at a local
+  Ollama endpoint — not a secret.
+
+  One correction to my earlier summary, since it affects what you'd be
+  reviewing: the commit contains the docker-compose.yml volume fix, which I made
+  after the last ./mvnw clean install. That file isn't on the build path, so
+  the 170-test green run still describes this commit accurately — but the fixed
+  compose file was verified by booting the app, not by the suite.
+
+  Next step remains ./mvnw test -Peval with your OpenRouter key. That's the
+  first time the extraction prompt meets a real model, and the recall thresholds
+  in it are still guesses.
+
+✻ Brewed for 1m 22s

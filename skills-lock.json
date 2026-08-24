@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "gh-axi": {
+      "source": "kunchenguid/gh-axi",
+      "sourceType": "github",
+      "skillPath": "skills/gh-axi/SKILL.md",
+      "computedHash": "d27af22a30a4d67033e78fc6d347ba5e75051d77b51d9a1553080c92b2859d70"
+    }
+  }
+}

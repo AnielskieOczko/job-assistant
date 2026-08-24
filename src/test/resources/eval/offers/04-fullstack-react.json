@@ -1,0 +1,7 @@
+{
+  "title": "Full Stack Developer",
+  "detectedLanguage": "en",
+  "mustHaves": ["TypeScript", "React", "Node.js", "MongoDB", "Communication"],
+  "niceToHaves": ["Next.js", "AWS", "Figma"],
+  "languages": []
+}

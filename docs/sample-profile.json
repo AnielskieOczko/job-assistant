@@ -1,0 +1,70 @@
+{
+  "details": {
+    "fullName": "Rafal Jankowski",
+    "headline": "Backend Engineer (Kotlin / Spring Boot)",
+    "email": "rafaljankowski7@gmail.com",
+    "phone": null,
+    "location": "Poland",
+    "summary": "Backend engineer focused on JVM services, Postgres and clean module boundaries."
+  },
+  "links": [
+    { "label": "GitHub", "url": "https://github.com/your-handle" },
+    { "label": "LinkedIn", "url": "https://linkedin.com/in/your-handle" }
+  ],
+  "skills": [
+    { "skill": "Kotlin", "proficiency": "EXPERT", "yearsOfExperience": 6, "lastUsedYear": 2026 },
+    { "skill": "Java", "proficiency": "PROFICIENT", "yearsOfExperience": 8, "lastUsedYear": 2026 },
+    { "skill": "Spring Boot", "proficiency": "PROFICIENT", "yearsOfExperience": 6, "lastUsedYear": 2026 },
+    { "skill": "PostgreSQL", "proficiency": "PROFICIENT", "yearsOfExperience": 5, "lastUsedYear": 2026 },
+    { "skill": "Docker", "proficiency": "WORKING", "yearsOfExperience": 4 },
+    { "skill": "JUnit", "proficiency": "PROFICIENT" },
+    { "skill": "REST", "proficiency": "PROFICIENT" }
+  ],
+  "experiences": [
+    {
+      "company": "Example Sp. z o.o.",
+      "roleTitle": "Senior Backend Engineer",
+      "location": "Remote",
+      "startedOn": "2021-01-01",
+      "endedOn": null,
+      "summary": "Payments platform team.",
+      "bullets": [
+        {
+          "text": "Designed and shipped a payment reconciliation service handling 2M transactions a day.",
+          "skills": ["Kotlin", "Spring Boot", "PostgreSQL"]
+        },
+        {
+          "text": "Cut p99 latency from 800ms to 120ms by replacing N+1 queries with a single projection.",
+          "skills": ["PostgreSQL", "Kotlin"]
+        }
+      ]
+    },
+    {
+      "company": "Another Company",
+      "roleTitle": "Backend Engineer",
+      "location": "Krakow",
+      "startedOn": "2018-03-01",
+      "endedOn": "2020-12-31",
+      "summary": null,
+      "bullets": [
+        {
+          "text": "Extracted three services from a Java monolith without downtime.",
+          "skills": ["Java", "Docker", "REST"]
+        }
+      ]
+    }
+  ],
+  "education": [
+    {
+      "institution": "Example University",
+      "degree": "BSc",
+      "fieldOfStudy": "Computer Science",
+      "startedOn": "2014-10-01",
+      "endedOn": "2018-06-30"
+    }
+  ],
+  "languages": [
+    { "language": "Polish", "level": "NATIVE" },
+    { "language": "English", "level": "C1" }
+  ]
+}

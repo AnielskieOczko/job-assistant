@@ -1,0 +1,15 @@
+# Datasource is supplied by the Testcontainers @ServiceConnection, not configured here.
+job-assistant:
+  llm:
+    profiles:
+      stub:
+        base-url: http://localhost:0/v1
+        api-key: stub
+        model: stub-model
+        temperature: 0.0
+        strict-schema: false
+        timeout: PT5S
+    tasks:
+      extraction: stub
+      narrative: stub
+      document: stub

@@ -1,0 +1,16 @@
+Starszy Programista Java
+
+Poszukujemy doświadczonego programisty do zespołu pracującego nad systemem bankowym.
+
+Wymagania:
+- Minimum 5 lat doświadczenia komercyjnego w Javie
+- Bardzo dobra znajomość Spring Boot oraz Hibernate
+- Doświadczenie z bazami danych relacyjnych (Oracle lub PostgreSQL)
+- Znajomość Dockera i podstaw Kubernetesa
+- Umiejętność pisania testów jednostkowych (JUnit, Mockito)
+- Język angielski na poziomie minimum B2
+- Język polski w mowie i piśmie
+
+Mile widziane:
+- Znajomość Apache Kafka
+- Doświadczenie z architekturą mikroserwisową
