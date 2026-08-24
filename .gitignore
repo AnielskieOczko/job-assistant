@@ -38,3 +38,19 @@ build/
 
 # Personal Claude Code settings (permissions, enabled plugins)
 .claude/settings.local.json
+
+### Frontend ###
+/frontend/node_modules/
+/frontend/.mvn-node/
+/frontend/dist/
+/frontend/.vite/
+/frontend/*.tsbuildinfo
+/frontend/.oxlintcache
+
+# Vite build output. Produced by `./mvnw -Pfrontend ...`, never committed.
+/src/main/resources/static/
+
+### Secrets ###
+.env
+.env.*
+!.env.example

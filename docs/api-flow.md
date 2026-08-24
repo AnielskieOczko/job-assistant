@@ -1,5 +1,8 @@
 # End-to-end flow
 
+> All of this is also available in the UI: `cd frontend && npm run dev`, then
+> <http://127.0.0.1:5173>. See `docs/frontend.md`.
+
 Start Postgres and the app:
 
 ```bash

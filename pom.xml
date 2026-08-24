@@ -21,6 +21,10 @@
         <langchain4j.version>1.19.0</langchain4j.version>
         <playwright.version>1.62.0</playwright.version>
 
+        <!-- Frontend build; only used by the `frontend` profile below. -->
+        <frontend-maven-plugin.version>2.0.2</frontend-maven-plugin.version>
+        <node.version>v24.19.0</node.version>
+
         <!-- Test tiers. The fast tier is the default; -P pdf / -P eval switch to the others.
              JUnit applies exclusions before inclusions, so these must be swapped, not added to. -->
         <test.groups/>
@@ -43,6 +47,66 @@
                 <test.groups>eval</test.groups>
                 <test.excludedGroups/>
             </properties>
+        </profile>
+        <profile>
+            <!--
+                Builds the Vite SPA into src/main/resources/static so `package` ships it inside
+                the jar. Off by default on the same principle as the test tiers above: `./mvnw
+                test` must never need npm, a network, or a 200 MB node_modules.
+
+                Bound to generate-resources rather than prepare-package because Vite writes into
+                src/main/resources, which maven-resources-plugin copies to target/classes during
+                process-resources - the very next phase. Binding any later would package the
+                previous build's assets. Executions inside one phase run in declaration order.
+            -->
+            <id>frontend</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.github.eirslett</groupId>
+                        <artifactId>frontend-maven-plugin</artifactId>
+                        <version>${frontend-maven-plugin.version}</version>
+                        <configuration>
+                            <workingDirectory>${project.basedir}/frontend</workingDirectory>
+                            <installDirectory>${project.basedir}/frontend/.mvn-node</installDirectory>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <!-- A pinned Node, so the build does not depend on whatever nvm last selected. -->
+                                <id>install-node-and-npm</id>
+                                <goals>
+                                    <goal>install-node-and-npm</goal>
+                                </goals>
+                                <phase>generate-resources</phase>
+                                <configuration>
+                                    <nodeVersion>${node.version}</nodeVersion>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>npm-ci</id>
+                                <goals>
+                                    <goal>npm</goal>
+                                </goals>
+                                <phase>generate-resources</phase>
+                                <configuration>
+                                    <arguments>ci</arguments>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <!-- `tsc -b && vite build`, so this also type-checks the frontend. -->
+                                <id>npm-build</id>
+                                <goals>
+                                    <goal>npm</goal>
+                                </goals>
+                                <phase>generate-resources</phase>
+                                <configuration>
+                                    <arguments>run build</arguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
         </profile>
     </profiles>
 
