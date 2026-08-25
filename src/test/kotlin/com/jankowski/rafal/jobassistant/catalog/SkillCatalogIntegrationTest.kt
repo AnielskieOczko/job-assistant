@@ -1,5 +1,7 @@
 package com.jankowski.rafal.jobassistant.catalog
 
+import com.jankowski.rafal.jobassistant.catalog.internal.CatalogConflictException
+import com.jankowski.rafal.jobassistant.catalog.internal.UnknownSkillException
 import com.jankowski.rafal.jobassistant.support.IntegrationTest
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -187,6 +189,67 @@ class SkillCatalogIntegrationTest(
         assertFailsWith<IllegalArgumentException> {
             catalog.createSkill("Something Else ${System.nanoTime()}", SkillCategory.OTHER, listOf("Kotlin"))
         }
+    }
+
+    @Test
+    fun `updating a skill renames it and keeps the old name resolvable`() {
+        val oldName = "Rename Probe ${System.nanoTime()}"
+        val newName = "Renamed Probe ${System.nanoTime()}"
+        val created = catalog.createSkill(oldName, SkillCategory.TOOL)
+
+        val updated = catalog.updateSkill(created.id, newName, SkillCategory.DATABASE)
+
+        assertEquals(newName, updated.name)
+        assertEquals(SkillCategory.DATABASE, updated.category)
+        assertEquals(created.id, catalog.resolve(oldName)?.id)
+        assertEquals(created.id, catalog.resolve(newName)?.id)
+    }
+
+    @Test
+    fun `updating a skill to a name already taken is refused`() {
+        val first = catalog.createSkill("Taken Name ${System.nanoTime()}", SkillCategory.TOOL)
+        val second = catalog.createSkill("Other Name ${System.nanoTime()}", SkillCategory.TOOL)
+
+        assertFailsWith<CatalogConflictException> {
+            catalog.updateSkill(second.id, first.name, SkillCategory.TOOL)
+        }
+    }
+
+    @Test
+    fun `updating an unknown skill is refused`() {
+        assertFailsWith<UnknownSkillException> {
+            catalog.updateSkill(Long.MAX_VALUE, "Whatever", SkillCategory.OTHER)
+        }
+    }
+
+    @Test
+    fun `deleting an unused skill removes it from the catalog`() {
+        val created = catalog.createSkill("Delete Probe ${System.nanoTime()}", SkillCategory.TOOL)
+
+        catalog.deleteSkill(created.id)
+
+        assertNull(catalog.findById(created.id))
+    }
+
+    @Test
+    fun `deleting a skill still held by a profile is refused`() {
+        val skill = catalog.createSkill("Held Probe ${System.nanoTime()}", SkillCategory.TOOL)
+        val profileId = jdbc.sql("insert into profile (name) values (:name) returning id")
+            .param("name", "Test Profile ${System.nanoTime()}")
+            .query { rs, _ -> rs.getLong("id") }
+            .single()
+        jdbc.sql(
+            "insert into profile_skill (canonical_skill_id, profile_id, proficiency) " +
+                "values (:skillId, :profileId, 'WORKING')"
+        ).param("skillId", skill.id).param("profileId", profileId).update()
+
+        assertFailsWith<CatalogConflictException> { catalog.deleteSkill(skill.id) }
+        assertNotNull(catalog.findById(skill.id))
+    }
+
+    @Test
+    fun `deleting an unknown skill is refused`() {
+        assertFailsWith<UnknownSkillException> { catalog.deleteSkill(Long.MAX_VALUE) }
     }
 
     @Test

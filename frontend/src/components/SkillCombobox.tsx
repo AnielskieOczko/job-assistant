@@ -4,7 +4,7 @@ import { Check, ChevronsUpDown, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { createSkill } from '@/api/catalog'
 import { keys } from '@/api/keys'
-import { SKILL_CATEGORIES } from '@/api/types'
+import { SKILL_CATEGORIES, SKILL_CATEGORY_LABELS } from '@/api/types'
 import type { SkillCategory } from '@/api/types'
 import { ApiErrorAlert } from '@/components/ApiErrorAlert'
 import { Button } from '@/components/ui/button'
@@ -36,6 +36,10 @@ export function SkillCombobox({
   const [search, setSearch] = useState('')
   const skills = useSkillNames()
   const all = skills.data ?? []
+  const grouped = SKILL_CATEGORIES.map((category) => ({
+    category,
+    items: all.filter((skill) => skill.category === category),
+  })).filter((group) => group.items.length > 0)
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -69,23 +73,24 @@ export function SkillCombobox({
                 'No skill found.'
               )}
             </CommandEmpty>
-            <CommandGroup>
-              {all.map((skill) => (
-                <CommandItem
-                  key={skill.id}
-                  value={skill.name}
-                  onSelect={() => {
-                    onChange(skill.id)
-                    setSearch('')
-                    setOpen(false)
-                  }}
-                >
-                  <Check className={cn(value === skill.id ? 'opacity-100' : 'opacity-0')} />
-                  <span className="truncate">{skill.name}</span>
-                  <span className="ml-auto text-xs text-muted-foreground">{skill.category}</span>
-                </CommandItem>
-              ))}
-            </CommandGroup>
+            {grouped.map((group) => (
+              <CommandGroup key={group.category} heading={SKILL_CATEGORY_LABELS[group.category]}>
+                {group.items.map((skill) => (
+                  <CommandItem
+                    key={skill.id}
+                    value={skill.name}
+                    onSelect={() => {
+                      onChange(skill.id)
+                      setSearch('')
+                      setOpen(false)
+                    }}
+                  >
+                    <Check className={cn(value === skill.id ? 'opacity-100' : 'opacity-0')} />
+                    <span className="truncate">{skill.name}</span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            ))}
           </CommandList>
         </Command>
       </PopoverContent>

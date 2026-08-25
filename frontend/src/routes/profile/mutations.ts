@@ -39,5 +39,20 @@ export function movedIds<T extends { id: number }>(items: T[], from: number, to:
   return ids
 }
 
+/**
+ * The id list for a collection with two entries swapped, by id rather than flat index.
+ *
+ * Used for reordering within a displayed sub-group (e.g. skills grouped by category): the neighbor
+ * in the group is not necessarily the neighbor in the underlying flat list `movedIds` assumes.
+ */
+export function swappedIds<T extends { id: number }>(items: T[], idA: number, idB: number): number[] {
+  const ids = items.map((item) => item.id)
+  const i = ids.indexOf(idA)
+  const j = ids.indexOf(idB)
+  if (i === -1 || j === -1) return ids
+  ;[ids[i], ids[j]] = [ids[j], ids[i]]
+  return ids
+}
+
 /** An empty input means "no value", not an empty string - the column is nullable. */
 export const blankToNull = (value: string) => (value.trim() ? value.trim() : null)

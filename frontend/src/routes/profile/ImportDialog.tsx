@@ -86,7 +86,7 @@ export function ImportDialog({
               value={text}
               onChange={(e) => { setText(e.target.value); setConfirming(false) }}
               placeholder='{ "details": { "fullName": "…" }, "skills": [ … ] }'
-              className="font-mono text-xs"
+              className="max-h-64 overflow-y-auto font-mono text-xs"
             />
           </TabsContent>
           <TabsContent value="upload">

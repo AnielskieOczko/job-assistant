@@ -3,11 +3,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Check, Inbox, Plus, X } from 'lucide-react'
 import { toast } from 'sonner'
 import {
-  approveUnmatched, createSkill, listUnmatched, rejectUnmatched,
+  approveUnmatched, createSkill, deleteSkill, listUnmatched, rejectUnmatched, updateSkill,
 } from '@/api/catalog'
 import { keys } from '@/api/keys'
-import { SKILL_CATEGORIES } from '@/api/types'
-import type { SkillCategory } from '@/api/types'
+import { SKILL_CATEGORIES, SKILL_CATEGORY_LABELS } from '@/api/types'
+import type { CanonicalSkill, SkillCategory } from '@/api/types'
 import { ApiErrorAlert } from '@/components/ApiErrorAlert'
 import { EmptyState } from '@/components/EmptyState'
 import { PageHeader } from '@/components/PageHeader'
@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { formatRelative } from '@/lib/format'
+import { ConfirmDelete } from './profile/ConfirmDelete'
 
 export function CatalogPage() {
   return (
@@ -101,22 +102,23 @@ function ReviewQueue() {
               <TableHead>Term</TableHead>
               <TableHead className="w-24">Seen</TableHead>
               <TableHead className="w-32">Last seen</TableHead>
-              <TableHead className="w-[26rem]">Resolve to</TableHead>
+              <TableHead className="w-[29rem]">Resolve to</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {unmatched.data.map((term) => (
               <TableRow key={term.id}>
-                <TableCell className="font-medium">{term.term}</TableCell>
+                <TableCell className="max-w-0 truncate font-medium" title={term.term}>{term.term}</TableCell>
                 <TableCell className="text-muted-foreground">{term.occurrences}×</TableCell>
                 <TableCell className="text-sm text-muted-foreground">
                   {formatRelative(term.lastSeenAt)}
                 </TableCell>
                 <TableCell>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <SkillCombobox
                       value={selection[term.id] ?? null}
                       onChange={(skillId) => setSelection((s) => ({ ...s, [term.id]: skillId }))}
+                      className="w-44"
                     />
                     <Button
                       size="sm"
@@ -239,9 +241,26 @@ function CreateSkillDialog({
 }
 
 function SkillBrowser() {
+  const queryClient = useQueryClient()
   const skills = useSkillNames()
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState<string>('__all__')
+  const [creating, setCreating] = useState(false)
+  const [editing, setEditing] = useState<CanonicalSkill | null>(null)
+  const [deleting, setDeleting] = useState<CanonicalSkill | null>(null)
+
+  function invalidate() {
+    queryClient.invalidateQueries({ queryKey: keys.skills })
+  }
+
+  const remove = useMutation({
+    mutationFn: (id: number) => deleteSkill(id),
+    onSuccess: () => {
+      toast.success('Skill deleted')
+      invalidate()
+      setDeleting(null)
+    },
+  })
 
   const rows = useMemo(() => {
     const term = search.trim().toLowerCase()
@@ -249,6 +268,13 @@ function SkillBrowser() {
       .filter((s) => category === '__all__' || s.category === category)
       .filter((s) => !term || s.name.toLowerCase().includes(term))
   }, [skills.data, search, category])
+
+  const groups = useMemo(
+    () => SKILL_CATEGORIES
+      .map((c) => ({ category: c, items: rows.filter((s) => s.category === c) }))
+      .filter((group) => group.items.length > 0),
+    [rows],
+  )
 
   if (skills.isPending) return <Skeleton className="h-48 w-full" />
   if (skills.isError) return <ApiErrorAlert error={skills.error} />
@@ -270,15 +296,123 @@ function SkillBrowser() {
           </SelectContent>
         </Select>
         <span className="ml-auto text-sm text-muted-foreground">{rows.length} skills</span>
+        <Button size="sm" variant="outline" onClick={() => setCreating(true)}>
+          <Plus /> Add skill
+        </Button>
       </div>
-      <div className="flex flex-wrap gap-1.5">
-        {rows.map((skill) => (
-          <Badge key={skill.id} variant="outline" className="gap-1.5">
-            {skill.name}
-            <span className="text-muted-foreground">{skill.category}</span>
-          </Badge>
+      <div className="space-y-4">
+        {groups.map((group) => (
+          <div key={group.category}>
+            <h4 className="mb-1.5 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+              {SKILL_CATEGORY_LABELS[group.category]}
+            </h4>
+            <div className="flex flex-wrap gap-1.5">
+              {group.items.map((skill) => (
+                <Badge
+                  key={skill.id}
+                  variant="outline"
+                  className="cursor-pointer hover:bg-muted"
+                  onClick={() => setEditing(skill)}
+                >
+                  {skill.name}
+                </Badge>
+              ))}
+            </div>
+          </div>
         ))}
       </div>
+
+      <CreateSkillDialog term={creating ? '' : null} onClose={() => setCreating(false)} onCreated={invalidate} />
+
+      <EditSkillDialog
+        skill={editing}
+        onClose={() => setEditing(null)}
+        onSaved={invalidate}
+        onRequestDelete={() => { setDeleting(editing); setEditing(null) }}
+      />
+
+      <ConfirmDelete
+        open={deleting !== null}
+        onOpenChange={(open) => { if (!open) { setDeleting(null); remove.reset() } }}
+        title={`Remove ${deleting?.name ?? 'this skill'} from the catalog?`}
+        description="Refused while a profile still holds it or a bullet is still tagged with it - untag or remove it there first."
+        pending={remove.isPending}
+        error={remove.error}
+        onConfirm={() => { if (deleting) remove.mutate(deleting.id) }}
+      />
     </>
+  )
+}
+
+function EditSkillDialog({
+  skill,
+  onClose,
+  onSaved,
+  onRequestDelete,
+}: {
+  skill: CanonicalSkill | null
+  onClose: () => void
+  onSaved: () => void
+  onRequestDelete: () => void
+}) {
+  const [name, setName] = useState('')
+  const [category, setCategory] = useState<SkillCategory>('OTHER')
+
+  // Reset the form each time a different skill opens the dialog.
+  const [seeded, setSeeded] = useState<number | null>(null)
+  if (skill !== null && seeded !== skill.id) {
+    setSeeded(skill.id)
+    setName(skill.name)
+    setCategory(skill.category)
+  }
+
+  const update = useMutation({
+    mutationFn: () => updateSkill(skill!.id, { name: name.trim(), category }),
+    onSuccess: (updated) => {
+      toast.success(`Saved “${updated.name}”`)
+      onSaved()
+      onClose()
+    },
+  })
+
+  return (
+    <Dialog open={skill !== null} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit skill</DialogTitle>
+          <DialogDescription>
+            Renaming adds the new name as another alias rather than replacing the old one, so
+            nothing that already resolved to this skill stops working.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-skill-name">Name</Label>
+            <Input id="edit-skill-name" value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Category</Label>
+            <Select value={category} onValueChange={(v) => setCategory(v as SkillCategory)}>
+              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {SKILL_CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          {update.isError ? <ApiErrorAlert error={update.error} /> : null}
+        </div>
+
+        <DialogFooter>
+          <Button type="button" variant="destructive" className="sm:mr-auto" onClick={onRequestDelete}>
+            Delete
+          </Button>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={() => update.mutate()} disabled={!name.trim() || update.isPending}>
+            {update.isPending ? 'Saving…' : 'Save'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }

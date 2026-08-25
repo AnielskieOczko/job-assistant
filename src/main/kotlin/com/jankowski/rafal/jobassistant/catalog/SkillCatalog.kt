@@ -44,4 +44,19 @@ interface SkillCatalog {
      * Returns the existing skill if [name] is already present, so imports stay idempotent.
      */
     fun createSkill(name: String, category: SkillCategory, aliases: Collection<String> = emptyList()): CanonicalSkill
+
+    /**
+     * Renames a skill and/or changes its category. The new name is registered as an alias too, so
+     * nothing that already resolved via the old name stops working.
+     *
+     * Throws if [id] is unknown, or if another skill already has [name].
+     */
+    fun updateSkill(id: Long, name: String, category: SkillCategory): CanonicalSkill
+
+    /**
+     * Removes a skill from the catalog. Refused while any profile still holds it or any bullet is
+     * tagged with it - deleting it out from under a candidate's data would silently corrupt every
+     * gap report and CV that cites it.
+     */
+    fun deleteSkill(id: Long)
 }

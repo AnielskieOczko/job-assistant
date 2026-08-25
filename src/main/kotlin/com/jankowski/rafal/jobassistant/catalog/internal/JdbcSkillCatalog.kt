@@ -7,6 +7,7 @@ import com.jankowski.rafal.jobassistant.catalog.SkillCoverage
 import com.jankowski.rafal.jobassistant.catalog.SkillNormalizer
 import com.jankowski.rafal.jobassistant.catalog.UnmatchedTerm
 import com.jankowski.rafal.jobassistant.catalog.UnmatchedTermStatus
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -154,6 +155,42 @@ internal class JdbcSkillCatalog(
             }
         }
         return skill
+    }
+
+    @Transactional
+    override fun updateSkill(id: Long, name: String, category: SkillCategory): CanonicalSkill {
+        val trimmed = name.trim()
+        require(trimmed.isNotEmpty()) { "skill name must not be blank" }
+
+        val row = skills.findById(id).orElse(null) ?: throw UnknownSkillException("No canonical skill $id")
+
+        val conflict = skills.findAllOrderByName()
+            .firstOrNull { it.id != id && it.name.equals(trimmed, ignoreCase = true) }
+        if (conflict != null) {
+            throw CatalogConflictException("A skill named \"$trimmed\" already exists.")
+        }
+
+        val updated = skills.save(row.copy(name = trimmed, category = category.name)).toDomain()
+
+        // The new name has to resolve too, exactly as createSkill registers one for a fresh skill.
+        // Old aliases are left alone, so nothing that already resolved via the previous name breaks.
+        val normalized = SkillNormalizer.normalize(trimmed)
+        if (normalized.isNotEmpty() && aliases.findByNormalizedAlias(normalized) == null) {
+            aliases.save(SkillAliasRow(canonicalSkillId = id, alias = trimmed, normalizedAlias = normalized))
+        }
+        return updated
+    }
+
+    @Transactional
+    override fun deleteSkill(id: Long) {
+        val row = skills.findById(id).orElse(null) ?: throw UnknownSkillException("No canonical skill $id")
+        try {
+            skills.delete(row)
+        } catch (_: DataIntegrityViolationException) {
+            throw CatalogConflictException(
+                "\"${row.name}\" is still held by a profile or cited by a bullet, and cannot be deleted."
+            )
+        }
     }
 
     @Transactional

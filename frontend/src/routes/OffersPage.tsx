@@ -206,7 +206,7 @@ function PasteOfferDialog({
               value={text}
               onChange={(e) => setText(e.target.value)}
               placeholder="Senior Kotlin Engineer…"
-              className="font-mono text-xs"
+              className="max-h-64 overflow-y-auto font-mono text-xs"
             />
           </div>
           <div className="space-y-1.5">

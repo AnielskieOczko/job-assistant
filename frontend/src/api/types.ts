@@ -24,6 +24,13 @@ export const SKILL_CATEGORIES = [
 ] as const
 export type SkillCategory = (typeof SKILL_CATEGORIES)[number]
 
+export const SKILL_CATEGORY_LABELS: Record<SkillCategory, string> = {
+  LANGUAGE: 'Languages', FRAMEWORK: 'Frameworks', DATABASE: 'Databases',
+  MESSAGING: 'Messaging', CLOUD: 'Cloud', DEVOPS: 'DevOps', TESTING: 'Testing',
+  FRONTEND: 'Frontend', AI: 'AI', PRACTICE: 'Practices', TOOL: 'Tools',
+  SOFT: 'Soft skills', OTHER: 'Other',
+}
+
 export interface CanonicalSkill {
   id: number
   name: string
@@ -47,6 +54,11 @@ export interface CreateSkillRequest {
   name: string
   category: SkillCategory
   aliases: string[]
+}
+
+export interface UpdateSkillRequest {
+  name: string
+  category: SkillCategory
 }
 
 /* -------------------------------------------------------------------- offer */

@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import { addSkill, deleteSkill, reorderSkills, updateSkill } from '@/api/profile'
-import { PROFICIENCIES } from '@/api/types'
-import type { CandidateProfile, Proficiency, ProfileSkill } from '@/api/types'
+import { PROFICIENCIES, SKILL_CATEGORIES, SKILL_CATEGORY_LABELS } from '@/api/types'
+import type { CandidateProfile, Proficiency, ProfileSkill, SkillCategory } from '@/api/types'
 import { ApiErrorAlert } from '@/components/ApiErrorAlert'
 import { SkillCombobox } from '@/components/SkillCombobox'
 import { Button } from '@/components/ui/button'
@@ -18,7 +18,7 @@ import {
 import { useSkillNames } from '@/hooks/useSkillNames'
 import { ConfirmDelete } from './ConfirmDelete'
 import { RowActions } from './RowActions'
-import { movedIds, useProfileEdit } from './mutations'
+import { swappedIds, useProfileEdit } from './mutations'
 
 export function SkillsCard({ profileId, profile }: { profileId: number; profile: CandidateProfile }) {
   const [dialog, setDialog] = useState<ProfileSkill | 'new' | null>(null)
@@ -28,6 +28,19 @@ export function SkillsCard({ profileId, profile }: { profileId: number; profile:
   const reorder = useProfileEdit(profileId, (ids: number[]) => reorderSkills(profileId, ids), 'Skills reordered')
   const remove = useProfileEdit(profileId, (id: number) => deleteSkill(profileId, id), 'Skill removed')
   const { skills } = profile
+
+  const groups: { category: SkillCategory | 'UNCATEGORIZED'; label: string; items: ProfileSkill[] }[] = [
+    ...SKILL_CATEGORIES.map((category) => ({
+      category,
+      label: SKILL_CATEGORY_LABELS[category],
+      items: skills.filter((skill) => names.byId.get(skill.skillId)?.category === category),
+    })),
+    {
+      category: 'UNCATEGORIZED' as const,
+      label: 'Uncategorized',
+      items: skills.filter((skill) => names.byId.get(skill.skillId) === undefined),
+    },
+  ].filter((group) => group.items.length > 0)
 
   return (
     <Card>
@@ -45,32 +58,45 @@ export function SkillsCard({ profileId, profile }: { profileId: number; profile:
             No skills yet. The gap report has nothing to compare an offer against until you add some.
           </p>
         ) : (
-          <ul className="divide-y">
-            {skills.map((skill, index) => (
-              <li key={skill.id} className="flex items-center justify-between gap-3 py-1.5">
-                <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
-                  <span className="truncate text-sm font-medium">{names.nameOf(skill.skillId)}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {skill.proficiency.toLowerCase()}
-                    {skill.yearsOfExperience !== null ? ` · ${skill.yearsOfExperience}y` : ''}
-                    {skill.lastUsedYear !== null ? ` · last used ${skill.lastUsedYear}` : ''}
-                  </span>
-                </div>
-                <RowActions
-                  label={names.nameOf(skill.skillId)}
-                  disabled={reorder.isPending}
-                  onUp={index > 0 ? () => reorder.mutate(movedIds(skills, index, index - 1)) : undefined}
-                  onDown={
-                    index < skills.length - 1
-                      ? () => reorder.mutate(movedIds(skills, index, index + 1))
-                      : undefined
-                  }
-                  onEdit={() => setDialog(skill)}
-                  onDelete={() => setDeleting(skill)}
-                />
-              </li>
+          <div className="space-y-4">
+            {groups.map((group) => (
+              <div key={group.category}>
+                <h4 className="mb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                  {group.label}
+                </h4>
+                <ul className="divide-y">
+                  {group.items.map((skill, index) => (
+                    <li key={skill.id} className="flex items-center justify-between gap-3 py-1.5">
+                      <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
+                        <span className="truncate text-sm font-medium">{names.nameOf(skill.skillId)}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {skill.proficiency.toLowerCase()}
+                          {skill.yearsOfExperience !== null ? ` · ${skill.yearsOfExperience}y` : ''}
+                          {skill.lastUsedYear !== null ? ` · last used ${skill.lastUsedYear}` : ''}
+                        </span>
+                      </div>
+                      <RowActions
+                        label={names.nameOf(skill.skillId)}
+                        disabled={reorder.isPending}
+                        onUp={
+                          index > 0
+                            ? () => reorder.mutate(swappedIds(skills, skill.id, group.items[index - 1].id))
+                            : undefined
+                        }
+                        onDown={
+                          index < group.items.length - 1
+                            ? () => reorder.mutate(swappedIds(skills, skill.id, group.items[index + 1].id))
+                            : undefined
+                        }
+                        onEdit={() => setDialog(skill)}
+                        onDelete={() => setDeleting(skill)}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              </div>
             ))}
-          </ul>
+          </div>
         )}
         {reorder.isError ? <ApiErrorAlert error={reorder.error} /> : null}
       </CardContent>
