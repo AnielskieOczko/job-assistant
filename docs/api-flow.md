@@ -13,14 +13,24 @@ export OPENROUTER_API_KEY=sk-or-...
 
 The server binds to `127.0.0.1:8080` only — it is a single-user tool with no authentication.
 
-## 1. Seed the profile (once)
+## 1. Build the profile
+
+Either create one and edit it a piece at a time, or import a document wholesale.
 
 ```bash
+# Brings a profile into existence - no document needed.
+curl -X PUT localhost:8080/api/profile/details -H 'Content-Type: application/json' \
+  -d '{"fullName":"Rafal Jankowski","headline":"Backend Engineer"}'
+```
+
+```bash
+# Or seed it in bulk. A full replace: reassigns every id, so stored CVs and analyses read as stale.
 curl -X POST localhost:8080/api/profile/import \
   -H 'Content-Type: application/json' --data @docs/sample-profile.json
 ```
 
-Rejects with HTTP 400 listing any skill name the catalog does not know. Add missing ones first:
+Import rejects with HTTP 400 listing any skill name the catalog does not know. Add missing ones
+first:
 
 ```bash
 curl -X POST localhost:8080/api/catalog/skills -H 'Content-Type: application/json' \
@@ -28,6 +38,47 @@ curl -X POST localhost:8080/api/catalog/skills -H 'Content-Type: application/jso
 ```
 
 See `docs/profile-format.md` for the document format.
+
+### Per-entity editing
+
+Every collection has the same four operations. `{coll}` is one of `links`, `skills`, `experiences`,
+`education` or `languages`.
+
+| Method | Path | |
+|---|---|---|
+| `POST` | `/api/profile/{coll}` | 201 |
+| `PUT` | `/api/profile/{coll}/{id}` | full-entity body, not a patch |
+| `DELETE` | `/api/profile/{coll}/{id}` | |
+| `PUT` | `/api/profile/{coll}/order` | `{"ids":[...]}`, must name every id exactly once |
+
+Bullets hang off a role but are addressed on their own, so their ids survive edits to the role:
+
+```
+POST   /api/profile/experiences/{experienceId}/bullets
+PUT    /api/profile/experiences/{experienceId}/bullets/order
+PUT    /api/profile/bullets/{id}
+DELETE /api/profile/bullets/{id}
+```
+
+Writes name skills by **catalog id**; only the import document uses names and aliases. Every
+mutation answers with the whole `CandidateProfile`, so there is nothing to reassemble client-side.
+
+Failure shapes, all RFC 7807 `ProblemDetail`:
+
+| Status | When | Extensions |
+|---|---|---|
+| 400 | blank required field | `fieldErrors` |
+| 400 | import naming an unknown skill | `unresolvedSkills`, `undeclaredBulletSkills` |
+| 404 | unknown id | |
+| 409 | skill already held, language already listed, role ending before it starts, partial reorder | |
+| 409 | deleting a skill that bullets still cite | `blockingBullets` |
+
+### Staleness
+
+`CandidateProfile.revision` counts writes to the profile. An analysis and a generated document each
+record the `profileRevision` they were produced from; when it trails the current one, the output has
+been overtaken by an edit. It is not wrong — the stored HTML was true when written — but a gap
+report recommending a skill you have since added is worth flagging, and the UI does.
 
 ## 2. Paste an offer
 

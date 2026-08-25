@@ -10,6 +10,7 @@ import { ApiError } from '@/api/http'
 import { keys } from '@/api/keys'
 import type { DocumentType } from '@/api/types'
 import { ApiErrorAlert } from '@/components/ApiErrorAlert'
+import { StaleProfileNotice } from '@/components/StaleProfileNotice'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -113,6 +114,15 @@ function DocumentPanel({ type, title }: { type: DocumentType; title: string }) {
           </div>
         ) : (
           <>
+            <StaleProfileNotice
+              producedAt={doc.profileRevision}
+              what="document"
+              action={{
+                label: 'Regenerate',
+                onClick: () => generate.mutate(),
+                disabled: generate.isPending,
+              }}
+            />
             <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
               <Badge variant="secondary">{doc.language}</Badge>
               <span>Generated {formatDateTime(doc.createdAt)}</span>

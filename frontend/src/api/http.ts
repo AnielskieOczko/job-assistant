@@ -58,6 +58,27 @@ export class ApiError extends Error {
   get undeclaredBulletSkills(): string[] {
     return this.strings('undeclaredBulletSkills')
   }
+
+  /** 409 from deleting a profile skill: the bullets still citing it, so the UI can name them. */
+  get blockingBullets(): { id: number; text: string }[] {
+    const value = this.problem?.['blockingBullets']
+    if (!Array.isArray(value)) return []
+    return value.filter(
+      (v): v is { id: number; text: string } =>
+        typeof v === 'object' && v !== null && typeof (v as { text?: unknown }).text === 'string',
+    )
+  }
+
+  /** 400 from a per-entity edit: field name to message, for inline form errors. */
+  get fieldErrors(): Record<string, string> {
+    const value = this.problem?.['fieldErrors']
+    if (typeof value !== 'object' || value === null) return {}
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).filter(
+        (entry): entry is [string, string] => typeof entry[1] === 'string',
+      ),
+    )
+  }
 }
 
 async function send(path: string, init?: RequestInit): Promise<unknown> {

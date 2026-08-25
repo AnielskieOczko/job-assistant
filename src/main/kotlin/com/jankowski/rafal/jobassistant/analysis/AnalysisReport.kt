@@ -63,6 +63,12 @@ data class AnalysisReport(
     val learningPlan: List<LearningPlanItem>,
     val createdAt: Instant,
     val completedAt: Instant?,
+    /**
+     * Profile revision this analysis was computed from. When it trails the profile's current
+     * revision the findings have been overtaken by an edit - a gap report telling you to learn
+     * something you have since added is worse than no report at all.
+     */
+    val profileRevision: Long? = null,
 ) {
     val mustHaves: List<RequirementFinding> get() = requirements.filter { it.importance == Importance.MUST_HAVE }
     val niceToHaves: List<RequirementFinding> get() = requirements.filter { it.importance == Importance.NICE_TO_HAVE }

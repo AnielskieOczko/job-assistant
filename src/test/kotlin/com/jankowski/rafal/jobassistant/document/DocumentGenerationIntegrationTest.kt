@@ -128,6 +128,8 @@ class DocumentGenerationIntegrationTest(
         assertTrue(document.html.contains("Rafal Jankowski"))
         assertTrue(document.html.contains("Built payment services in Kotlin."))
         assertTrue(document.html.contains("Kotlin"))
+        // The stored HTML stays true, but the profile can move on underneath it.
+        assertEquals(profiles.revision(), document.profileRevision)
     }
 
     @Test

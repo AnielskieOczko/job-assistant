@@ -90,7 +90,7 @@ Feature slices under the base package, each a Spring Modulith module. Anything i
 | Module | Owns |
 |---|---|
 | `catalog` | Canonical skills, aliases, IMPLIES/RELATED relations, unmatched-term review queue |
-| `profile` | Candidate profile: skills, experience + bullets, education, languages |
+| `profile` | Candidate profile: details, links, skills, experience + bullets, education, languages |
 | `offer` | Job offers (raw text + content hash), application lifecycle |
 | `analysis` | Async analysis job, extraction, deterministic diff, narrative, learning plan |
 | `document` | CV and cover letter generation, templates, PDF rendering, invariant enforcement |
@@ -183,6 +183,10 @@ prompt, response, token usage and latency.
   Kotlin, change that file in the same commit. `ApiContractTest` pins the JSON key set of every
   DTO that crosses the wire and fails the fast tier if you forget. Watch for Kotlin's `is` prefix
   surviving serialization: `WorkExperience.isCurrent` is emitted as `isCurrent`, not `current`.
+- HTTP-level assertions (status codes, `ProblemDetail` extension names) go in a test that builds
+  `MockMvc` from the `WebApplicationContext` — Boot 4 moved the MockMvc autoconfiguration out of
+  `spring-boot-test-autoconfigure`, so `@AutoConfigureMockMvc` is not on the classpath.
+  `ProfileCrudHttpTest` is the pattern.
 - The eval tier scores extraction against labelled fixture pairs in `src/test/resources/eval/offers`
   (`NN-name.txt` plus its expected `NN-name.json`).
 
@@ -221,13 +225,36 @@ reject every honest CV. A rejected generation stores nothing and surfaces as HTT
 negative ("I have not used Kubernetes"). The invariant has no notion of negation, so such a letter
 is rejected outright — the prompt and the guard have to agree.
 
-## Profile import
+## Profile editing
 
-`POST /api/profile/import` is a **full replace**, not a merge — the document is the profile. It
-rejects with HTTP 400 listing every skill name the catalog cannot resolve rather than dropping it
-silently (a dropped skill would vanish from every future gap report), and it rejects a bullet
-tagged with a skill the profile does not declare — otherwise that skill could reach a CV with
-nothing behind it.
+Two write paths, one set of rules. `POST /api/profile/import` is a **full replace** — the document
+is the profile — and everything else is per-entity CRUD under `/api/profile/{collection}`, with
+`PUT /api/profile/details` doubling as the way a profile comes into existence at all.
+
+Both reject a skill the catalog cannot resolve rather than dropping it silently (a dropped skill
+would vanish from every future gap report), and both reject a bullet tagged with a skill the profile
+does not declare — otherwise that skill could reach a CV with nothing behind it. The shared part of
+that lives in `ProfileInvariants`; import expresses it over names because that is what its rejection
+message must name, CRUD over ids. Deleting a declared skill is the same rule from the other side and
+returns 409 with `blockingBullets`; there is **no** FK between `profile_skill` and
+`experience_bullet_skill`, so nothing else enforces it.
+
+**`ExperienceBullet.id` must survive edits that are not its own.** `CvTailor` selects bullets by id
+and `CvSelection.from` drops ids the profile lacks — that is the anti-fabrication mechanism. Spring
+Data JDBC deletes and reinserts a whole `@MappedCollection` on every save of its owner, so
+`experience_bullet` is its own aggregate root rather than a collection on `WorkExperienceRow`. Do
+not move it back.
+
+Updates are `PUT` with full-entity bodies, never `PATCH`: `endedOn = null` is what makes a role
+current, and Kotlin data classes cannot tell an absent field from an explicit null without wrapping
+every property. Writes take `skillId`, not a name — the picker resolved it already.
+
+`ProfileService` stays `current() / require() / replace() / revision()`. **CRUD is internal**; no
+other module has any business writing a single skill or bullet. `revision()` is a counter bumped by
+every profile write, stamped onto `analysis` and `generated_document` so output an edit has overtaken
+can be shown as stale rather than current.
+
+The reasoning behind all of this is in `docs/adr/0001-per-entity-profile-crud.md`.
 
 ## Adding a migration
 

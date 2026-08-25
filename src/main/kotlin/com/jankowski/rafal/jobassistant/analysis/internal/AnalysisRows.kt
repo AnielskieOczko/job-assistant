@@ -17,6 +17,8 @@ internal data class AnalysisRow(
     val createdAt: Instant = Instant.now(),
     val startedAt: Instant? = null,
     val completedAt: Instant? = null,
+    /** Profile revision this run was computed from - null for runs that predate the counter. */
+    val profileRevision: Long? = null,
 )
 
 /**
