@@ -5,6 +5,7 @@ import { PROFICIENCIES, SKILL_CATEGORIES, SKILL_CATEGORY_LABELS } from '@/api/ty
 import type { CandidateProfile, Proficiency, ProfileSkill, SkillCategory } from '@/api/types'
 import { ApiErrorAlert } from '@/components/ApiErrorAlert'
 import { SkillCombobox } from '@/components/SkillCombobox'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -16,9 +17,30 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { useSkillNames } from '@/hooks/useSkillNames'
+import { cn } from '@/lib/utils'
 import { ConfirmDelete } from './ConfirmDelete'
 import { RowActions } from './RowActions'
 import { swappedIds, useProfileEdit } from './mutations'
+
+/**
+ * Mastery as ink, not hue: this app is deliberately near-monochrome, so proficiency reads as
+ * increasing weight - faint outline at Beginner, solid fill only at Expert - rather than a
+ * traffic-light palette that would be the only color anywhere outside error states.
+ */
+const PROFICIENCY_STYLES: Record<Proficiency, string> = {
+  BEGINNER: 'border-foreground/15 text-foreground/50',
+  WORKING: 'border-foreground/25 text-foreground/70',
+  PROFICIENT: 'border-foreground/40 text-foreground/90',
+  EXPERT: 'border-transparent bg-foreground text-background',
+}
+
+function ProficiencyBadge({ level }: { level: Proficiency }) {
+  return (
+    <Badge variant="outline" className={cn('capitalize', PROFICIENCY_STYLES[level])}>
+      {level.toLowerCase()}
+    </Badge>
+  )
+}
 
 export function SkillsCard({ profileId, profile }: { profileId: number; profile: CandidateProfile }) {
   const [dialog, setDialog] = useState<ProfileSkill | 'new' | null>(null)
@@ -65,15 +87,19 @@ export function SkillsCard({ profileId, profile }: { profileId: number; profile:
                   {group.label}
                 </h4>
                 <ul className="divide-y">
-                  {group.items.map((skill, index) => (
-                    <li key={skill.id} className="flex items-center justify-between gap-3 py-1.5">
-                      <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
-                        <span className="truncate text-sm font-medium">{names.nameOf(skill.skillId)}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {skill.proficiency.toLowerCase()}
-                          {skill.yearsOfExperience !== null ? ` · ${skill.yearsOfExperience}y` : ''}
-                          {skill.lastUsedYear !== null ? ` · last used ${skill.lastUsedYear}` : ''}
-                        </span>
+                  {group.items.map((skill, index) => {
+                    const meta = [
+                      skill.yearsOfExperience !== null ? `${skill.yearsOfExperience}y experience` : null,
+                      skill.lastUsedYear !== null ? `last used ${skill.lastUsedYear}` : null,
+                    ].filter(Boolean).join(' · ')
+                    return (
+                    <li key={skill.id} className="flex items-center justify-between gap-3 py-2">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="truncate text-sm font-medium">{names.nameOf(skill.skillId)}</span>
+                          <ProficiencyBadge level={skill.proficiency} />
+                        </div>
+                        {meta ? <p className="mt-0.5 text-xs text-muted-foreground">{meta}</p> : null}
                       </div>
                       <RowActions
                         label={names.nameOf(skill.skillId)}
@@ -92,7 +118,8 @@ export function SkillsCard({ profileId, profile }: { profileId: number; profile:
                         onDelete={() => setDeleting(skill)}
                       />
                     </li>
-                  ))}
+                    )
+                  })}
                 </ul>
               </div>
             ))}
