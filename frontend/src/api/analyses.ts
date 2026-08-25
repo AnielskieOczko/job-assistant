@@ -1,14 +1,15 @@
-import { request, requestOrNull } from './http'
+import { query, request, requestOrNull } from './http'
 import type { AggregateGapReport, AnalysisReport, StartedAnalysis } from './types'
 
-/** 202 Accepted. Can also 409 when no profile has been imported, or 404 for an unknown offer. */
-export const startAnalysis = (offerId: number) =>
-  request<StartedAnalysis>(`/api/offers/${offerId}/analyses`, { method: 'POST' })
+/** 202 Accepted. Can also 409 when the profile has no details yet, or 404 for an unknown offer. */
+export const startAnalysis = (offerId: number, profileId: number) =>
+  request<StartedAnalysis>(`/api/offers/${offerId}/analyses${query({ profileId })}`, { method: 'POST' })
 
 export const getAnalysis = (id: number) => request<AnalysisReport>(`/api/analyses/${id}`)
 
-/** 404 here means "never analysed", which is an empty state rather than an error. */
-export const getLatestAnalysis = (offerId: number) =>
-  requestOrNull<AnalysisReport>(`/api/offers/${offerId}/analyses/latest`)
+/** 404 here means "never analysed against this profile", which is an empty state rather than an error. */
+export const getLatestAnalysis = (offerId: number, profileId: number) =>
+  requestOrNull<AnalysisReport>(`/api/offers/${offerId}/analyses/latest${query({ profileId })}`)
 
-export const getAggregateGaps = () => request<AggregateGapReport>('/api/analyses/aggregate')
+export const getAggregateGaps = (profileId: number) =>
+  request<AggregateGapReport>(`/api/analyses/aggregate${query({ profileId })}`)

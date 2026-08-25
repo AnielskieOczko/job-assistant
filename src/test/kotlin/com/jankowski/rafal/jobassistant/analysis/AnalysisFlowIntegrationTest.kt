@@ -13,6 +13,7 @@ import com.jankowski.rafal.jobassistant.profile.ProfileDetails
 import com.jankowski.rafal.jobassistant.profile.ProfileImport
 import com.jankowski.rafal.jobassistant.profile.ProfileService
 import com.jankowski.rafal.jobassistant.profile.SkillImport
+import com.jankowski.rafal.jobassistant.profile.internal.ProfileManagementService
 import com.jankowski.rafal.jobassistant.support.IntegrationTest
 import com.jankowski.rafal.jobassistant.support.ScriptedModels
 import org.awaitility.Awaitility.await
@@ -33,25 +34,28 @@ import kotlin.test.assertTrue
  * narrative, persistence and the async state machine. Only the HTTP call to a provider is faked.
  */
 @IntegrationTest
-class AnalysisFlowIntegrationTest(
+internal class AnalysisFlowIntegrationTest(
     @Autowired private val analyses: AnalysisService,
     @Autowired private val offers: OfferService,
     @Autowired private val profiles: ProfileService,
+    @Autowired private val management: ProfileManagementService,
     @Autowired private val catalog: SkillCatalog,
     @Autowired private val models: ScriptedModels,
     @Autowired private val jdbc: JdbcClient,
 ) {
 
+    private var profileId: Long = 0
+
     @BeforeEach
     fun setUp() {
         models.resetAll()
         jdbc.sql("delete from job_offer").update()
-        listOf("work_experience", "profile_skill", "profile_link", "education", "language_skill")
-            .forEach { jdbc.sql("delete from $it").update() }
-        jdbc.sql("delete from profile_details").update()
+        jdbc.sql("delete from profile").update()
         jdbc.sql("delete from unmatched_term").update()
 
+        profileId = management.create("Test").id
         profiles.replace(
+            profileId,
             ProfileImport(
                 details = ProfileDetails(fullName = "Rafal Jankowski", headline = "Backend Engineer"),
                 skills = listOf(
@@ -74,7 +78,7 @@ class AnalysisFlowIntegrationTest(
                     LanguageImport("Polish", LanguageLevel.NATIVE),
                     LanguageImport("English", LanguageLevel.C1),
                 ),
-            )
+            ),
         )
     }
 
@@ -120,7 +124,7 @@ class AnalysisFlowIntegrationTest(
 
     private fun runAnalysis(text: String = offerText): AnalysisReport {
         val offer = offers.paste(text).offer
-        val analysisId = analyses.start(offer.id)
+        val analysisId = analyses.start(offer.id, profileId)
 
         await().atMost(Duration.ofSeconds(20)).until {
             analyses.findReport(analysisId)?.state?.isTerminal == true
@@ -140,6 +144,15 @@ class AnalysisFlowIntegrationTest(
         assertNotNull(report.completedAt)
     }
 
+    @Test
+    fun `a completed analysis records which profile it ran against`() {
+        scriptHappyPath()
+
+        val report = runAnalysis()
+
+        assertEquals(profileId, report.profileId)
+    }
+
     /**
      * A gap report is only meaningful next to the profile it was computed from. Without the stamp
      * the UI cannot tell a current report from one that tells you to learn something you have
@@ -151,7 +164,7 @@ class AnalysisFlowIntegrationTest(
 
         val report = runAnalysis()
 
-        assertEquals(profiles.revision(), report.profileRevision)
+        assertEquals(profiles.revision(profileId), report.profileRevision)
     }
 
     @Test
@@ -291,24 +304,24 @@ class AnalysisFlowIntegrationTest(
     }
 
     @Test
-    fun `analysing without a profile fails fast instead of queueing doomed work`() {
-        jdbc.sql("delete from profile_details").update()
+    fun `analysing against a profile with no details fails fast instead of queueing doomed work`() {
+        val empty = management.create("Empty").id
         val offer = offers.paste(offerText).offer
 
-        assertThrows<IllegalStateException> { analyses.start(offer.id) }
+        assertThrows<IllegalStateException> { analyses.start(offer.id, empty) }
     }
 
     @Test
     fun `analysing an unknown offer fails fast`() {
-        assertThrows<NoSuchElementException> { analyses.start(999_999) }
+        assertThrows<NoSuchElementException> { analyses.start(999_999, profileId) }
     }
 
     @Test
-    fun `latestForOffer returns the most recent run`() {
+    fun `latestForOffer returns the most recent run for that profile`() {
         scriptHappyPath()
         val report = runAnalysis()
 
-        assertEquals(report.id, assertNotNull(analyses.latestForOffer(report.offerId)).id)
+        assertEquals(report.id, assertNotNull(analyses.latestForOffer(report.offerId, profileId)).id)
     }
 
     @Test
@@ -318,7 +331,7 @@ class AnalysisFlowIntegrationTest(
         scriptHappyPath()
         runAnalysis("A different posting.\nWe need Kubernetes and Kotlin.")
 
-        val aggregate = analyses.aggregateGaps()
+        val aggregate = analyses.aggregateGaps(profileId)
 
         assertEquals(2, aggregate.analysedOffers)
         val kubernetes = aggregate.entries.first()
@@ -338,12 +351,12 @@ class AnalysisFlowIntegrationTest(
         val first = runAnalysis()
 
         scriptHappyPath()
-        val second = analyses.start(first.offerId)
+        val second = analyses.start(first.offerId, profileId)
         await().atMost(Duration.ofSeconds(20)).until {
             analyses.findReport(second)?.state?.isTerminal == true
         }
 
-        val aggregate = analyses.aggregateGaps()
+        val aggregate = analyses.aggregateGaps(profileId)
         assertEquals(1, aggregate.analysedOffers)
         assertEquals(1, aggregate.entries.single { it.skillName == "Kubernetes" }.demandCount)
     }

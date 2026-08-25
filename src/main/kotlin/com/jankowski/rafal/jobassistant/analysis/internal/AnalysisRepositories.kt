@@ -5,15 +5,18 @@ import org.springframework.data.repository.CrudRepository
 
 internal interface AnalysisRepository : CrudRepository<AnalysisRow, Long> {
 
-    @Query("select * from analysis where job_offer_id = :offerId order by created_at desc limit 1")
-    fun findLatestForOffer(offerId: Long): AnalysisRow?
+    @Query(
+        "select * from analysis where job_offer_id = :offerId and profile_id = :profileId " +
+            "order by created_at desc limit 1"
+    )
+    fun findLatestForOfferAndProfile(offerId: Long, profileId: Long): AnalysisRow?
 
     @Query("select * from analysis where state not in ('DONE', 'FAILED')")
     fun findUnfinished(): List<AnalysisRow>
 
     /** Distinct offers with a completed analysis - re-running one offer must not count twice. */
-    @Query("select count(distinct job_offer_id) from analysis where state = 'DONE'")
-    fun countAnalysedOffers(): Int
+    @Query("select count(distinct job_offer_id) from analysis where state = 'DONE' and profile_id = :profileId")
+    fun countAnalysedOffers(profileId: Long): Int
 }
 
 internal interface OfferRequirementRepository : CrudRepository<OfferRequirementRow, Long> {

@@ -5,13 +5,15 @@ export const keys = {
   offers: ['offers'] as const,
   offer: (id: number) => ['offer', id] as const,
 
-  latestAnalysis: (offerId: number) => ['analysis', 'latest', offerId] as const,
+  latestAnalysis: (offerId: number, profileId: number) => ['analysis', 'latest', offerId, profileId] as const,
   analysis: (id: number | null) => ['analysis', id] as const,
-  aggregate: ['analysis', 'aggregate'] as const,
+  aggregate: (profileId: number) => ['analysis', 'aggregate', profileId] as const,
 
-  latestDocument: (offerId: number, type: DocumentType) => ['document', offerId, type] as const,
+  latestDocument: (offerId: number, type: DocumentType, profileId: number) =>
+    ['document', offerId, type, profileId] as const,
 
-  profile: ['profile'] as const,
+  profiles: ['profiles'] as const,
+  profile: (profileId: number) => ['profile', profileId] as const,
 
   skills: ['catalog', 'skills'] as const,
   unmatched: ['catalog', 'unmatched'] as const,

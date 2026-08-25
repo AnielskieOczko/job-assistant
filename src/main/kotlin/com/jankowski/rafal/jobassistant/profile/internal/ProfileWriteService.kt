@@ -2,9 +2,7 @@ package com.jankowski.rafal.jobassistant.profile.internal
 
 import com.jankowski.rafal.jobassistant.catalog.SkillCatalog
 import com.jankowski.rafal.jobassistant.profile.CandidateProfile
-import com.jankowski.rafal.jobassistant.profile.ProfileDetails
 import com.jankowski.rafal.jobassistant.profile.ProfileService
-import org.springframework.data.repository.CrudRepository
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -33,17 +31,18 @@ internal class ProfileWriteService(
     // ---------------------------------------------------------------- details
 
     /**
-     * Creates the profile if there is none. This is the only endpoint that can bring a profile into
-     * existence without a document, which is what stops a fresh database from forcing the user to
-     * hand-write JSON before they can do anything at all.
+     * Creates the details for an already-existing profile. This is the only endpoint that can bring
+     * a profile's contents into existence without a document - the profile itself (the `profile` root
+     * row) must already exist, via `POST /api/profiles`.
      */
     @Transactional
-    fun putDetails(request: DetailsRequest): CandidateProfile {
+    fun putDetails(profileId: Long, request: DetailsRequest): CandidateProfile {
+        requireProfileExists(profileId)
         jdbc.sql(
             """
-            insert into profile_details (id, full_name, headline, email, phone, location, summary)
-            values (1, :fullName, :headline, :email, :phone, :location, :summary)
-            on conflict (id) do update set
+            insert into profile_details (profile_id, full_name, headline, email, phone, location, summary)
+            values (:profileId, :fullName, :headline, :email, :phone, :location, :summary)
+            on conflict (profile_id) do update set
                 full_name = excluded.full_name,
                 headline  = excluded.headline,
                 email     = excluded.email,
@@ -52,6 +51,7 @@ internal class ProfileWriteService(
                 summary   = excluded.summary
             """
         )
+            .param("profileId", profileId)
             .param("fullName", request.fullName)
             .param("headline", request.headline)
             .param("email", request.email)
@@ -59,57 +59,67 @@ internal class ProfileWriteService(
             .param("location", request.location)
             .param("summary", request.summary)
             .update()
-        return commit()
+        return commit(profileId)
     }
 
     // ------------------------------------------------------------------ links
 
     @Transactional
-    fun addLink(request: LinkRequest): CandidateProfile {
-        links.save(ProfileLinkRow(label = request.label, url = request.url, displayOrder = nextOrder("profile_link")))
-        return commit()
+    fun addLink(profileId: Long, request: LinkRequest): CandidateProfile {
+        requireProfileExists(profileId)
+        links.save(
+            ProfileLinkRow(
+                profileId = profileId,
+                label = request.label,
+                url = request.url,
+                displayOrder = nextOrder("profile_link", profileId),
+            )
+        )
+        return commit(profileId)
     }
 
     @Transactional
-    fun updateLink(id: Long, request: LinkRequest): CandidateProfile {
-        val row = links.findById(id).orElseThrow { unknown("link", id) }
+    fun updateLink(profileId: Long, id: Long, request: LinkRequest): CandidateProfile {
+        val row = links.findByIdAndProfileId(id, profileId) ?: throw unknown("link", id)
         links.save(row.copy(label = request.label, url = request.url))
-        return commit()
+        return commit(profileId)
     }
 
     @Transactional
-    fun deleteLink(id: Long): CandidateProfile = deleteFrom(links, id, "link")
+    fun deleteLink(profileId: Long, id: Long): CandidateProfile = deleteLinkRow(profileId, id)
 
     @Transactional
-    fun reorderLinks(ids: List<Long>): CandidateProfile =
-        reorder("profile_link", ids, links.findAllOrdered().map { it.id!! })
+    fun reorderLinks(profileId: Long, ids: List<Long>): CandidateProfile =
+        reorder(profileId, "profile_link", ids, links.findAllOrdered(profileId).map { it.id!! })
 
     // ----------------------------------------------------------------- skills
 
     @Transactional
-    fun addSkill(request: SkillRequest): CandidateProfile {
+    fun addSkill(profileId: Long, request: SkillRequest): CandidateProfile {
+        requireProfileExists(profileId)
         val skill = catalog.findById(request.skillId)
             ?: throw UnknownProfileEntityException(
                 "No canonical skill ${request.skillId}. Add it to the catalog first."
             )
-        skills.findByCanonicalSkillId(skill.id)?.let {
+        skills.findByCanonicalSkillId(profileId, skill.id)?.let {
             throw ProfileConflictException("You already hold ${skill.name}. Edit that entry instead of adding it again.")
         }
         skills.save(
             ProfileSkillRow(
+                profileId = profileId,
                 canonicalSkillId = skill.id,
                 proficiency = request.proficiency.name,
                 yearsOfExperience = request.yearsOfExperience,
                 lastUsedYear = request.lastUsedYear,
-                displayOrder = nextOrder("profile_skill"),
+                displayOrder = nextOrder("profile_skill", profileId),
             )
         )
-        return commit()
+        return commit(profileId)
     }
 
     @Transactional
-    fun updateSkill(id: Long, request: SkillUpdateRequest): CandidateProfile {
-        val row = skills.findById(id).orElseThrow { unknown("skill", id) }
+    fun updateSkill(profileId: Long, id: Long, request: SkillUpdateRequest): CandidateProfile {
+        val row = skills.findByIdAndProfileId(id, profileId) ?: throw unknown("skill", id)
         skills.save(
             row.copy(
                 proficiency = request.proficiency.name,
@@ -117,7 +127,7 @@ internal class ProfileWriteService(
                 lastUsedYear = request.lastUsedYear,
             )
         )
-        return commit()
+        return commit(profileId)
     }
 
     /**
@@ -128,9 +138,9 @@ internal class ProfileWriteService(
      * the work behind it. Naming the bullets lets the user decide what to do with them.
      */
     @Transactional
-    fun deleteSkill(id: Long): CandidateProfile {
-        val row = skills.findById(id).orElseThrow { unknown("skill", id) }
-        val blocking = bullets.findTaggedWith(row.canonicalSkillId)
+    fun deleteSkill(profileId: Long, id: Long): CandidateProfile {
+        val row = skills.findByIdAndProfileId(id, profileId) ?: throw unknown("skill", id)
+        val blocking = bullets.findTaggedWithForProfile(row.canonicalSkillId, profileId)
         if (blocking.isNotEmpty()) {
             val name = catalog.findById(row.canonicalSkillId)?.name ?: "skill ${row.canonicalSkillId}"
             throw ProfileConflictException(
@@ -139,30 +149,32 @@ internal class ProfileWriteService(
             )
         }
         skills.delete(row)
-        return commit()
+        return commit(profileId)
     }
 
     @Transactional
-    fun reorderSkills(ids: List<Long>): CandidateProfile =
-        reorder("profile_skill", ids, skills.findAllOrdered().map { it.id!! })
+    fun reorderSkills(profileId: Long, ids: List<Long>): CandidateProfile =
+        reorder(profileId, "profile_skill", ids, skills.findAllOrdered(profileId).map { it.id!! })
 
     // ------------------------------------------------------------ experiences
 
     @Transactional
-    fun addExperience(request: ExperienceRequest): CandidateProfile {
+    fun addExperience(profileId: Long, request: ExperienceRequest): CandidateProfile {
+        requireProfileExists(profileId)
         requireDatesOrdered(request)
         experiences.save(
             WorkExperienceRow(
+                profileId = profileId,
                 company = request.company,
                 roleTitle = request.roleTitle,
                 location = request.location,
                 startedOn = request.startedOn,
                 endedOn = request.endedOn,
                 summary = request.summary,
-                displayOrder = nextOrder("work_experience"),
+                displayOrder = nextOrder("work_experience", profileId),
             )
         )
-        return commit()
+        return commit(profileId)
     }
 
     /**
@@ -171,9 +183,9 @@ internal class ProfileWriteService(
      * a CV generated last week would stop matching the profile because a job title was corrected.
      */
     @Transactional
-    fun updateExperience(id: Long, request: ExperienceRequest): CandidateProfile {
+    fun updateExperience(profileId: Long, id: Long, request: ExperienceRequest): CandidateProfile {
         requireDatesOrdered(request)
-        val row = experiences.findById(id).orElseThrow { unknown("experience", id) }
+        val row = experiences.findByIdAndProfileId(id, profileId) ?: throw unknown("experience", id)
         experiences.save(
             row.copy(
                 company = request.company,
@@ -184,23 +196,27 @@ internal class ProfileWriteService(
                 summary = request.summary,
             )
         )
-        return commit()
+        return commit(profileId)
     }
 
     /** Bullets and their tags cascade from the `work_experience` row. */
     @Transactional
-    fun deleteExperience(id: Long): CandidateProfile = deleteFrom(experiences, id, "experience")
+    fun deleteExperience(profileId: Long, id: Long): CandidateProfile {
+        val row = experiences.findByIdAndProfileId(id, profileId) ?: throw unknown("experience", id)
+        experiences.delete(row)
+        return commit(profileId)
+    }
 
     @Transactional
-    fun reorderExperiences(ids: List<Long>): CandidateProfile =
-        reorder("work_experience", ids, experiences.findAllOrdered().map { it.id!! })
+    fun reorderExperiences(profileId: Long, ids: List<Long>): CandidateProfile =
+        reorder(profileId, "work_experience", ids, experiences.findAllOrdered(profileId).map { it.id!! })
 
     // ---------------------------------------------------------------- bullets
 
     @Transactional
-    fun addBullet(experienceId: Long, request: BulletRequest): CandidateProfile {
-        if (!experiences.existsById(experienceId)) throw unknown("experience", experienceId)
-        requireDeclared(request.skillIds)
+    fun addBullet(profileId: Long, experienceId: Long, request: BulletRequest): CandidateProfile {
+        experiences.findByIdAndProfileId(experienceId, profileId) ?: throw unknown("experience", experienceId)
+        requireDeclared(profileId, request.skillIds)
         bullets.save(
             ExperienceBulletRow(
                 workExperienceId = experienceId,
@@ -209,51 +225,57 @@ internal class ProfileWriteService(
                 skills = request.skillIds.mapTo(mutableSetOf()) { ExperienceBulletSkillRow(it) },
             )
         )
-        return commit()
+        return commit(profileId)
     }
 
     @Transactional
-    fun updateBullet(id: Long, request: BulletRequest): CandidateProfile {
-        val row = bullets.findById(id).orElseThrow { unknown("bullet", id) }
-        requireDeclared(request.skillIds)
+    fun updateBullet(profileId: Long, id: Long, request: BulletRequest): CandidateProfile {
+        val row = bullets.findByIdForProfile(id, profileId) ?: throw unknown("bullet", id)
+        requireDeclared(profileId, request.skillIds)
         bullets.save(
             row.copy(
                 text = request.text,
                 skills = request.skillIds.mapTo(mutableSetOf()) { ExperienceBulletSkillRow(it) },
             )
         )
-        return commit()
+        return commit(profileId)
     }
 
     @Transactional
-    fun deleteBullet(id: Long): CandidateProfile = deleteFrom(bullets, id, "bullet")
+    fun deleteBullet(profileId: Long, id: Long): CandidateProfile {
+        val row = bullets.findByIdForProfile(id, profileId) ?: throw unknown("bullet", id)
+        bullets.delete(row)
+        return commit(profileId)
+    }
 
     @Transactional
-    fun reorderBullets(experienceId: Long, ids: List<Long>): CandidateProfile {
-        if (!experiences.existsById(experienceId)) throw unknown("experience", experienceId)
-        return reorder("experience_bullet", ids, bullets.findByExperience(experienceId).map { it.id!! })
+    fun reorderBullets(profileId: Long, experienceId: Long, ids: List<Long>): CandidateProfile {
+        experiences.findByIdAndProfileId(experienceId, profileId) ?: throw unknown("experience", experienceId)
+        return reorder(profileId, "experience_bullet", ids, bullets.findByExperience(experienceId).map { it.id!! })
     }
 
     // -------------------------------------------------------------- education
 
     @Transactional
-    fun addEducation(request: EducationRequest): CandidateProfile {
+    fun addEducation(profileId: Long, request: EducationRequest): CandidateProfile {
+        requireProfileExists(profileId)
         education.save(
             EducationRow(
+                profileId = profileId,
                 institution = request.institution,
                 degree = request.degree,
                 fieldOfStudy = request.fieldOfStudy,
                 startedOn = request.startedOn,
                 endedOn = request.endedOn,
-                displayOrder = nextOrder("education"),
+                displayOrder = nextOrder("education", profileId),
             )
         )
-        return commit()
+        return commit(profileId)
     }
 
     @Transactional
-    fun updateEducation(id: Long, request: EducationRequest): CandidateProfile {
-        val row = education.findById(id).orElseThrow { unknown("education entry", id) }
+    fun updateEducation(profileId: Long, id: Long, request: EducationRequest): CandidateProfile {
+        val row = education.findByIdAndProfileId(id, profileId) ?: throw unknown("education entry", id)
         education.save(
             row.copy(
                 institution = request.institution,
@@ -263,60 +285,76 @@ internal class ProfileWriteService(
                 endedOn = request.endedOn,
             )
         )
-        return commit()
+        return commit(profileId)
     }
 
     @Transactional
-    fun deleteEducation(id: Long): CandidateProfile = deleteFrom(education, id, "education entry")
+    fun deleteEducation(profileId: Long, id: Long): CandidateProfile {
+        val row = education.findByIdAndProfileId(id, profileId) ?: throw unknown("education entry", id)
+        education.delete(row)
+        return commit(profileId)
+    }
 
     @Transactional
-    fun reorderEducation(ids: List<Long>): CandidateProfile =
-        reorder("education", ids, education.findAllOrdered().map { it.id!! })
+    fun reorderEducation(profileId: Long, ids: List<Long>): CandidateProfile =
+        reorder(profileId, "education", ids, education.findAllOrdered(profileId).map { it.id!! })
 
     // -------------------------------------------------------------- languages
 
     @Transactional
-    fun addLanguage(request: LanguageRequest): CandidateProfile {
-        languages.findByLanguageIgnoringCase(request.language)?.let {
+    fun addLanguage(profileId: Long, request: LanguageRequest): CandidateProfile {
+        requireProfileExists(profileId)
+        languages.findByLanguageIgnoringCase(profileId, request.language)?.let {
             throw ProfileConflictException(
                 "${it.language} is already on the profile. Edit that entry instead of adding it again."
             )
         }
         languages.save(
             LanguageSkillRow(
+                profileId = profileId,
                 language = request.language,
                 level = request.level.name,
-                displayOrder = nextOrder("language_skill"),
+                displayOrder = nextOrder("language_skill", profileId),
             )
         )
-        return commit()
+        return commit(profileId)
     }
 
     @Transactional
-    fun updateLanguage(id: Long, request: LanguageRequest): CandidateProfile {
-        val row = languages.findById(id).orElseThrow { unknown("language", id) }
-        languages.findByLanguageIgnoringCase(request.language)
+    fun updateLanguage(profileId: Long, id: Long, request: LanguageRequest): CandidateProfile {
+        val row = languages.findByIdAndProfileId(id, profileId) ?: throw unknown("language", id)
+        languages.findByLanguageIgnoringCase(profileId, request.language)
             ?.takeIf { it.id != id }
             ?.let {
                 throw ProfileConflictException("${it.language} is already on the profile.")
             }
         languages.save(row.copy(language = request.language, level = request.level.name))
-        return commit()
+        return commit(profileId)
     }
 
     @Transactional
-    fun deleteLanguage(id: Long): CandidateProfile = deleteFrom(languages, id, "language")
+    fun deleteLanguage(profileId: Long, id: Long): CandidateProfile {
+        val row = languages.findByIdAndProfileId(id, profileId) ?: throw unknown("language", id)
+        languages.delete(row)
+        return commit(profileId)
+    }
 
     @Transactional
-    fun reorderLanguages(ids: List<Long>): CandidateProfile =
-        reorder("language_skill", ids, languages.findAllOrdered().map { it.id!! })
+    fun reorderLanguages(profileId: Long, ids: List<Long>): CandidateProfile =
+        reorder(profileId, "language_skill", ids, languages.findAllOrdered(profileId).map { it.id!! })
 
     // --------------------------------------------------------------- internals
 
+    private fun deleteLinkRow(profileId: Long, id: Long): CandidateProfile {
+        val row = links.findByIdAndProfileId(id, profileId) ?: throw unknown("link", id)
+        links.delete(row)
+        return commit(profileId)
+    }
+
     /** Every bullet tag must name a skill the profile declares - see [ProfileInvariants]. */
-    private fun requireDeclared(skillIds: Set<Long>) {
+    private fun requireDeclared(profileId: Long, skillIds: Set<Long>) {
         if (skillIds.isEmpty()) return
-        val declared = skills.findAllOrdered().mapTo(mutableSetOf()) { it.canonicalSkillId }
+        val declared = skills.findAllOrdered(profileId).mapTo(mutableSetOf()) { it.canonicalSkillId }
         val undeclared = ProfileInvariants.undeclaredTags(declared, skillIds)
         if (undeclared.isNotEmpty()) {
             val names = catalog.findAllById(undeclared).map { it.name }.ifEmpty { undeclared.map { "#$it" } }
@@ -333,10 +371,13 @@ internal class ProfileWriteService(
         }
     }
 
-    private fun <T : Any> deleteFrom(repository: CrudRepository<T, Long>, id: Long, what: String): CandidateProfile {
-        val row = repository.findById(id).orElseThrow { unknown(what, id) }
-        repository.delete(row)
-        return commit()
+    private fun requireProfileExists(profileId: Long) {
+        val exists = jdbc.sql("select 1 from profile where id = :id")
+            .param("id", profileId)
+            .query(Int::class.java)
+            .optional()
+            .isPresent
+        if (!exists) throw UnknownProfileEntityException("No profile $profileId. POST /api/profiles first.")
     }
 
     /**
@@ -346,7 +387,7 @@ internal class ProfileWriteService(
      * The table name is interpolated, but only ever from the fixed literals above - the request
      * supplies ids, which are bound.
      */
-    private fun reorder(table: String, ids: List<Long>, current: List<Long>): CandidateProfile {
+    private fun reorder(profileId: Long, table: String, ids: List<Long>, current: List<Long>): CandidateProfile {
         if (ids.size != ids.toSet().size || ids.toSet() != current.toSet()) {
             throw ProfileConflictException(
                 "A reorder must list every id in the collection exactly once. " +
@@ -359,19 +400,29 @@ internal class ProfileWriteService(
                 .param("id", id)
                 .update()
         }
-        return commit()
+        return commit(profileId)
     }
 
-    /** New rows land at the end of whatever they are joining. */
-    private fun nextOrder(table: String, where: String = "true"): Int =
+    /** New rows land at the end of whatever they are joining, scoped to the profile. */
+    private fun nextOrder(table: String, profileId: Long): Int = nextOrder(table, "profile_id = $profileId")
+
+    /**
+     * New rows land at the end of whatever they are joining.
+     *
+     * The where-clause is interpolated, but only ever from the fixed literals and numeric ids above
+     * - never from request input - so there is no new injection surface.
+     */
+    private fun nextOrder(table: String, where: String): Int =
         jdbc.sql("select coalesce(max(display_order) + 1, 0) from $table where $where")
             .query(Int::class.java)
             .single()
 
     private fun unknown(what: String, id: Long) = UnknownProfileEntityException("No $what $id on this profile.")
 
-    private fun commit(): CandidateProfile {
-        jdbc.sql("update profile_details set revision = revision + 1 where id = 1").update()
-        return profiles.require()
+    private fun commit(profileId: Long): CandidateProfile {
+        jdbc.sql("update profile set revision = revision + 1 where id = :profileId")
+            .param("profileId", profileId)
+            .update()
+        return profiles.require(profileId)
     }
 }

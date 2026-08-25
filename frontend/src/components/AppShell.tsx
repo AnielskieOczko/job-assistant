@@ -8,6 +8,7 @@ import {
   UserRound,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { ProfileSwitcher } from '@/components/ProfileSwitcher'
 
 const NAV = [
   { to: '/offers', label: 'Offers', icon: FileStack },
@@ -24,6 +25,9 @@ export function AppShell() {
         <div className="flex items-center gap-2 px-5 py-5">
           <BookOpen className="size-5 text-primary" />
           <span className="font-heading text-sm font-semibold tracking-tight">job-assistant</span>
+        </div>
+        <div className="px-3 pb-3">
+          <ProfileSwitcher />
         </div>
         <nav className="flex flex-col gap-0.5 px-3">
           {NAV.map(({ to, label, icon: Icon }) => (

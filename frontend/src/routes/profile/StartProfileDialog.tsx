@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { putDetails } from '@/api/profile'
+import type { DetailsRequest } from '@/api/types'
 import { ApiErrorAlert } from '@/components/ApiErrorAlert'
 import { Button } from '@/components/ui/button'
 import {
@@ -9,28 +10,31 @@ import { Field } from './Field'
 import { blankToNull, useProfileEdit } from './mutations'
 
 /**
- * Creating a profile from nothing.
+ * Filling in the details of a profile that already exists as a persona (created via the switcher)
+ * but has nothing recorded yet.
  *
- * `PUT /api/profile/details` upserts the singleton, so a name is all it takes to bring a profile
- * into existence — which is the point: before this, a fresh database left you hand-writing a JSON
- * document before you could record anything at all.
+ * `PUT /api/profiles/{id}/details` upserts this profile's one details row, so a name is all it
+ * takes to have something to build on - which is the point: before this, a fresh persona left you
+ * hand-writing a JSON document before you could record anything at all.
  */
 export function StartProfileDialog({
+  profileId,
   open,
   onOpenChange,
 }: {
+  profileId: number
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
   const [fullName, setFullName] = useState('')
   const [headline, setHeadline] = useState('')
-  const create = useProfileEdit(putDetails, 'Profile created')
+  const create = useProfileEdit(profileId, (body: DetailsRequest) => putDetails(profileId, body), 'Profile details saved')
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Create profile</DialogTitle>
+          <DialogTitle>Fill in details</DialogTitle>
           <DialogDescription>
             Just enough to get started — skills, roles and the rest are added from the profile page.
           </DialogDescription>
@@ -51,7 +55,7 @@ export function StartProfileDialog({
               )
             }
           >
-            {create.isPending ? 'Creating…' : 'Create profile'}
+            {create.isPending ? 'Saving…' : 'Save'}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -53,7 +53,7 @@ Playwright, which downloads Chromium on first use.
 | `/offers/:id` | Raw offer text and the application status editor |
 | `/offers/:id/analysis` | The gap report — start, poll, read |
 | `/offers/:id/documents` | Generate CV / cover letter, preview, PDF |
-| `/profile` | View and import the profile document |
+| `/profile` | View and import the *selected* profile's document |
 | `/gaps` | Cross-offer aggregate gap report |
 | `/catalog` | Unmatched-term review queue and skill browser |
 | `/llm`, `/llm/:id` | Model call audit — prompt, raw response, tokens, latency |
@@ -72,34 +72,56 @@ Reaching `DONE` invalidates `offers` (the server flips the application status to
 `start()`), the offer, the latest analysis, the unmatched-term queue (extraction may have queued
 new terms) and the aggregate report.
 
+## The profile switcher
+
+The sidebar carries a profile switcher above the nav (`ProfileSwitcher.tsx`) — one persona per
+target role, e.g. "Java developer" or "Cloud consultant". The selection is app-wide: `/profile`,
+the analysis tab, the documents tab and `/gaps` all read whichever profile is currently selected,
+and every profile-scoped React Query key includes its id so switching never shows cached data for
+the wrong persona.
+
+The selection itself lives outside React Query, in a small module-level store backed by
+`localStorage` and synced through `useSyncExternalStore` (`hooks/useSelectedProfile.ts`) — there is
+no Context provider in this app, and this is the one piece of shared state every screen needs
+without prop-drilling it through the route tree. It falls back to the server's default profile
+(`ProfileSummary.isDefault`) when nothing is stored yet, or the stored id no longer names a profile
+that exists.
+
+Creating, renaming-by-recreating, defaulting and deleting profiles all happen from the switcher
+itself against `/api/profiles`; per-entity editing of *one* profile's contents stays on `/profile`
+against `/api/profiles/{profileId}/...`.
+
 ## Editing the profile
 
 `/profile` is an editor, not a read-only view. It lives in `src/routes/profile/`, one component per
 card, and every mutation goes through `useProfileEdit` — which seeds the query cache from the
 response rather than refetching, because every profile endpoint answers with the whole
-`CandidateProfile`.
+`CandidateProfile`. Every card and dialog takes the selected `profileId` as a prop rather than
+reading the switcher itself, so `ProfilePage` is the only place that has to know it changed.
 
 Forms are `useState` plus the seed-during-render idiom used elsewhere in the app; there is no form
 library, and per-entity endpoints keep each dialog small enough that adding one would not pay for
 itself. Reordering is arrow buttons rather than drag-and-drop, for the same reason.
 
-`StaleProfileNotice` compares a stored `profileRevision` against `CandidateProfile.revision` and is
-what makes an out-of-date analysis or CV visible rather than silently wrong.
+`StaleProfileNotice` compares a stored `profileRevision` against the *selected* profile's
+`CandidateProfile.revision` and is what makes an out-of-date analysis or CV visible rather than
+silently wrong.
 
 ## Response codes the UI has to handle
 
 | Code | Where | Meaning |
 |---|---|---|
-| 204 | `GET /api/profile` | No profile yet. **Not** 404 — the wrapper must skip `res.json()` on an empty body. |
+| 204 | `GET /api/profiles/{id}` | This profile has no details yet. **Not** 404 — the wrapper must skip `res.json()` on an empty body. |
 | 404 | `…/analyses/latest`, `…/documents/latest` | Normal empty state, not an error. `requestOrNull` maps it to `null`. |
-| 409 | `POST …/analyses` | No profile yet. The first thing a new user hits. |
-| 409 | `POST …/documents` | No completed analysis to tailor against. |
+| 409 | `POST …/analyses` | The selected profile has no details yet. The first thing a new persona hits. |
+| 409 | `POST …/documents` | No completed analysis of this profile to tailor against. |
 | 422 | `POST …/documents` | `fabricatedClaims` — the model tried to claim a skill the profile lacks. Nothing was stored. |
-| 400 | `POST /api/profile/import` | `unresolvedSkills` and `undeclaredBulletSkills`. |
+| 400 | `POST /api/profiles/{id}/import` | `unresolvedSkills` and `undeclaredBulletSkills`. |
 | 400 | any profile edit | `fieldErrors` — field name to message, for inline form errors. |
-| 404 | any profile edit | An id not on the profile. |
+| 404 | any profile edit | An id not on this profile. |
 | 409 | any profile edit | Skill already held, language already listed, role ending before it starts, partial reorder. |
-| 409 | `DELETE /api/profile/skills/{id}` | `blockingBullets` — the bullets still citing it. Rendered in the confirm dialog rather than closing it. |
+| 409 | `DELETE /api/profiles/{id}/skills/{id}` | `blockingBullets` — the bullets still citing it. Rendered in the confirm dialog rather than closing it. |
+| 409 | `DELETE /api/profiles/{id}` | This is the default profile and another one still exists. Set a different default first. |
 
 **Exception handlers in this backend are per-controller, not a `@ControllerAdvice`.** The catalog
 and llm controllers have none, so an invalid id there surfaces as a bare 500 with no

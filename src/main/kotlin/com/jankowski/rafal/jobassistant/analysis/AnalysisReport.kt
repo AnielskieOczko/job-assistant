@@ -54,6 +54,8 @@ data class LearningPlanItem(
 data class AnalysisReport(
     val id: Long,
     val offerId: Long,
+    /** Which profile this analysis was run against. */
+    val profileId: Long = 0,
     val state: AnalysisState,
     val error: String?,
     val matchScore: Double?,

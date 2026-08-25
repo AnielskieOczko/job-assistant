@@ -28,6 +28,7 @@ import com.jankowski.rafal.jobassistant.profile.ProfileDetails
 import com.jankowski.rafal.jobassistant.profile.ProfileLink
 import com.jankowski.rafal.jobassistant.profile.ProfileSkill
 import com.jankowski.rafal.jobassistant.profile.WorkExperience
+import com.jankowski.rafal.jobassistant.profile.internal.ProfileSummary
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertAll
 import java.time.Instant
@@ -115,12 +116,12 @@ class ApiContractTest {
             {
                 assertKeys(
                     AnalysisReport(
-                        id = 1, offerId = 1, state = AnalysisState.DONE, error = null,
+                        id = 1, offerId = 1, profileId = 1, state = AnalysisState.DONE, error = null,
                         matchScore = null, summaryMarkdown = null,
                         requirements = listOf(requirement), languageRequirements = emptyList(),
                         learningPlan = emptyList(), createdAt = Instant.EPOCH, completedAt = null,
                     ),
-                    "id", "offerId", "state", "error", "matchScore", "summaryMarkdown",
+                    "id", "offerId", "profileId", "state", "error", "matchScore", "summaryMarkdown",
                     "requirements", "languageRequirements", "learningPlan", "createdAt",
                     "completedAt", "profileRevision",
                     // Computed getters the frontend treats as optional convenience.
@@ -189,6 +190,7 @@ class ApiContractTest {
                     "heldSkillIds", "bullets",
                 )
             },
+            { assertKeys(ProfileSummary(1, "Java developer", true), "id", "name", "isDefault") },
         )
     }
 
@@ -203,8 +205,11 @@ class ApiContractTest {
         },
         {
             assertKeys(
-                GeneratedDocument(1, 1, 1, DocumentType.CV, "English", "<html/>", Instant.EPOCH),
-                "id", "offerId", "analysisId", "type", "language", "html", "createdAt",
+                GeneratedDocument(
+                    id = 1, offerId = 1, profileId = 1, analysisId = 1, type = DocumentType.CV,
+                    language = "English", html = "<html/>", createdAt = Instant.EPOCH,
+                ),
+                "id", "offerId", "profileId", "analysisId", "type", "language", "html", "createdAt",
                 "profileRevision",
             )
         },

@@ -35,14 +35,14 @@ internal class JdbcAnalysisService(
 ) : AnalysisService {
 
     @Transactional
-    override fun start(offerId: Long): Long {
+    override fun start(offerId: Long, profileId: Long): Long {
         val offer = offers.findById(offerId)
             ?: throw NoSuchElementException("No job offer $offerId")
         // Fail fast rather than queueing work that cannot possibly succeed.
-        profiles.require()
+        profiles.require(profileId)
 
         val analysis = analyses.save(
-            AnalysisRow(jobOfferId = offer.id, state = AnalysisState.PENDING.name)
+            AnalysisRow(jobOfferId = offer.id, profileId = profileId, state = AnalysisState.PENDING.name)
         )
         val analysisId = requireNotNull(analysis.id)
 
@@ -71,8 +71,8 @@ internal class JdbcAnalysisService(
         analyses.findById(analysisId).orElse(null)?.toReport()
 
     @Transactional(readOnly = true)
-    override fun latestForOffer(offerId: Long): AnalysisReport? =
-        analyses.findLatestForOffer(offerId)?.toReport()
+    override fun latestForOffer(offerId: Long, profileId: Long?): AnalysisReport? =
+        analyses.findLatestForOfferAndProfile(offerId, profileId ?: profiles.defaultProfileId())?.toReport()
 
     private fun AnalysisRow.toReport(): AnalysisReport {
         val analysisId = requireNotNull(id)
@@ -84,6 +84,7 @@ internal class JdbcAnalysisService(
         return AnalysisReport(
             id = analysisId,
             offerId = jobOfferId,
+            profileId = profileId,
             state = AnalysisState.valueOf(state),
             error = error,
             matchScore = matchScore?.toDouble(),
@@ -131,13 +132,14 @@ internal class JdbcAnalysisService(
      * and skew what the histogram says you should learn.
      */
     @Transactional(readOnly = true)
-    override fun aggregateGaps(): AggregateGapReport {
+    override fun aggregateGaps(profileId: Long?): AggregateGapReport {
+        val resolved = profileId ?: profiles.defaultProfileId()
         val entries = jdbc.sql(
             """
             with latest as (
                 select distinct on (job_offer_id) id
                 from analysis
-                where state = 'DONE'
+                where state = 'DONE' and profile_id = :profileId
                 order by job_offer_id, created_at desc
             )
             select r.canonical_skill_id                                            as skill_id,
@@ -152,6 +154,7 @@ internal class JdbcAnalysisService(
             order by must_have_gap_count desc, gap_count desc, demand_count desc
             """
         )
+            .param("profileId", resolved)
             .query { rs, _ ->
                 val skillId = rs.getLong("skill_id")
                 AggregateGapEntry(
@@ -164,6 +167,6 @@ internal class JdbcAnalysisService(
             }
             .list()
 
-        return AggregateGapReport(analysedOffers = analyses.countAnalysedOffers(), entries = entries)
+        return AggregateGapReport(analysedOffers = analyses.countAnalysedOffers(resolved), entries = entries)
     }
 }

@@ -37,12 +37,15 @@ internal class JdbcDocumentService(
     private val log = LoggerFactory.getLogger(JdbcDocumentService::class.java)
 
     @Transactional
-    override fun generate(offerId: Long, type: DocumentType, language: String): GeneratedDocument {
+    override fun generate(offerId: Long, profileId: Long, type: DocumentType, language: String): GeneratedDocument {
         val offer = offers.findById(offerId) ?: throw NoSuchElementException("No job offer $offerId")
-        val profile = profiles.require()
+        val profile = profiles.require(profileId)
 
-        val report = analyses.latestForOffer(offerId)
-            ?: throw IllegalStateException("Offer $offerId has no analysis yet; run one first.")
+        // Pairing this with the profile above guarantees the analysis being tailored against and
+        // the profile CvInvariant/ProfileBriefing/CvSelection see are always the same profile -
+        // there is no code path where they can diverge.
+        val report = analyses.latestForOffer(offerId, profileId)
+            ?: throw IllegalStateException("Offer $offerId has no analysis of profile $profileId yet; run one first.")
         check(report.state == AnalysisState.DONE) {
             "Analysis ${report.id} is ${report.state}; a document can only be tailored to a completed analysis."
         }
@@ -60,6 +63,7 @@ internal class JdbcDocumentService(
         val saved = documents.save(
             GeneratedDocumentRow(
                 jobOfferId = offerId,
+                profileId = profileId,
                 analysisId = report.id,
                 type = type.name,
                 language = language,
@@ -148,8 +152,8 @@ internal class JdbcDocumentService(
         documents.findById(documentId).orElse(null)?.toDomain()
 
     @Transactional(readOnly = true)
-    override fun latest(offerId: Long, type: DocumentType): GeneratedDocument? =
-        documents.findLatest(offerId, type.name)?.toDomain()
+    override fun latest(offerId: Long, type: DocumentType, profileId: Long?): GeneratedDocument? =
+        documents.findLatest(offerId, profileId ?: profiles.defaultProfileId(), type.name)?.toDomain()
 
     override fun renderPdf(documentId: Long): ByteArray {
         val document = findById(documentId) ?: throw NoSuchElementException("No document $documentId")
@@ -160,6 +164,7 @@ internal class JdbcDocumentService(
 private fun GeneratedDocumentRow.toDomain() = GeneratedDocument(
     id = requireNotNull(id),
     offerId = jobOfferId,
+    profileId = profileId,
     analysisId = analysisId,
     type = DocumentType.valueOf(type),
     language = language,

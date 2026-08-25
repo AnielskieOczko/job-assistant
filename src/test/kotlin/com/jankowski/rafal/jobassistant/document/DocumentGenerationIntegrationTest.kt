@@ -13,6 +13,7 @@ import com.jankowski.rafal.jobassistant.profile.ProfileDetails
 import com.jankowski.rafal.jobassistant.profile.ProfileImport
 import com.jankowski.rafal.jobassistant.profile.ProfileService
 import com.jankowski.rafal.jobassistant.profile.SkillImport
+import com.jankowski.rafal.jobassistant.profile.internal.ProfileManagementService
 import com.jankowski.rafal.jobassistant.support.IntegrationTest
 import com.jankowski.rafal.jobassistant.support.ScriptedModels
 import org.awaitility.Awaitility.await
@@ -33,11 +34,12 @@ import kotlin.test.assertTrue
  * a model that tries to put a technology on the CV that the candidate has never used.
  */
 @IntegrationTest
-class DocumentGenerationIntegrationTest(
+internal class DocumentGenerationIntegrationTest(
     @Autowired private val documents: DocumentService,
     @Autowired private val analyses: AnalysisService,
     @Autowired private val offers: OfferService,
     @Autowired private val profiles: ProfileService,
+    @Autowired private val management: ProfileManagementService,
     @Autowired private val models: ScriptedModels,
     @Autowired private val jdbc: JdbcClient,
 ) {
@@ -45,16 +47,17 @@ class DocumentGenerationIntegrationTest(
     private var kotlinBulletId = 0L
     private var springBulletId = 0L
     private var offerId = 0L
+    private var profileId = 0L
 
     @BeforeEach
     fun setUp() {
         models.resetAll()
         jdbc.sql("delete from job_offer").update()
-        listOf("work_experience", "profile_skill", "profile_link", "education", "language_skill")
-            .forEach { jdbc.sql("delete from $it").update() }
-        jdbc.sql("delete from profile_details").update()
+        jdbc.sql("delete from profile").update()
 
+        profileId = management.create("Test").id
         val profile = profiles.replace(
+            profileId,
             ProfileImport(
                 details = ProfileDetails(
                     fullName = "Rafal Jankowski",
@@ -102,7 +105,7 @@ class DocumentGenerationIntegrationTest(
             """{"summaryMarkdown":"Kubernetes is the gap.","learningPlan":[]}"""
         )
 
-        val analysisId = analyses.start(offerId)
+        val analysisId = analyses.start(offerId, profileId)
         await().atMost(Duration.ofSeconds(20)).until {
             analyses.findReport(analysisId)?.state?.isTerminal == true
         }
@@ -122,14 +125,14 @@ class DocumentGenerationIntegrationTest(
     fun `a tailored CV renders the selected bullets and skills`() {
         scriptCv(honestCv)
 
-        val document = documents.generate(offerId, DocumentType.CV)
+        val document = documents.generate(offerId, profileId, DocumentType.CV)
 
         assertEquals(DocumentType.CV, document.type)
         assertTrue(document.html.contains("Rafal Jankowski"))
         assertTrue(document.html.contains("Built payment services in Kotlin."))
         assertTrue(document.html.contains("Kotlin"))
         // The stored HTML stays true, but the profile can move on underneath it.
-        assertEquals(profiles.revision(), document.profileRevision)
+        assertEquals(profiles.revision(profileId), document.profileRevision)
     }
 
     @Test
@@ -142,7 +145,7 @@ class DocumentGenerationIntegrationTest(
             """.trimIndent()
         )
 
-        val html = documents.generate(offerId, DocumentType.CV).html
+        val html = documents.generate(offerId, profileId, DocumentType.CV).html
 
         assertTrue(html.indexOf("Spring Boot platform") < html.indexOf("payment services"))
     }
@@ -156,7 +159,7 @@ class DocumentGenerationIntegrationTest(
             """.trimIndent()
         )
 
-        val html = documents.generate(offerId, DocumentType.CV).html
+        val html = documents.generate(offerId, profileId, DocumentType.CV).html
 
         assertTrue(html.contains("Shipped payment services in Kotlin, end to end."))
         assertFalse(html.contains("Built payment services in Kotlin."))
@@ -172,7 +175,7 @@ class DocumentGenerationIntegrationTest(
             """.trimIndent()
         )
 
-        val failure = assertThrows<FabricatedClaimException> { documents.generate(offerId, DocumentType.CV) }
+        val failure = assertThrows<FabricatedClaimException> { documents.generate(offerId, profileId, DocumentType.CV) }
 
         assertEquals(listOf("Kubernetes"), failure.claims)
     }
@@ -186,7 +189,7 @@ class DocumentGenerationIntegrationTest(
             """.trimIndent()
         )
 
-        assertThrows<FabricatedClaimException> { documents.generate(offerId, DocumentType.CV) }
+        assertThrows<FabricatedClaimException> { documents.generate(offerId, profileId, DocumentType.CV) }
     }
 
     @Test
@@ -198,7 +201,7 @@ class DocumentGenerationIntegrationTest(
             """.trimIndent()
         )
 
-        runCatching { documents.generate(offerId, DocumentType.CV) }
+        runCatching { documents.generate(offerId, profileId, DocumentType.CV) }
 
         assertEquals(null, documents.latest(offerId, DocumentType.CV))
     }
@@ -212,7 +215,7 @@ class DocumentGenerationIntegrationTest(
             """.trimIndent()
         )
 
-        val html = documents.generate(offerId, DocumentType.CV).html
+        val html = documents.generate(offerId, profileId, DocumentType.CV).html
 
         assertTrue(html.contains("Kotlin"))
         assertFalse(html.contains("Kubernetes"), "an unheld skill must never reach the skills list")
@@ -228,7 +231,7 @@ class DocumentGenerationIntegrationTest(
             """.trimIndent()
         )
 
-        val html = documents.generate(offerId, DocumentType.CV).html
+        val html = documents.generate(offerId, profileId, DocumentType.CV).html
 
         assertTrue(html.contains("Built payment services in Kotlin."))
         assertFalse(html.contains("Invented achievement."))
@@ -238,7 +241,7 @@ class DocumentGenerationIntegrationTest(
     fun `an empty selection falls back to the full profile rather than an empty CV`() {
         scriptCv("""{"summaryLine":"Backend engineer.","skillNames":[],"bullets":[]}""")
 
-        val html = documents.generate(offerId, DocumentType.CV).html
+        val html = documents.generate(offerId, profileId, DocumentType.CV).html
 
         assertTrue(html.contains("Built payment services in Kotlin."))
         assertTrue(html.contains("Ran a Spring Boot platform."))
@@ -248,7 +251,7 @@ class DocumentGenerationIntegrationTest(
     fun `the tailoring prompt exposes bullet ids so choices can be traced`() {
         scriptCv(honestCv)
 
-        documents.generate(offerId, DocumentType.CV)
+        documents.generate(offerId, profileId, DocumentType.CV)
 
         val prompt = models[LlmTask.DOCUMENT].requests.single().messages().joinToString { it.toString() }
         assertTrue(prompt.contains("[id=$kotlinBulletId]"))
@@ -264,7 +267,7 @@ class DocumentGenerationIntegrationTest(
             """.trimIndent()
         )
 
-        val document = documents.generate(offerId, DocumentType.COVER_LETTER)
+        val document = documents.generate(offerId, profileId, DocumentType.COVER_LETTER)
 
         assertEquals(DocumentType.COVER_LETTER, document.type)
         assertTrue(document.html.contains("six years building Kotlin services"))
@@ -279,7 +282,7 @@ class DocumentGenerationIntegrationTest(
             """{"paragraphs":["I have not used Kubernetes, but I learn quickly."]}"""
         )
 
-        assertThrows<FabricatedClaimException> { documents.generate(offerId, DocumentType.COVER_LETTER) }
+        assertThrows<FabricatedClaimException> { documents.generate(offerId, profileId, DocumentType.COVER_LETTER) }
     }
 
     @Test
@@ -288,25 +291,25 @@ class DocumentGenerationIntegrationTest(
             """{"paragraphs":["I have run Kubernetes clusters for five years."]}"""
         )
 
-        assertThrows<FabricatedClaimException> { documents.generate(offerId, DocumentType.COVER_LETTER) }
+        assertThrows<FabricatedClaimException> { documents.generate(offerId, profileId, DocumentType.COVER_LETTER) }
     }
 
     @Test
     fun `generating without an analysis is refused`() {
         val fresh = offers.paste("A different posting entirely.").offer
 
-        assertThrows<IllegalStateException> { documents.generate(fresh.id, DocumentType.CV) }
+        assertThrows<IllegalStateException> { documents.generate(fresh.id, profileId, DocumentType.CV) }
     }
 
     @Test
     fun `generating for an unknown offer is refused`() {
-        assertThrows<NoSuchElementException> { documents.generate(999_999, DocumentType.CV) }
+        assertThrows<NoSuchElementException> { documents.generate(999_999, profileId, DocumentType.CV) }
     }
 
     @Test
     fun `the latest document is retrievable and keeps its html`() {
         scriptCv(honestCv)
-        val generated = documents.generate(offerId, DocumentType.CV)
+        val generated = documents.generate(offerId, profileId, DocumentType.CV)
 
         val latest = assertNotNull(documents.latest(offerId, DocumentType.CV))
 

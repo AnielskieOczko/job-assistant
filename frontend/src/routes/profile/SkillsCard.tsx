@@ -20,13 +20,13 @@ import { ConfirmDelete } from './ConfirmDelete'
 import { RowActions } from './RowActions'
 import { movedIds, useProfileEdit } from './mutations'
 
-export function SkillsCard({ profile }: { profile: CandidateProfile }) {
+export function SkillsCard({ profileId, profile }: { profileId: number; profile: CandidateProfile }) {
   const [dialog, setDialog] = useState<ProfileSkill | 'new' | null>(null)
   const [deleting, setDeleting] = useState<ProfileSkill | null>(null)
   const names = useSkillNames()
 
-  const reorder = useProfileEdit(reorderSkills, 'Skills reordered')
-  const remove = useProfileEdit(deleteSkill, 'Skill removed')
+  const reorder = useProfileEdit(profileId, (ids: number[]) => reorderSkills(profileId, ids), 'Skills reordered')
+  const remove = useProfileEdit(profileId, (id: number) => deleteSkill(profileId, id), 'Skill removed')
   const { skills } = profile
 
   return (
@@ -75,7 +75,7 @@ export function SkillsCard({ profile }: { profile: CandidateProfile }) {
         {reorder.isError ? <ApiErrorAlert error={reorder.error} /> : null}
       </CardContent>
 
-      <SkillDialog skill={dialog} onClose={() => setDialog(null)} />
+      <SkillDialog profileId={profileId} skill={dialog} onClose={() => setDialog(null)} />
       <ConfirmDelete
         open={deleting !== null}
         onOpenChange={(open) => {
@@ -93,7 +93,15 @@ export function SkillsCard({ profile }: { profile: CandidateProfile }) {
   )
 }
 
-function SkillDialog({ skill, onClose }: { skill: ProfileSkill | 'new' | null; onClose: () => void }) {
+function SkillDialog({
+  profileId,
+  skill,
+  onClose,
+}: {
+  profileId: number
+  skill: ProfileSkill | 'new' | null
+  onClose: () => void
+}) {
   const [seeded, setSeeded] = useState<number | 'new' | null>(null)
   const [skillId, setSkillId] = useState<number | null>(null)
   const [proficiency, setProficiency] = useState<Proficiency>('WORKING')
@@ -109,10 +117,16 @@ function SkillDialog({ skill, onClose }: { skill: ProfileSkill | 'new' | null; o
     setLastUsed(skill === 'new' || skill.lastUsedYear === null ? '' : String(skill.lastUsedYear))
   }
 
-  const create = useProfileEdit(addSkill, 'Skill added')
+  const create = useProfileEdit(
+    profileId,
+    (body: { skillId: number; proficiency: Proficiency; yearsOfExperience: number | null; lastUsedYear: number | null }) =>
+      addSkill(profileId, body),
+    'Skill added',
+  )
   const update = useProfileEdit(
+    profileId,
     (args: { id: number; proficiency: Proficiency; yearsOfExperience: number | null; lastUsedYear: number | null }) =>
-      updateSkill(args.id, {
+      updateSkill(profileId, args.id, {
         proficiency: args.proficiency,
         yearsOfExperience: args.yearsOfExperience,
         lastUsedYear: args.lastUsedYear,

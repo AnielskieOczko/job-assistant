@@ -10,6 +10,7 @@ import java.time.Instant
 internal data class GeneratedDocumentRow(
     @Id val id: Long? = null,
     val jobOfferId: Long,
+    val profileId: Long,
     val analysisId: Long?,
     val type: String,
     val language: String,
@@ -25,9 +26,9 @@ internal interface GeneratedDocumentRepository : CrudRepository<GeneratedDocumen
     @Query(
         """
         select * from generated_document
-        where job_offer_id = :offerId and type = :type
+        where job_offer_id = :offerId and profile_id = :profileId and type = :type
         order by created_at desc limit 1
         """
     )
-    fun findLatest(offerId: Long, type: String): GeneratedDocumentRow?
+    fun findLatest(offerId: Long, profileId: Long, type: String): GeneratedDocumentRow?
 }
