@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, X } from 'lucide-react'
+import { Calendar, Plus, X } from 'lucide-react'
 import {
   addBullet, addExperience, deleteBullet, deleteExperience, reorderBullets, reorderExperiences,
   updateBullet, updateExperience,
@@ -18,10 +18,26 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { useSkillNames } from '@/hooks/useSkillNames'
 import { formatPeriod } from '@/lib/format'
+import { cn } from '@/lib/utils'
 import { ConfirmDelete } from './ConfirmDelete'
 import { Field } from './Field'
 import { RowActions } from './RowActions'
 import { blankToNull, movedIds, useProfileEdit } from './mutations'
+
+/** The distinct skills across a role's bullets, for scanning a role without reading every bullet. */
+function RoleSkillSummary({ experience }: { experience: WorkExperience }) {
+  const names = useSkillNames()
+  const skillIds = [...new Set(experience.bullets.flatMap((bullet) => bullet.skillIds))]
+  if (skillIds.length === 0) return null
+
+  return (
+    <div className="mt-1.5 flex flex-wrap gap-1.5">
+      {skillIds.map((id) => (
+        <Badge key={id} variant="secondary" className="text-[11px]">{names.nameOf(id)}</Badge>
+      ))}
+    </div>
+  )
+}
 
 export function ExperienceCard({ profileId, profile }: { profileId: number; profile: CandidateProfile }) {
   const [dialog, setDialog] = useState<WorkExperience | 'new' | null>(null)
@@ -41,45 +57,56 @@ export function ExperienceCard({ profileId, profile }: { profileId: number; prof
               </Button>
         </CardAction>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent>
         {experiences.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             No roles yet. Bullets under a role are what a tailored CV is allowed to draw on.
           </p>
         ) : (
-          experiences.map((experience, index) => (
-            <div key={experience.id} className="border-l-2 pl-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-baseline gap-2">
-                    <p className="font-medium">{experience.roleTitle}</p>
-                    <p className="text-muted-foreground">{experience.company}</p>
-                    {isCurrentRole(experience) ? <Badge variant="secondary">Current</Badge> : null}
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {formatPeriod(experience.startedOn, experience.endedOn)}
-                    {experience.location ? ` · ${experience.location}` : ''}
-                  </p>
-                </div>
-                <RowActions
-                  label={experience.roleTitle}
-                  disabled={reorder.isPending}
-                  onUp={index > 0 ? () => reorder.mutate(movedIds(experiences, index, index - 1)) : undefined}
-                  onDown={
-                    index < experiences.length - 1
-                      ? () => reorder.mutate(movedIds(experiences, index, index + 1))
-                      : undefined
-                  }
-                  onEdit={() => setDialog(experience)}
-                  onDelete={() => setDeleting(experience)}
+          <div className="space-y-6 border-l border-foreground/15 pl-6">
+            {experiences.map((experience, index) => (
+              <div key={experience.id} className="relative">
+                <span
+                  className={cn(
+                    'absolute top-1 -left-[1.9rem] size-3 rounded-full border-2 bg-background',
+                    isCurrentRole(experience) ? 'border-foreground bg-foreground' : 'border-foreground/30',
+                  )}
                 />
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-baseline gap-2">
+                      <p className="font-medium">{experience.roleTitle}</p>
+                      <p className="text-muted-foreground">{experience.company}</p>
+                      {isCurrentRole(experience) ? <Badge variant="secondary">Current</Badge> : null}
+                    </div>
+                    <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                      <Calendar className="size-3.5 shrink-0" />
+                      {formatPeriod(experience.startedOn, experience.endedOn)}
+                      {experience.location ? ` · ${experience.location}` : ''}
+                    </p>
+                  </div>
+                  <RowActions
+                    label={experience.roleTitle}
+                    disabled={reorder.isPending}
+                    onUp={index > 0 ? () => reorder.mutate(movedIds(experiences, index, index - 1)) : undefined}
+                    onDown={
+                      index < experiences.length - 1
+                        ? () => reorder.mutate(movedIds(experiences, index, index + 1))
+                        : undefined
+                    }
+                    onEdit={() => setDialog(experience)}
+                    onDelete={() => setDeleting(experience)}
+                  />
+                </div>
+
+                <RoleSkillSummary experience={experience} />
+
+                {experience.summary ? <p className="mt-2 text-sm">{experience.summary}</p> : null}
+
+                <Bullets profileId={profileId} experience={experience} profile={profile} />
               </div>
-
-              {experience.summary ? <p className="mt-2 text-sm">{experience.summary}</p> : null}
-
-              <Bullets profileId={profileId} experience={experience} profile={profile} />
-            </div>
-          ))
+            ))}
+          </div>
         )}
         {reorder.isError ? <ApiErrorAlert error={reorder.error} /> : null}
       </CardContent>

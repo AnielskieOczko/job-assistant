@@ -54,3 +54,6 @@ build/
 .env
 .env.*
 !.env.example
+
+# graphify skill output - regeneratable knowledge-graph cache, not source of truth.
+/graphify-out/
