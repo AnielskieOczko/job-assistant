@@ -18,12 +18,12 @@ import { Field } from './Field'
 import { RowActions } from './RowActions'
 import { movedIds, useProfileEdit } from './mutations'
 
-export function LanguagesCard({ profile }: { profile: CandidateProfile }) {
+export function LanguagesCard({ profileId, profile }: { profileId: number; profile: CandidateProfile }) {
   const [dialog, setDialog] = useState<LanguageSkill | 'new' | null>(null)
   const [deleting, setDeleting] = useState<LanguageSkill | null>(null)
 
-  const reorder = useProfileEdit(reorderLanguages, 'Languages reordered')
-  const remove = useProfileEdit(deleteLanguage, 'Language removed')
+  const reorder = useProfileEdit(profileId, (ids: number[]) => reorderLanguages(profileId, ids), 'Languages reordered')
+  const remove = useProfileEdit(profileId, (id: number) => deleteLanguage(profileId, id), 'Language removed')
   const { languages } = profile
 
   return (
@@ -66,7 +66,7 @@ export function LanguagesCard({ profile }: { profile: CandidateProfile }) {
         {reorder.isError ? <ApiErrorAlert error={reorder.error} /> : null}
       </CardContent>
 
-      <LanguageDialog language={dialog} onClose={() => setDialog(null)} />
+      <LanguageDialog profileId={profileId} language={dialog} onClose={() => setDialog(null)} />
       <ConfirmDelete
         open={deleting !== null}
         onOpenChange={(open) => {
@@ -85,9 +85,11 @@ export function LanguagesCard({ profile }: { profile: CandidateProfile }) {
 }
 
 function LanguageDialog({
+  profileId,
   language,
   onClose,
 }: {
+  profileId: number
   language: LanguageSkill | 'new' | null
   onClose: () => void
 }) {
@@ -102,10 +104,15 @@ function LanguageDialog({
     setLevel(language === 'new' ? 'B2' : language.level)
   }
 
-  const create = useProfileEdit(addLanguage, 'Language added')
+  const create = useProfileEdit(
+    profileId,
+    (body: { language: string; level: LanguageLevel }) => addLanguage(profileId, body),
+    'Language added',
+  )
   const update = useProfileEdit(
+    profileId,
     (args: { id: number; language: string; level: LanguageLevel }) =>
-      updateLanguage(args.id, { language: args.language, level: args.level }),
+      updateLanguage(profileId, args.id, { language: args.language, level: args.level }),
     'Language saved',
   )
   const active = language === 'new' ? create : update

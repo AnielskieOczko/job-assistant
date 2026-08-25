@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Upload, UserRound } from 'lucide-react'
 import { getProfile } from '@/api/profile'
 import { keys } from '@/api/keys'
+import { useSelectedProfile } from '@/hooks/useSelectedProfile'
 import { ApiErrorAlert } from '@/components/ApiErrorAlert'
 import { EmptyState } from '@/components/EmptyState'
 import { PageHeader } from '@/components/PageHeader'
@@ -19,9 +20,26 @@ import { StartProfileDialog } from './StartProfileDialog'
 export function ProfilePage() {
   const [importOpen, setImportOpen] = useState(false)
   const [startOpen, setStartOpen] = useState(false)
+  const { profileId, isLoading: profilesLoading } = useSelectedProfile()
 
-  // 204 No Content when there is no profile, so `data` is null rather than a 404 error.
-  const profile = useQuery({ queryKey: keys.profile, queryFn: getProfile })
+  // 204 No Content when this profile has no details yet, so `data` is null rather than a 404 error.
+  const profile = useQuery({
+    queryKey: keys.profile(profileId ?? -1),
+    queryFn: () => getProfile(profileId!),
+    enabled: profileId !== null,
+  })
+
+  if (profilesLoading) return <Skeleton className="h-64 w-full" />
+
+  if (profileId === null) {
+    return (
+      <EmptyState
+        icon={UserRound}
+        title="No profile yet"
+        description="Create a persona from the switcher in the sidebar to get started."
+      />
+    )
+  }
 
   return (
     <>
@@ -44,11 +62,11 @@ export function ProfilePage() {
       ) : !profile.data ? (
         <EmptyState
           icon={UserRound}
-          title="No profile yet"
-          description="Start one here, or import a document you already have. Either way the gap report needs it before it can analyse an offer."
+          title="No details yet"
+          description="Fill in the basics here, or import a document you already have. Either way the gap report needs it before it can analyse an offer."
           action={
             <div className="flex gap-2">
-              <Button onClick={() => setStartOpen(true)}>Create profile</Button>
+              <Button onClick={() => setStartOpen(true)}>Fill in details</Button>
               <Button variant="outline" onClick={() => setImportOpen(true)}>
                 <Upload /> Import JSON
               </Button>
@@ -57,18 +75,18 @@ export function ProfilePage() {
         />
       ) : (
         <div className="space-y-6">
-          <DetailsCard profile={profile.data} />
-          <SkillsCard profile={profile.data} />
-          <ExperienceCard profile={profile.data} />
+          <DetailsCard profileId={profileId} profile={profile.data} />
+          <SkillsCard profileId={profileId} profile={profile.data} />
+          <ExperienceCard profileId={profileId} profile={profile.data} />
           <div className="grid gap-6 md:grid-cols-2">
-            <EducationCard profile={profile.data} />
-            <LanguagesCard profile={profile.data} />
+            <EducationCard profileId={profileId} profile={profile.data} />
+            <LanguagesCard profileId={profileId} profile={profile.data} />
           </div>
         </div>
       )}
 
-      <StartProfileDialog open={startOpen} onOpenChange={setStartOpen} />
-      <ImportDialog open={importOpen} onOpenChange={setImportOpen} current={profile.data ?? null} />
+      <StartProfileDialog profileId={profileId} open={startOpen} onOpenChange={setStartOpen} />
+      <ImportDialog profileId={profileId} open={importOpen} onOpenChange={setImportOpen} current={profile.data ?? null} />
     </>
   )
 }

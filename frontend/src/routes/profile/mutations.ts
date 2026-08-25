@@ -12,6 +12,7 @@ import type { CandidateProfile } from '@/api/types'
  * simply start rendering as stale once `revision` moves past the one they recorded.
  */
 export function useProfileEdit<TArgs>(
+  profileId: number,
   mutationFn: (args: TArgs) => Promise<CandidateProfile>,
   success: string,
 ) {
@@ -20,8 +21,8 @@ export function useProfileEdit<TArgs>(
     mutationFn,
     onSuccess: (profile) => {
       toast.success(success)
-      queryClient.setQueryData(keys.profile, profile)
-      queryClient.invalidateQueries({ queryKey: keys.aggregate })
+      queryClient.setQueryData(keys.profile(profileId), profile)
+      queryClient.invalidateQueries({ queryKey: keys.aggregate(profileId) })
     },
   })
 }

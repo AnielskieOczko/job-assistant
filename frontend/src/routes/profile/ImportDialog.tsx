@@ -18,10 +18,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 
 export function ImportDialog({
+  profileId,
   open,
   onOpenChange,
   current,
 }: {
+  profileId: number
   open: boolean
   onOpenChange: (open: boolean) => void
   current: CandidateProfile | null
@@ -32,11 +34,11 @@ export function ImportDialog({
   const queryClient = useQueryClient()
 
   const submit = useMutation({
-    mutationFn: (document: unknown) => importProfile(document),
+    mutationFn: (document: unknown) => importProfile(profileId, document),
     onSuccess: (profile) => {
       toast.success('Profile imported')
-      queryClient.setQueryData(keys.profile, profile)
-      queryClient.invalidateQueries({ queryKey: keys.aggregate })
+      queryClient.setQueryData(keys.profile(profileId), profile)
+      queryClient.invalidateQueries({ queryKey: keys.aggregate(profileId) })
       onOpenChange(false)
       setText('')
       setConfirming(false)

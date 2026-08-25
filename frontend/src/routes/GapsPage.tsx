@@ -9,12 +9,28 @@ import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
+import { useSelectedProfile } from '@/hooks/useSelectedProfile'
 
 export function GapsPage() {
-  const gaps = useQuery({ queryKey: keys.aggregate, queryFn: getAggregateGaps })
+  const { profileId, isLoading: profileLoading } = useSelectedProfile()
+  const gaps = useQuery({
+    queryKey: keys.aggregate(profileId ?? -1),
+    queryFn: () => getAggregateGaps(profileId!),
+    enabled: profileId !== null,
+  })
 
-  if (gaps.isPending) return <Skeleton className="h-64 w-full" />
+  if (profileLoading || (gaps.isPending && profileId !== null)) return <Skeleton className="h-64 w-full" />
+  if (profileId === null) {
+    return (
+      <EmptyState
+        icon={TrendingDown}
+        title="No profile yet"
+        description="Create a persona from the switcher in the sidebar to see cross-offer gaps."
+      />
+    )
+  }
   if (gaps.isError) return <ApiErrorAlert error={gaps.error} />
+  if (!gaps.data) return <Skeleton className="h-64 w-full" />
 
   const rows = [...gaps.data.entries].sort((a, b) => b.mustHaveGapCount - a.mustHaveGapCount)
 

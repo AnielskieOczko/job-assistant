@@ -16,15 +16,17 @@ import { Button } from '@/components/ui/button'
  * while the profile is still loading.
  */
 export function StaleProfileNotice({
+  profileId,
   producedAt,
   what,
   action,
 }: {
+  profileId: number
   producedAt: number | null
   what: string
   action?: { label: string; onClick: () => void; disabled?: boolean }
 }) {
-  const profile = useQuery({ queryKey: keys.profile, queryFn: getProfile })
+  const profile = useQuery({ queryKey: keys.profile(profileId), queryFn: () => getProfile(profileId) })
   const current = profile.data?.revision
 
   if (producedAt === null || current === undefined || producedAt >= current) return null

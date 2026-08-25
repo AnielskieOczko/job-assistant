@@ -23,6 +23,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { formatDateTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { useOfferId } from '@/hooks/useOfferId'
+import { useSelectedProfile } from '@/hooks/useSelectedProfile'
 
 const LANGUAGES = ['English', 'Polish', 'German', 'Spanish', 'French']
 
@@ -53,23 +54,26 @@ function DocumentPanel({ type, title }: { type: DocumentType; title: string }) {
   const offerId = useOfferId()
   const queryClient = useQueryClient()
   const [language, setLanguage] = useState('English')
+  const { profileId } = useSelectedProfile()
 
   const latest = useQuery({
-    queryKey: keys.latestDocument(offerId, type),
-    queryFn: () => getLatestDocument(offerId, type),
+    queryKey: keys.latestDocument(offerId, type, profileId ?? -1),
+    queryFn: () => getLatestDocument(offerId, type, profileId!),
+    enabled: profileId !== null,
   })
 
   const generate = useMutation({
-    mutationFn: () => generateDocument(offerId, type, language),
+    mutationFn: () => generateDocument(offerId, profileId!, type, language),
     onSuccess: () => {
       toast.success(`${title} generated`)
-      queryClient.invalidateQueries({ queryKey: keys.latestDocument(offerId, type) })
+      queryClient.invalidateQueries({ queryKey: keys.latestDocument(offerId, type, profileId!) })
       queryClient.invalidateQueries({ queryKey: ['llm'] })
     },
   })
 
   const error = generate.error instanceof ApiError ? generate.error : null
   const doc = latest.data
+  const busy = generate.isPending || profileId === null
 
   return (
     <Card className="min-w-0">
@@ -87,7 +91,7 @@ function DocumentPanel({ type, title }: { type: DocumentType; title: string }) {
               {LANGUAGES.map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Button size="sm" onClick={() => generate.mutate()} disabled={generate.isPending}>
+          <Button size="sm" onClick={() => generate.mutate()} disabled={busy}>
             {generate.isPending ? (
               <><RefreshCw className="animate-spin" /> Tailoring…</>
             ) : doc ? (
@@ -115,12 +119,13 @@ function DocumentPanel({ type, title }: { type: DocumentType; title: string }) {
         ) : (
           <>
             <StaleProfileNotice
+              profileId={profileId!}
               producedAt={doc.profileRevision}
               what="document"
               action={{
                 label: 'Regenerate',
                 onClick: () => generate.mutate(),
-                disabled: generate.isPending,
+                disabled: busy,
               }}
             />
             <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">

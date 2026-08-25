@@ -24,16 +24,19 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatDateTime } from '@/lib/format'
 import { useOfferId } from '@/hooks/useOfferId'
+import { useSelectedProfile } from '@/hooks/useSelectedProfile'
 
 export function AnalysisTab() {
   const offerId = useOfferId()
   const queryClient = useQueryClient()
   const [searchParams, setSearchParams] = useSearchParams()
+  const { profileId } = useSelectedProfile()
 
-  // 404 here is "never analysed", an empty state rather than an error.
+  // 404 here is "never analysed against this profile", an empty state rather than an error.
   const latest = useQuery({
-    queryKey: keys.latestAnalysis(offerId),
-    queryFn: () => getLatestAnalysis(offerId),
+    queryKey: keys.latestAnalysis(offerId, profileId ?? -1),
+    queryFn: () => getLatestAnalysis(offerId, profileId!),
+    enabled: profileId !== null,
   })
 
   // Keeping the id in the URL is what lets a refresh mid-run pick the same job back up.
@@ -43,19 +46,19 @@ export function AnalysisTab() {
   const report = polling.data ?? (pinned ? undefined : latest.data ?? undefined)
 
   const start = useMutation({
-    mutationFn: () => startAnalysis(offerId),
+    mutationFn: () => startAnalysis(offerId, profileId!),
     onSuccess: ({ analysisId: id }) => {
       setSearchParams({ id: String(id) }, { replace: true })
-      queryClient.invalidateQueries({ queryKey: keys.latestAnalysis(offerId) })
+      queryClient.invalidateQueries({ queryKey: keys.latestAnalysis(offerId, profileId!) })
     },
   })
 
-  useTerminalTransition(report, offerId)
+  useTerminalTransition(report, offerId, profileId)
 
   const running = Boolean(report && !isTerminal(report.state))
-  const busy = start.isPending || running
+  const busy = start.isPending || running || profileId === null
 
-  if (latest.isPending) return <Skeleton className="h-64 w-full" />
+  if (latest.isPending && profileId !== null) return <Skeleton className="h-64 w-full" />
 
   const startError = start.error instanceof ApiError ? start.error : null
 
@@ -64,11 +67,11 @@ export function AnalysisTab() {
       {startError?.status === 409 ? (
         <Alert>
           <AlertTriangle />
-          <AlertTitle>No profile imported yet</AlertTitle>
+          <AlertTitle>No profile details yet</AlertTitle>
           <AlertDescription>
             <p>An analysis compares the offer against your profile, so there has to be one.</p>
             <Button asChild size="sm" className="mt-2">
-              <Link to="/profile">Import a profile</Link>
+              <Link to="/profile">Fill in your profile</Link>
             </Button>
           </AlertDescription>
         </Alert>
@@ -92,7 +95,7 @@ export function AnalysisTab() {
       ) : report.state === 'FAILED' ? (
         <FailedReport report={report} onRetry={() => start.mutate()} retrying={busy} />
       ) : (
-        <DoneReport report={report} onRerun={() => start.mutate()} busy={busy} />
+        <DoneReport report={report} profileId={profileId!} onRerun={() => start.mutate()} busy={busy} />
       )}
     </div>
   )
@@ -102,13 +105,13 @@ export function AnalysisTab() {
  * Reaching DONE changes things this screen does not own: the server flips the application status
  * to ANALYZED inside start(), and extraction may have queued new unmatched terms.
  */
-function useTerminalTransition(report: AnalysisReport | undefined, offerId: number) {
+function useTerminalTransition(report: AnalysisReport | undefined, offerId: number, profileId: number | null) {
   const queryClient = useQueryClient()
   const settled = useRef<number | null>(null)
   const watched = useRef<number | null>(null)
 
   useEffect(() => {
-    if (!report) return
+    if (!report || profileId === null) return
 
     // Only a job we actually watched running counts as a transition. Opening the tab on an
     // analysis that finished hours ago must not announce itself as if it just completed.
@@ -124,14 +127,14 @@ function useTerminalTransition(report: AnalysisReport | undefined, offerId: numb
       toast.success('Analysis complete')
       queryClient.invalidateQueries({ queryKey: keys.offers })
       queryClient.invalidateQueries({ queryKey: keys.offer(offerId) })
-      queryClient.invalidateQueries({ queryKey: keys.latestAnalysis(offerId) })
+      queryClient.invalidateQueries({ queryKey: keys.latestAnalysis(offerId, profileId) })
       queryClient.invalidateQueries({ queryKey: keys.unmatched })
-      queryClient.invalidateQueries({ queryKey: keys.aggregate })
+      queryClient.invalidateQueries({ queryKey: keys.aggregate(profileId) })
     } else {
       toast.error('Analysis failed')
       queryClient.invalidateQueries({ queryKey: ['llm'] })
     }
-  }, [report, offerId, queryClient])
+  }, [report, offerId, profileId, queryClient])
 }
 
 function FailedReport({
@@ -168,10 +171,12 @@ function FailedReport({
 
 function DoneReport({
   report,
+  profileId,
   onRerun,
   busy,
 }: {
   report: AnalysisReport
+  profileId: number
   onRerun: () => void
   busy: boolean
 }) {
@@ -181,6 +186,7 @@ function DoneReport({
   return (
     <>
       <StaleProfileNotice
+        profileId={profileId}
         producedAt={report.profileRevision}
         what="analysis"
         action={{ label: 'Run new analysis', onClick: onRerun, disabled: busy }}

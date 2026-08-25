@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Pencil, Plus } from 'lucide-react'
 import { addLink, deleteLink, putDetails, reorderLinks, updateLink } from '@/api/profile'
-import type { CandidateProfile, ProfileLink } from '@/api/types'
+import type { CandidateProfile, DetailsRequest, LinkRequest, ProfileLink } from '@/api/types'
 import { ApiErrorAlert } from '@/components/ApiErrorAlert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -15,13 +15,13 @@ import { Field } from './Field'
 import { RowActions } from './RowActions'
 import { blankToNull, movedIds, useProfileEdit } from './mutations'
 
-export function DetailsCard({ profile }: { profile: CandidateProfile }) {
+export function DetailsCard({ profileId, profile }: { profileId: number; profile: CandidateProfile }) {
   const [editing, setEditing] = useState(false)
   const [linkDialog, setLinkDialog] = useState<ProfileLink | 'new' | null>(null)
   const [deleting, setDeleting] = useState<ProfileLink | null>(null)
 
-  const removeLink = useProfileEdit(deleteLink, 'Link removed')
-  const reorder = useProfileEdit(reorderLinks, 'Links reordered')
+  const removeLink = useProfileEdit(profileId, (id: number) => deleteLink(profileId, id), 'Link removed')
+  const reorder = useProfileEdit(profileId, (ids: number[]) => reorderLinks(profileId, ids), 'Links reordered')
   const { details, links } = profile
 
   return (
@@ -88,8 +88,8 @@ export function DetailsCard({ profile }: { profile: CandidateProfile }) {
         </div>
       </CardContent>
 
-      <DetailsDialog profile={profile} open={editing} onOpenChange={setEditing} />
-      <LinkDialog link={linkDialog} onClose={() => setLinkDialog(null)} />
+      <DetailsDialog profileId={profileId} profile={profile} open={editing} onOpenChange={setEditing} />
+      <LinkDialog profileId={profileId} link={linkDialog} onClose={() => setLinkDialog(null)} />
       <ConfirmDelete
         open={deleting !== null}
         onOpenChange={(open) => {
@@ -108,10 +108,12 @@ export function DetailsCard({ profile }: { profile: CandidateProfile }) {
 }
 
 function DetailsDialog({
+  profileId,
   profile,
   open,
   onOpenChange,
 }: {
+  profileId: number
   profile: CandidateProfile
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -135,7 +137,7 @@ function DetailsDialog({
     setSummary(profile.details.summary ?? '')
   }
 
-  const save = useProfileEdit(putDetails, 'Details saved')
+  const save = useProfileEdit(profileId, (body: DetailsRequest) => putDetails(profileId, body), 'Details saved')
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -192,7 +194,15 @@ function DetailsDialog({
   )
 }
 
-function LinkDialog({ link, onClose }: { link: ProfileLink | 'new' | null; onClose: () => void }) {
+function LinkDialog({
+  profileId,
+  link,
+  onClose,
+}: {
+  profileId: number
+  link: ProfileLink | 'new' | null
+  onClose: () => void
+}) {
   const [seeded, setSeeded] = useState<number | 'new' | null>(null)
   const [label, setLabel] = useState('')
   const [url, setUrl] = useState('')
@@ -204,9 +214,11 @@ function LinkDialog({ link, onClose }: { link: ProfileLink | 'new' | null; onClo
     setUrl(link === 'new' ? '' : link.url)
   }
 
-  const create = useProfileEdit(addLink, 'Link added')
+  const create = useProfileEdit(profileId, (body: LinkRequest) => addLink(profileId, body), 'Link added')
   const update = useProfileEdit(
-    (args: { id: number; label: string; url: string }) => updateLink(args.id, { label: args.label, url: args.url }),
+    profileId,
+    (args: { id: number; label: string; url: string }) =>
+      updateLink(profileId, args.id, { label: args.label, url: args.url }),
     'Link saved',
   )
   const active = link === 'new' ? create : update

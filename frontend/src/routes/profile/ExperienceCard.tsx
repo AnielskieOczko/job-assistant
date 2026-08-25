@@ -23,12 +23,12 @@ import { Field } from './Field'
 import { RowActions } from './RowActions'
 import { blankToNull, movedIds, useProfileEdit } from './mutations'
 
-export function ExperienceCard({ profile }: { profile: CandidateProfile }) {
+export function ExperienceCard({ profileId, profile }: { profileId: number; profile: CandidateProfile }) {
   const [dialog, setDialog] = useState<WorkExperience | 'new' | null>(null)
   const [deleting, setDeleting] = useState<WorkExperience | null>(null)
 
-  const reorder = useProfileEdit(reorderExperiences, 'Roles reordered')
-  const remove = useProfileEdit(deleteExperience, 'Role removed')
+  const reorder = useProfileEdit(profileId, (ids: number[]) => reorderExperiences(profileId, ids), 'Roles reordered')
+  const remove = useProfileEdit(profileId, (id: number) => deleteExperience(profileId, id), 'Role removed')
   const { experiences } = profile
 
   return (
@@ -77,14 +77,14 @@ export function ExperienceCard({ profile }: { profile: CandidateProfile }) {
 
               {experience.summary ? <p className="mt-2 text-sm">{experience.summary}</p> : null}
 
-              <Bullets experience={experience} profile={profile} />
+              <Bullets profileId={profileId} experience={experience} profile={profile} />
             </div>
           ))
         )}
         {reorder.isError ? <ApiErrorAlert error={reorder.error} /> : null}
       </CardContent>
 
-      <ExperienceDialog experience={dialog} onClose={() => setDialog(null)} />
+      <ExperienceDialog profileId={profileId} experience={dialog} onClose={() => setDialog(null)} />
       <ConfirmDelete
         open={deleting !== null}
         onOpenChange={(open) => {
@@ -102,16 +102,25 @@ export function ExperienceCard({ profile }: { profile: CandidateProfile }) {
   )
 }
 
-function Bullets({ experience, profile }: { experience: WorkExperience; profile: CandidateProfile }) {
+function Bullets({
+  profileId,
+  experience,
+  profile,
+}: {
+  profileId: number
+  experience: WorkExperience
+  profile: CandidateProfile
+}) {
   const [dialog, setDialog] = useState<ExperienceBullet | 'new' | null>(null)
   const [deleting, setDeleting] = useState<ExperienceBullet | null>(null)
   const names = useSkillNames()
 
   const reorder = useProfileEdit(
-    (ids: number[]) => reorderBullets(experience.id, ids),
+    profileId,
+    (ids: number[]) => reorderBullets(profileId, experience.id, ids),
     'Bullets reordered',
   )
-  const remove = useProfileEdit(deleteBullet, 'Bullet removed')
+  const remove = useProfileEdit(profileId, (id: number) => deleteBullet(profileId, id), 'Bullet removed')
   const { bullets } = experience
 
   return (
@@ -151,6 +160,7 @@ function Bullets({ experience, profile }: { experience: WorkExperience; profile:
       {reorder.isError ? <ApiErrorAlert error={reorder.error} /> : null}
 
       <BulletDialog
+        profileId={profileId}
         bullet={dialog}
         experienceId={experience.id}
         profile={profile}
@@ -174,11 +184,13 @@ function Bullets({ experience, profile }: { experience: WorkExperience; profile:
 }
 
 function BulletDialog({
+  profileId,
   bullet,
   experienceId,
   profile,
   onClose,
 }: {
+  profileId: number
   bullet: ExperienceBullet | 'new' | null
   experienceId: number
   profile: CandidateProfile
@@ -199,12 +211,14 @@ function BulletDialog({
   }
 
   const create = useProfileEdit(
-    (body: { text: string; skillIds: number[] }) => addBullet(experienceId, body),
+    profileId,
+    (body: { text: string; skillIds: number[] }) => addBullet(profileId, experienceId, body),
     'Bullet added',
   )
   const update = useProfileEdit(
+    profileId,
     (args: { id: number; text: string; skillIds: number[] }) =>
-      updateBullet(args.id, { text: args.text, skillIds: args.skillIds }),
+      updateBullet(profileId, args.id, { text: args.text, skillIds: args.skillIds }),
     'Bullet saved',
   )
   const active = bullet === 'new' ? create : update
@@ -293,9 +307,11 @@ function BulletDialog({
 }
 
 function ExperienceDialog({
+  profileId,
   experience,
   onClose,
 }: {
+  profileId: number
   experience: WorkExperience | 'new' | null
   onClose: () => void
 }) {
@@ -319,10 +335,15 @@ function ExperienceDialog({
     setSummary(source?.summary ?? '')
   }
 
-  const create = useProfileEdit(addExperience, 'Role added')
+  const create = useProfileEdit(
+    profileId,
+    (body: Parameters<typeof addExperience>[1]) => addExperience(profileId, body),
+    'Role added',
+  )
   const update = useProfileEdit(
-    (args: { id: number; body: Parameters<typeof updateExperience>[1] }) =>
-      updateExperience(args.id, args.body),
+    profileId,
+    (args: { id: number; body: Parameters<typeof updateExperience>[2] }) =>
+      updateExperience(profileId, args.id, args.body),
     'Role saved',
   )
   const active = experience === 'new' ? create : update

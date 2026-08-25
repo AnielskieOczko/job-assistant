@@ -14,12 +14,12 @@ import { Field } from './Field'
 import { RowActions } from './RowActions'
 import { blankToNull, movedIds, useProfileEdit } from './mutations'
 
-export function EducationCard({ profile }: { profile: CandidateProfile }) {
+export function EducationCard({ profileId, profile }: { profileId: number; profile: CandidateProfile }) {
   const [dialog, setDialog] = useState<Education | 'new' | null>(null)
   const [deleting, setDeleting] = useState<Education | null>(null)
 
-  const reorder = useProfileEdit(reorderEducation, 'Education reordered')
-  const remove = useProfileEdit(deleteEducation, 'Entry removed')
+  const reorder = useProfileEdit(profileId, (ids: number[]) => reorderEducation(profileId, ids), 'Education reordered')
+  const remove = useProfileEdit(profileId, (id: number) => deleteEducation(profileId, id), 'Entry removed')
   const entries = profile.education
 
   return (
@@ -66,7 +66,7 @@ export function EducationCard({ profile }: { profile: CandidateProfile }) {
         {reorder.isError ? <ApiErrorAlert error={reorder.error} /> : null}
       </CardContent>
 
-      <EducationDialog entry={dialog} onClose={() => setDialog(null)} />
+      <EducationDialog profileId={profileId} entry={dialog} onClose={() => setDialog(null)} />
       <ConfirmDelete
         open={deleting !== null}
         onOpenChange={(open) => {
@@ -84,7 +84,15 @@ export function EducationCard({ profile }: { profile: CandidateProfile }) {
   )
 }
 
-function EducationDialog({ entry, onClose }: { entry: Education | 'new' | null; onClose: () => void }) {
+function EducationDialog({
+  profileId,
+  entry,
+  onClose,
+}: {
+  profileId: number
+  entry: Education | 'new' | null
+  onClose: () => void
+}) {
   const [seeded, setSeeded] = useState<number | 'new' | null>(null)
   const [institution, setInstitution] = useState('')
   const [degree, setDegree] = useState('')
@@ -103,10 +111,15 @@ function EducationDialog({ entry, onClose }: { entry: Education | 'new' | null; 
     setEndedOn(source?.endedOn ?? '')
   }
 
-  const create = useProfileEdit(addEducation, 'Entry added')
+  const create = useProfileEdit(
+    profileId,
+    (body: Parameters<typeof addEducation>[1]) => addEducation(profileId, body),
+    'Entry added',
+  )
   const update = useProfileEdit(
-    (args: { id: number; body: Parameters<typeof updateEducation>[1] }) =>
-      updateEducation(args.id, args.body),
+    profileId,
+    (args: { id: number; body: Parameters<typeof updateEducation>[2] }) =>
+      updateEducation(profileId, args.id, args.body),
     'Entry saved',
   )
   const active = entry === 'new' ? create : update

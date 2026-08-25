@@ -12,8 +12,8 @@ import type {
   SkillUpdateRequest,
 } from './types'
 
-/** Returns null when there is no profile yet: the endpoint answers 204, not 404. */
-export const getProfile = () => request<CandidateProfile | null>('/api/profile')
+/** Returns null when the profile has no details yet: the endpoint answers 204, not 404. */
+export const getProfile = (profileId: number) => request<CandidateProfile | null>(`/api/profiles/${profileId}`)
 
 /**
  * A full replace, not a merge - the document is the profile. Throws ApiError 400 carrying
@@ -22,8 +22,8 @@ export const getProfile = () => request<CandidateProfile | null>('/api/profile')
  * Every entity id is reassigned, so previously generated CVs stop matching the profile they cite.
  * The dialog says so before calling this.
  */
-export const importProfile = (document: ProfileImport | unknown) =>
-  request<CandidateProfile>('/api/profile/import', { method: 'POST', ...json(document) })
+export const importProfile = (profileId: number, document: ProfileImport | unknown) =>
+  request<CandidateProfile>(`/api/profiles/${profileId}/import`, { method: 'POST', ...json(document) })
 
 /**
  * Every mutation answers with the whole profile, so callers never reassemble one from a patch
@@ -41,40 +41,55 @@ const post = (path: string, body: unknown) =>
 
 const remove = (path: string) => request<CandidateProfile>(path, { method: 'DELETE' })
 
-/** Also how a profile comes into existence - no import document required. */
-export const putDetails = (body: DetailsRequest) => put('/api/profile/details', body)
+/** Fills in an already-created profile's details. The profile itself must exist first - see `createProfile`. */
+export const putDetails = (profileId: number, body: DetailsRequest) =>
+  put(`/api/profiles/${profileId}/details`, body)
 
-export const addLink = (body: LinkRequest) => post('/api/profile/links', body)
-export const updateLink = (id: number, body: LinkRequest) => put(`/api/profile/links/${id}`, body)
-export const deleteLink = (id: number) => remove(`/api/profile/links/${id}`)
-export const reorderLinks = (ids: number[]) => put('/api/profile/links/order', { ids })
+export const addLink = (profileId: number, body: LinkRequest) => post(`/api/profiles/${profileId}/links`, body)
+export const updateLink = (profileId: number, id: number, body: LinkRequest) =>
+  put(`/api/profiles/${profileId}/links/${id}`, body)
+export const deleteLink = (profileId: number, id: number) => remove(`/api/profiles/${profileId}/links/${id}`)
+export const reorderLinks = (profileId: number, ids: number[]) =>
+  put(`/api/profiles/${profileId}/links/order`, { ids })
 
-export const addSkill = (body: SkillRequest) => post('/api/profile/skills', body)
-export const updateSkill = (id: number, body: SkillUpdateRequest) => put(`/api/profile/skills/${id}`, body)
-export const deleteSkill = (id: number) => remove(`/api/profile/skills/${id}`)
-export const reorderSkills = (ids: number[]) => put('/api/profile/skills/order', { ids })
+export const addSkill = (profileId: number, body: SkillRequest) => post(`/api/profiles/${profileId}/skills`, body)
+export const updateSkill = (profileId: number, id: number, body: SkillUpdateRequest) =>
+  put(`/api/profiles/${profileId}/skills/${id}`, body)
+export const deleteSkill = (profileId: number, id: number) => remove(`/api/profiles/${profileId}/skills/${id}`)
+export const reorderSkills = (profileId: number, ids: number[]) =>
+  put(`/api/profiles/${profileId}/skills/order`, { ids })
 
-export const addExperience = (body: ExperienceRequest) => post('/api/profile/experiences', body)
-export const updateExperience = (id: number, body: ExperienceRequest) =>
-  put(`/api/profile/experiences/${id}`, body)
-export const deleteExperience = (id: number) => remove(`/api/profile/experiences/${id}`)
-export const reorderExperiences = (ids: number[]) => put('/api/profile/experiences/order', { ids })
+export const addExperience = (profileId: number, body: ExperienceRequest) =>
+  post(`/api/profiles/${profileId}/experiences`, body)
+export const updateExperience = (profileId: number, id: number, body: ExperienceRequest) =>
+  put(`/api/profiles/${profileId}/experiences/${id}`, body)
+export const deleteExperience = (profileId: number, id: number) =>
+  remove(`/api/profiles/${profileId}/experiences/${id}`)
+export const reorderExperiences = (profileId: number, ids: number[]) =>
+  put(`/api/profiles/${profileId}/experiences/order`, { ids })
 
-export const addBullet = (experienceId: number, body: BulletRequest) =>
-  post(`/api/profile/experiences/${experienceId}/bullets`, body)
-export const updateBullet = (id: number, body: BulletRequest) => put(`/api/profile/bullets/${id}`, body)
-export const deleteBullet = (id: number) => remove(`/api/profile/bullets/${id}`)
-export const reorderBullets = (experienceId: number, ids: number[]) =>
-  put(`/api/profile/experiences/${experienceId}/bullets/order`, { ids })
+export const addBullet = (profileId: number, experienceId: number, body: BulletRequest) =>
+  post(`/api/profiles/${profileId}/experiences/${experienceId}/bullets`, body)
+export const updateBullet = (profileId: number, id: number, body: BulletRequest) =>
+  put(`/api/profiles/${profileId}/bullets/${id}`, body)
+export const deleteBullet = (profileId: number, id: number) => remove(`/api/profiles/${profileId}/bullets/${id}`)
+export const reorderBullets = (profileId: number, experienceId: number, ids: number[]) =>
+  put(`/api/profiles/${profileId}/experiences/${experienceId}/bullets/order`, { ids })
 
-export const addEducation = (body: EducationRequest) => post('/api/profile/education', body)
-export const updateEducation = (id: number, body: EducationRequest) =>
-  put(`/api/profile/education/${id}`, body)
-export const deleteEducation = (id: number) => remove(`/api/profile/education/${id}`)
-export const reorderEducation = (ids: number[]) => put('/api/profile/education/order', { ids })
+export const addEducation = (profileId: number, body: EducationRequest) =>
+  post(`/api/profiles/${profileId}/education`, body)
+export const updateEducation = (profileId: number, id: number, body: EducationRequest) =>
+  put(`/api/profiles/${profileId}/education/${id}`, body)
+export const deleteEducation = (profileId: number, id: number) =>
+  remove(`/api/profiles/${profileId}/education/${id}`)
+export const reorderEducation = (profileId: number, ids: number[]) =>
+  put(`/api/profiles/${profileId}/education/order`, { ids })
 
-export const addLanguage = (body: LanguageRequest) => post('/api/profile/languages', body)
-export const updateLanguage = (id: number, body: LanguageRequest) =>
-  put(`/api/profile/languages/${id}`, body)
-export const deleteLanguage = (id: number) => remove(`/api/profile/languages/${id}`)
-export const reorderLanguages = (ids: number[]) => put('/api/profile/languages/order', { ids })
+export const addLanguage = (profileId: number, body: LanguageRequest) =>
+  post(`/api/profiles/${profileId}/languages`, body)
+export const updateLanguage = (profileId: number, id: number, body: LanguageRequest) =>
+  put(`/api/profiles/${profileId}/languages/${id}`, body)
+export const deleteLanguage = (profileId: number, id: number) =>
+  remove(`/api/profiles/${profileId}/languages/${id}`)
+export const reorderLanguages = (profileId: number, ids: number[]) =>
+  put(`/api/profiles/${profileId}/languages/order`, { ids })

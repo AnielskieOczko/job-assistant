@@ -150,6 +150,8 @@ export interface LearningPlanItem {
 export interface AnalysisReport {
   id: number
   offerId: number
+  /** Which profile this analysis was run against. */
+  profileId: number
   state: AnalysisState
   error: string | null
   /** 0.0-1.0 over must-haves only. Null means nothing was scoreable - render that, not 0%. */
@@ -195,6 +197,17 @@ export interface AggregateGapReport {
 }
 
 /* ------------------------------------------------------------------ profile */
+
+/** A profile's identity, without its contents - what the switcher and /api/profiles list show. */
+export interface ProfileSummary {
+  id: number
+  name: string
+  isDefault: boolean
+}
+
+export interface CreateProfileRequest {
+  name: string
+}
 
 export const PROFICIENCIES = ['BEGINNER', 'WORKING', 'PROFICIENT', 'EXPERT'] as const
 export type Proficiency = (typeof PROFICIENCIES)[number]
@@ -396,6 +409,8 @@ export type DocumentType = (typeof DOCUMENT_TYPES)[number]
 export interface GeneratedDocument {
   id: number
   offerId: number
+  /** Which profile this document was tailored to. */
+  profileId: number
   analysisId: number | null
   type: DocumentType
   language: string
