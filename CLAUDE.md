@@ -12,7 +12,8 @@ improvement plan, and — on demand — a CV and cover letter tailored to that o
 Single user, no authentication, bound to loopback. The full architecture decisions and milestone
 plan live in `~/.claude/plans/grill-with-docs-ok-lets-start-sharded-oasis.md`; `docs/api-flow.md`
 walks the whole HTTP flow end to end, `docs/profile-format.md` documents the profile document, and
-`docs/frontend.md` covers the UI.
+`docs/frontend.md` covers the UI. Decisions already taken for work not yet started live in
+`docs/roadmap.md`; `docs/adr/` records the ones that were hard to reverse.
 
 ## The rule that governs the whole design
 
