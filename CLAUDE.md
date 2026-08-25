@@ -11,7 +11,8 @@ improvement plan, and — on demand — a CV and cover letter tailored to that o
 
 Single user, no authentication, bound to loopback. The full architecture decisions and milestone
 plan live in `~/.claude/plans/grill-with-docs-ok-lets-start-sharded-oasis.md`; `docs/api-flow.md`
-walks the whole HTTP flow end to end and `docs/profile-format.md` documents the profile document.
+walks the whole HTTP flow end to end, `docs/profile-format.md` documents the profile document, and
+`docs/frontend.md` covers the UI.
 
 ## The rule that governs the whole design
 
@@ -34,7 +35,14 @@ docker compose up -d          # local Postgres (required for integration tests)
 ./mvnw test                   # fast tier only
 ./mvnw spring-boot:run        # run against local Postgres on :8080 (loopback only)
 ./mvnw test -Dtest=ClassName  # single test class
+
+cd frontend && npm ci && npm run dev   # Vite on :5173, proxies /api to :8080
+./mvnw -Pfrontend spring-boot:run      # build the SPA and serve everything from :8080
+./mvnw -Pfrontend clean package        # jar with the SPA inside
 ```
+
+`./mvnw test` is unchanged by the frontend and never invokes npm. A plain `./mvnw package`
+produces a jar with **no** UI — any build meant to run standalone needs `-Pfrontend`.
 
 Test tiers are Maven profiles, not `-Dgroups`: JUnit applies exclusions before inclusions, so the
 groups have to be swapped rather than added to.
@@ -59,6 +67,12 @@ groups have to be swapped rather than added to.
 - Playwright 1.62.0 (headless Chromium) renders Thymeleaf HTML to PDF
 - Spring Modulith 2.1.0 enforces module boundaries
 - Virtual threads are on; the analysis pipeline still uses its own bounded pool (see below)
+- Frontend in `frontend/`: Vite 8, React 19, TypeScript 6, Tailwind 4, shadcn/ui, TanStack Query 5,
+  react-router 8. `typescript` is pinned to `~6` because the shadcn CLI depends on `ts-morph`,
+  which needs the JavaScript compiler API that the TS 7 native port does not fully expose.
+  Tailwind 4 is CSS-first: there is **no `tailwind.config.js` and no `postcss.config.js`**, and
+  `components.json` carries an empty `"config"` on purpose. Import from `react-router`, not
+  `react-router-dom` — the latter was never published for v8.
 
 ## Boot 4 gotchas that will bite
 
@@ -83,6 +97,11 @@ Feature slices under the base package, each a Spring Modulith module. Anything i
 | `llm` | Model profiles, `ChatModel` factory, AI services, call audit, parse-repair |
 
 `catalog` is depended on by nearly everything; it has no dependencies of its own.
+
+`frontend/` sits outside the Modulith world entirely. `SpaWebConfiguration` lives in the **base
+package**, next to `JobAssistantApplication`, because `ApplicationModules.of(...)` treats every
+direct sub-package as a module — a `…jobassistant.web` package would be detected as a seventh
+module and stand alongside `analysis` and `document`.
 
 ## Skill resolution
 
@@ -160,6 +179,10 @@ prompt, response, token usage and latency.
 - Pure-logic tests (`SkillNormalizerTest`, `SkillCoverageTest`, `LanguageLevelTest`) must **not**
   use `@IntegrationTest` — they belong in the fast tier with no container at all.
 - Tier membership comes from `@Tag("pdf")` / `@Tag("eval")`; untagged means fast.
+- **The API types in `frontend/src/api/types.ts` are hand-written.** If you change a wire DTO in
+  Kotlin, change that file in the same commit. `ApiContractTest` pins the JSON key set of every
+  DTO that crosses the wire and fails the fast tier if you forget. Watch for Kotlin's `is` prefix
+  surviving serialization: `WorkExperience.isCurrent` is emitted as `isCurrent`, not `current`.
 - The eval tier scores extraction against labelled fixture pairs in `src/test/resources/eval/offers`
   (`NN-name.txt` plus its expected `NN-name.json`).
 
