@@ -122,7 +122,7 @@ class ApiContractTest {
                     ),
                     "id", "offerId", "state", "error", "matchScore", "summaryMarkdown",
                     "requirements", "languageRequirements", "learningPlan", "createdAt",
-                    "completedAt",
+                    "completedAt", "profileRevision",
                     // Computed getters the frontend treats as optional convenience.
                     "mustHaves", "niceToHaves", "missingMustHaves", "scoreExplanation",
                 )
@@ -184,6 +184,7 @@ class ApiContractTest {
                         education = emptyList(), languages = emptyList(),
                     ),
                     "details", "links", "skills", "experiences", "education", "languages",
+                    "revision",
                     // Computed; `bullets` duplicates experiences[].bullets and the UI ignores it.
                     "heldSkillIds", "bullets",
                 )
@@ -204,6 +205,7 @@ class ApiContractTest {
             assertKeys(
                 GeneratedDocument(1, 1, 1, DocumentType.CV, "English", "<html/>", Instant.EPOCH),
                 "id", "offerId", "analysisId", "type", "language", "html", "createdAt",
+                "profileRevision",
             )
         },
         {

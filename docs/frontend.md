@@ -72,16 +72,34 @@ Reaching `DONE` invalidates `offers` (the server flips the application status to
 `start()`), the offer, the latest analysis, the unmatched-term queue (extraction may have queued
 new terms) and the aggregate report.
 
+## Editing the profile
+
+`/profile` is an editor, not a read-only view. It lives in `src/routes/profile/`, one component per
+card, and every mutation goes through `useProfileEdit` — which seeds the query cache from the
+response rather than refetching, because every profile endpoint answers with the whole
+`CandidateProfile`.
+
+Forms are `useState` plus the seed-during-render idiom used elsewhere in the app; there is no form
+library, and per-entity endpoints keep each dialog small enough that adding one would not pay for
+itself. Reordering is arrow buttons rather than drag-and-drop, for the same reason.
+
+`StaleProfileNotice` compares a stored `profileRevision` against `CandidateProfile.revision` and is
+what makes an out-of-date analysis or CV visible rather than silently wrong.
+
 ## Response codes the UI has to handle
 
 | Code | Where | Meaning |
 |---|---|---|
-| 204 | `GET /api/profile` | Nothing imported yet. **Not** 404 — the wrapper must skip `res.json()` on an empty body. |
+| 204 | `GET /api/profile` | No profile yet. **Not** 404 — the wrapper must skip `res.json()` on an empty body. |
 | 404 | `…/analyses/latest`, `…/documents/latest` | Normal empty state, not an error. `requestOrNull` maps it to `null`. |
-| 409 | `POST …/analyses` | No profile imported. The first thing a new user hits. |
+| 409 | `POST …/analyses` | No profile yet. The first thing a new user hits. |
 | 409 | `POST …/documents` | No completed analysis to tailor against. |
 | 422 | `POST …/documents` | `fabricatedClaims` — the model tried to claim a skill the profile lacks. Nothing was stored. |
 | 400 | `POST /api/profile/import` | `unresolvedSkills` and `undeclaredBulletSkills`. |
+| 400 | any profile edit | `fieldErrors` — field name to message, for inline form errors. |
+| 404 | any profile edit | An id not on the profile. |
+| 409 | any profile edit | Skill already held, language already listed, role ending before it starts, partial reorder. |
+| 409 | `DELETE /api/profile/skills/{id}` | `blockingBullets` — the bullets still citing it. Rendered in the confirm dialog rather than closing it. |
 
 **Exception handlers in this backend are per-controller, not a `@ControllerAdvice`.** The catalog
 and llm controllers have none, so an invalid id there surfaces as a bare 500 with no

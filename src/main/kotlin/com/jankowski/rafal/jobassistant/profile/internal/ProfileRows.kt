@@ -21,12 +21,9 @@ internal data class ProfileSkillRow(
     val proficiency: String,
     val yearsOfExperience: BigDecimal?,
     val lastUsedYear: Int?,
+    val displayOrder: Int,
 )
 
-/**
- * Aggregate root. Bullets and their skill tags are owned by the experience, so Spring Data JDBC
- * inserts and deletes the whole tree in one call and the ordering column is managed for us.
- */
 @Table("work_experience")
 internal data class WorkExperienceRow(
     @Id val id: Long? = null,
@@ -37,14 +34,27 @@ internal data class WorkExperienceRow(
     val endedOn: LocalDate?,
     val summary: String?,
     val displayOrder: Int,
-    @MappedCollection(idColumn = "work_experience_id", keyColumn = "display_order")
-    val bullets: List<ExperienceBulletRow> = emptyList(),
 )
 
+/**
+ * An aggregate root in its own right, rather than a collection owned by [WorkExperienceRow].
+ *
+ * The tailoring model selects bullets by id, and [com.jankowski.rafal.jobassistant.profile.CandidateProfile]
+ * is the allowlist that turns an unknown id into nothing at all -- so a bullet id is the thread
+ * between a generated CV and the verified experience behind it. Spring Data JDBC deletes and
+ * reinserts an entire `@MappedCollection` whenever its owner is saved, so while bullets hung off
+ * the experience, correcting a company name silently renumbered every bullet under that role.
+ * Owning themselves, their ids survive every edit that is not their own.
+ *
+ * Skill tags stay an owned collection: `experience_bullet_skill` has a composite primary key and no
+ * surrogate id, so rewriting the set churns nothing.
+ */
 @Table("experience_bullet")
 internal data class ExperienceBulletRow(
     @Id val id: Long? = null,
+    val workExperienceId: Long,
     val text: String,
+    val displayOrder: Int,
     @MappedCollection(idColumn = "experience_bullet_id")
     val skills: Set<ExperienceBulletSkillRow> = emptySet(),
 )
@@ -68,4 +78,5 @@ internal data class LanguageSkillRow(
     @Id val id: Long? = null,
     val language: String,
     val level: String,
+    val displayOrder: Int,
 )

@@ -120,6 +120,7 @@ internal class JdbcAnalysisService(
             },
             createdAt = createdAt,
             completedAt = completedAt,
+            profileRevision = profileRevision,
         )
     }
 

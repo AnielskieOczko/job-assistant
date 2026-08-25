@@ -12,6 +12,11 @@ data class GeneratedDocument(
     val language: String,
     val html: String,
     val createdAt: Instant,
+    /**
+     * Profile revision this document was built from. The stored HTML was true when it was written,
+     * so a trailing revision does not make the document wrong - it makes it out of date.
+     */
+    val profileRevision: Long? = null,
 )
 
 /**

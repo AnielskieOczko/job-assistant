@@ -58,6 +58,9 @@ internal class AnalysisRunner(
         val offer = offers.findById(analysis.jobOfferId)
             ?: throw IllegalStateException("Analysis $analysisId points at missing offer ${analysis.jobOfferId}")
         val profile = profiles.require()
+        // Recorded before any model work, so the report is stamped with the profile it actually
+        // read rather than whatever the profile has become by the time the run finishes.
+        analyses.save(analysis.copy(profileRevision = profile.revision))
 
         transition(analysisId, AnalysisState.EXTRACTING, startedAt = Instant.now())
 

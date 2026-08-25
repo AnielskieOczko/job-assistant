@@ -16,6 +16,8 @@ internal data class GeneratedDocumentRow(
     val html: String,
     val selectionJson: String,
     val createdAt: Instant = Instant.now(),
+    /** Profile revision this document was built from - null for rows that predate the counter. */
+    val profileRevision: Long? = null,
 )
 
 internal interface GeneratedDocumentRepository : CrudRepository<GeneratedDocumentRow, Long> {

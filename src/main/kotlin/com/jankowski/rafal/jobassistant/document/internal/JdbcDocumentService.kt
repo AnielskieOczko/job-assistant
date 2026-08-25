@@ -65,6 +65,7 @@ internal class JdbcDocumentService(
                 language = language,
                 html = html,
                 selectionJson = json.writeValueAsString(selection),
+                profileRevision = profile.revision,
             )
         )
         return saved.toDomain()
@@ -164,4 +165,5 @@ private fun GeneratedDocumentRow.toDomain() = GeneratedDocument(
     language = language,
     html = html,
     createdAt = createdAt,
+    profileRevision = profileRevision,
 )

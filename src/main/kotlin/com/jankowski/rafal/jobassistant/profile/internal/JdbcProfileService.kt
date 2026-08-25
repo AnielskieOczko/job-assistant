@@ -24,6 +24,7 @@ internal class JdbcProfileService(
     private val links: ProfileLinkRepository,
     private val skills: ProfileSkillRepository,
     private val experiences: WorkExperienceRepository,
+    private val bullets: ExperienceBulletRepository,
     private val education: EducationRepository,
     private val languages: LanguageSkillRepository,
     private val jdbc: JdbcClient,
@@ -32,49 +33,29 @@ internal class JdbcProfileService(
     @Transactional(readOnly = true)
     override fun current(): CandidateProfile? {
         val details = readDetails() ?: return null
+        // Bullets no longer hang off the experience aggregate, so they are read once for the whole
+        // profile and grouped here rather than queried per role.
+        val bulletsByExperience = bullets.findAllOrdered().groupBy { it.workExperienceId }
         return CandidateProfile(
             details = details,
             links = links.findAllOrdered().map { ProfileLink(it.id!!, it.label, it.url) },
-            skills = skills.findAllOrdered().map {
-                ProfileSkill(
-                    id = it.id!!,
-                    skillId = it.canonicalSkillId,
-                    proficiency = Proficiency.valueOf(it.proficiency),
-                    yearsOfExperience = it.yearsOfExperience,
-                    lastUsedYear = it.lastUsedYear,
-                )
-            },
+            skills = skills.findAllOrdered().map { it.toDomain() },
             experiences = experiences.findAllOrdered().map { row ->
-                WorkExperience(
-                    id = row.id!!,
-                    company = row.company,
-                    roleTitle = row.roleTitle,
-                    location = row.location,
-                    startedOn = row.startedOn,
-                    endedOn = row.endedOn,
-                    summary = row.summary,
-                    bullets = row.bullets.map { bullet ->
-                        ExperienceBullet(
-                            id = bullet.id!!,
-                            text = bullet.text,
-                            skillIds = bullet.skills.mapTo(mutableSetOf()) { it.canonicalSkillId },
-                        )
-                    },
-                )
+                row.toDomain(bulletsByExperience[row.id].orEmpty().map { it.toDomain() })
             },
-            education = education.findAllOrdered().map {
-                Education(it.id!!, it.institution, it.degree, it.fieldOfStudy, it.startedOn, it.endedOn)
-            },
-            languages = languages.findAllOrdered().map {
-                LanguageSkill(it.id!!, it.language, LanguageLevel.valueOf(it.level))
-            },
+            education = education.findAllOrdered().map { it.toDomain() },
+            languages = languages.findAllOrdered().map { it.toDomain() },
+            revision = readRevision(),
         )
     }
 
     override fun require(): CandidateProfile =
         current() ?: throw IllegalStateException(
-            "No profile imported yet. POST a profile document to /api/profile/import first."
+            "No profile yet. Create one at /api/profile/details, or POST a document to /api/profile/import."
         )
+
+    @Transactional(readOnly = true)
+    override fun revision(): Long = readRevision()
 
     @Transactional
     override fun replace(import: ProfileImport): CandidateProfile {
@@ -87,17 +68,18 @@ internal class JdbcProfileService(
             import.links.mapIndexed { i, link -> ProfileLinkRow(label = link.label, url = link.url, displayOrder = i) }
         )
         skills.saveAll(
-            import.skills.map {
+            import.skills.mapIndexed { i, it ->
                 ProfileSkillRow(
                     canonicalSkillId = skillIdsByName.getValue(it.skill.lowercase()),
                     proficiency = it.proficiency.name,
                     yearsOfExperience = it.yearsOfExperience,
                     lastUsedYear = it.lastUsedYear,
+                    displayOrder = i,
                 )
             }
         )
-        experiences.saveAll(
-            import.experiences.mapIndexed { i, exp ->
+        import.experiences.forEachIndexed { i, exp ->
+            val saved = experiences.save(
                 WorkExperienceRow(
                     company = exp.company,
                     roleTitle = exp.roleTitle,
@@ -106,17 +88,21 @@ internal class JdbcProfileService(
                     endedOn = exp.endedOn,
                     summary = exp.summary,
                     displayOrder = i,
-                    bullets = exp.bullets.map { bullet ->
-                        ExperienceBulletRow(
-                            text = bullet.text,
-                            skills = bullet.skills.mapTo(mutableSetOf()) {
-                                ExperienceBulletSkillRow(skillIdsByName.getValue(it.lowercase()))
-                            },
-                        )
-                    },
                 )
-            }
-        )
+            )
+            bullets.saveAll(
+                exp.bullets.mapIndexed { j, bullet ->
+                    ExperienceBulletRow(
+                        workExperienceId = saved.id!!,
+                        text = bullet.text,
+                        displayOrder = j,
+                        skills = bullet.skills.mapTo(mutableSetOf()) {
+                            ExperienceBulletSkillRow(skillIdsByName.getValue(it.lowercase()))
+                        },
+                    )
+                }
+            )
+        }
         education.saveAll(
             import.education.mapIndexed { i, e ->
                 EducationRow(
@@ -130,9 +116,12 @@ internal class JdbcProfileService(
             }
         )
         languages.saveAll(
-            import.languages.map { LanguageSkillRow(language = it.language, level = it.level.name) }
+            import.languages.mapIndexed { i, it ->
+                LanguageSkillRow(language = it.language, level = it.level.name, displayOrder = i)
+            }
         )
 
+        bumpRevision()
         return require()
     }
 
@@ -149,8 +138,12 @@ internal class JdbcProfileService(
         val unresolved = resolved.filterValues { it == null }.keys.sorted()
 
         val declaredIds = declared.mapNotNull { resolved[it]?.id }.toSet()
+        val taggedIds = onBullets.mapNotNull { resolved[it]?.id }.toSet()
+        val undeclaredIds = ProfileInvariants.undeclaredTags(declaredIds, taggedIds)
+        // Reported back as names: the document was written in names, so that is what the author
+        // has to go and correct.
         val undeclared = onBullets.distinct()
-            .filter { name -> resolved[name]?.let { it.id !in declaredIds } == true }
+            .filter { name -> resolved[name]?.id?.let { it in undeclaredIds } == true }
             .sorted()
 
         if (unresolved.isNotEmpty() || undeclared.isNotEmpty()) {
@@ -197,6 +190,16 @@ internal class JdbcProfileService(
             .update()
     }
 
+    private fun readRevision(): Long =
+        jdbc.sql("select revision from profile_details where id = 1")
+            .query(Long::class.java)
+            .optional()
+            .orElse(0L)
+
+    private fun bumpRevision() {
+        jdbc.sql("update profile_details set revision = revision + 1 where id = 1").update()
+    }
+
     private fun deleteEverything() {
         // experience_bullet and experience_bullet_skill cascade from work_experience.
         experiences.deleteAll()
@@ -206,3 +209,34 @@ internal class JdbcProfileService(
         languages.deleteAll()
     }
 }
+
+internal fun ProfileSkillRow.toDomain() = ProfileSkill(
+    id = id!!,
+    skillId = canonicalSkillId,
+    proficiency = Proficiency.valueOf(proficiency),
+    yearsOfExperience = yearsOfExperience,
+    lastUsedYear = lastUsedYear,
+)
+
+internal fun WorkExperienceRow.toDomain(bullets: List<ExperienceBullet>) = WorkExperience(
+    id = id!!,
+    company = company,
+    roleTitle = roleTitle,
+    location = location,
+    startedOn = startedOn,
+    endedOn = endedOn,
+    summary = summary,
+    bullets = bullets,
+)
+
+internal fun ExperienceBulletRow.toDomain() = ExperienceBullet(
+    id = id!!,
+    text = text,
+    skillIds = skills.mapTo(mutableSetOf()) { it.canonicalSkillId },
+)
+
+internal fun EducationRow.toDomain() =
+    Education(id!!, institution, degree, fieldOfStudy, startedOn, endedOn)
+
+internal fun LanguageSkillRow.toDomain() =
+    LanguageSkill(id!!, language, LanguageLevel.valueOf(level))

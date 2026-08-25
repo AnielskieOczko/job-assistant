@@ -160,6 +160,11 @@ export interface AnalysisReport {
   learningPlan: LearningPlanItem[]
   createdAt: string
   completedAt: string | null
+  /**
+   * Profile revision this ran against. Null for analyses that predate the counter. When it trails
+   * `CandidateProfile.revision` the findings have been overtaken by a profile edit.
+   */
+  profileRevision: number | null
   /** Computed getters. The UI derives the must-have split itself; see `mustHaves()` below. */
   mustHaves?: RequirementFinding[]
   niceToHaves?: RequirementFinding[]
@@ -266,6 +271,12 @@ export interface CandidateProfile {
   experiences: WorkExperience[]
   education: Education[]
   languages: LanguageSkill[]
+  /**
+   * Bumped by every write to the profile. Compare against an analysis's or a document's
+   * `profileRevision` to tell output that still reflects the profile from output an edit has
+   * overtaken.
+   */
+  revision: number
   /** Computed. Serialized as an array despite being a Kotlin Set. */
   heldSkillIds?: number[]
   /**
@@ -317,6 +328,66 @@ export interface ProfileImport {
   languages: LanguageImport[]
 }
 
+/* --- per-entity editing (ids, not names; every update is a full-entity PUT) --- */
+
+/**
+ * Unlike the import document these carry catalog ids: the picker resolved the name already, so
+ * re-resolving it server-side would only add a way to fail. And every update sends the whole
+ * entity, because `endedOn: null` is what makes a role current - a patch could not tell that from
+ * a field the client simply left out.
+ */
+export interface DetailsRequest {
+  fullName: string
+  headline?: string | null
+  email?: string | null
+  phone?: string | null
+  location?: string | null
+  summary?: string | null
+}
+
+export interface LinkRequest { label: string; url: string }
+
+export interface SkillRequest {
+  skillId: number
+  proficiency: Proficiency
+  yearsOfExperience?: number | null
+  lastUsedYear?: number | null
+}
+
+/** No `skillId`: swapping which skill a row is would strand every bullet citing the old one. */
+export interface SkillUpdateRequest {
+  proficiency: Proficiency
+  yearsOfExperience?: number | null
+  lastUsedYear?: number | null
+}
+
+export interface ExperienceRequest {
+  company: string
+  roleTitle: string
+  location?: string | null
+  startedOn: string
+  endedOn?: string | null
+  summary?: string | null
+}
+
+export interface BulletRequest { text: string; skillIds: number[] }
+
+export interface EducationRequest {
+  institution: string
+  degree: string
+  fieldOfStudy?: string | null
+  startedOn?: string | null
+  endedOn?: string | null
+}
+
+export interface LanguageRequest { language: string; level: LanguageLevel }
+
+/** Must name every id in the collection exactly once; a partial list is rejected with 409. */
+export interface ReorderRequest { ids: number[] }
+
+/** A bullet standing in the way of deleting a skill. Carried on the 409 as `blockingBullets`. */
+export interface BlockingBullet { id: number; text: string }
+
 /* ----------------------------------------------------------------- document */
 
 export const DOCUMENT_TYPES = ['CV', 'COVER_LETTER'] as const
@@ -331,6 +402,11 @@ export interface GeneratedDocument {
   /** The full document markup. Large - prefer the `/html` endpoint for display. */
   html: string
   createdAt: string
+  /**
+   * Profile revision this was built from. Null for documents that predate the counter. The stored
+   * HTML was true when written, so a trailing revision means out of date, not wrong.
+   */
+  profileRevision: number | null
 }
 
 /* ---------------------------------------------------------------------- llm */

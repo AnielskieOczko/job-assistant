@@ -14,6 +14,12 @@ data class CandidateProfile(
     val experiences: List<WorkExperience>,
     val education: List<Education>,
     val languages: List<LanguageSkill>,
+    /**
+     * Write counter for the whole profile. Output derived from the profile records the value it was
+     * built from, so a CV or an analysis that an edit has overtaken can be flagged as stale rather
+     * than presented as current.
+     */
+    val revision: Long = 0,
 ) {
     /** Canonical skill ids the candidate actually holds - the allowlist for the CV invariant. */
     val heldSkillIds: Set<Long> = skills.mapTo(mutableSetOf()) { it.skillId }

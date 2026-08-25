@@ -15,6 +15,7 @@ import { LanguageFindings } from '@/components/LanguageFindings'
 import { LearningPlan } from '@/components/LearningPlan'
 import { Markdown } from '@/components/Markdown'
 import { MatchScore } from '@/components/MatchScore'
+import { StaleProfileNotice } from '@/components/StaleProfileNotice'
 import { RequirementList, RequirementSummaryStrip } from '@/components/RequirementList'
 import { useAnalysisPolling } from '@/hooks/useAnalysisPolling'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -179,6 +180,12 @@ function DoneReport({
 
   return (
     <>
+      <StaleProfileNotice
+        producedAt={report.profileRevision}
+        what="analysis"
+        action={{ label: 'Run new analysis', onClick: onRerun, disabled: busy }}
+      />
+
       <div className="flex items-start justify-between gap-4">
         <Card className="flex-1">
           <CardContent className="pt-6">

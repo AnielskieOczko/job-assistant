@@ -140,6 +140,20 @@ class AnalysisFlowIntegrationTest(
         assertNotNull(report.completedAt)
     }
 
+    /**
+     * A gap report is only meaningful next to the profile it was computed from. Without the stamp
+     * the UI cannot tell a current report from one that tells you to learn something you have
+     * since added.
+     */
+    @Test
+    fun `a completed analysis records the profile revision it read`() {
+        scriptHappyPath()
+
+        val report = runAnalysis()
+
+        assertEquals(profiles.revision(), report.profileRevision)
+    }
+
     @Test
     fun `held and implied skills come out MET with evidence`() {
         scriptHappyPath()
