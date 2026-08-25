@@ -21,16 +21,23 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 internal class DocumentController(private val documents: DocumentService) {
 
+    /** `profileId` is required - see the equivalent note on `AnalysisController.start`. */
     @PostMapping("/api/offers/{offerId}/documents")
     fun generate(
         @PathVariable offerId: Long,
+        @RequestParam profileId: Long,
         @RequestParam type: DocumentType,
         @RequestParam(defaultValue = "English") language: String,
-    ): GeneratedDocument = documents.generate(offerId, type, language)
+    ): GeneratedDocument = documents.generate(offerId, profileId, type, language)
 
+    /** Defaults to the default profile when `profileId` is omitted - this endpoint is deep-linkable. */
     @GetMapping("/api/offers/{offerId}/documents/latest")
-    fun latest(@PathVariable offerId: Long, @RequestParam type: DocumentType): ResponseEntity<GeneratedDocument> =
-        documents.latest(offerId, type)?.let { ResponseEntity.ok(it) } ?: ResponseEntity.notFound().build()
+    fun latest(
+        @PathVariable offerId: Long,
+        @RequestParam type: DocumentType,
+        @RequestParam(required = false) profileId: Long?,
+    ): ResponseEntity<GeneratedDocument> =
+        documents.latest(offerId, type, profileId)?.let { ResponseEntity.ok(it) } ?: ResponseEntity.notFound().build()
 
     /** The browser preview. Byte-for-byte the same markup Chromium turns into the PDF. */
     @GetMapping("/api/documents/{documentId}/html", produces = [MediaType.TEXT_HTML_VALUE])

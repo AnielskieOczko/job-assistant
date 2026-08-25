@@ -1,6 +1,7 @@
 package com.jankowski.rafal.jobassistant.profile
 
 import com.jankowski.rafal.jobassistant.catalog.SkillCatalog
+import com.jankowski.rafal.jobassistant.profile.internal.ProfileManagementService
 import com.jankowski.rafal.jobassistant.support.IntegrationTest
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -14,18 +15,19 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @IntegrationTest
-class ProfileServiceIntegrationTest(
+internal class ProfileServiceIntegrationTest(
     @Autowired private val profiles: ProfileService,
+    @Autowired private val management: ProfileManagementService,
     @Autowired private val catalog: SkillCatalog,
     @Autowired private val jdbc: JdbcClient,
 ) {
 
     @BeforeEach
     fun clearProfile() {
-        listOf("work_experience", "profile_skill", "profile_link", "education", "language_skill")
-            .forEach { jdbc.sql("delete from $it").update() }
-        jdbc.sql("delete from profile_details").update()
+        jdbc.sql("delete from profile").update()
     }
+
+    private fun createProfile(name: String = "Test") = management.create(name).id
 
     private fun sampleImport() = ProfileImport(
         details = ProfileDetails(
@@ -69,14 +71,16 @@ class ProfileServiceIntegrationTest(
     )
 
     @Test
-    fun `no profile is absent rather than empty`() {
-        assertNull(profiles.current())
-        assertThrows<IllegalStateException> { profiles.require() }
+    fun `an existing but empty profile is absent rather than empty`() {
+        val id = createProfile()
+        assertNull(profiles.current(id))
+        assertThrows<IllegalStateException> { profiles.require(id) }
     }
 
     @Test
     fun `imports and reads back the whole document`() {
-        val saved = profiles.replace(sampleImport())
+        val id = createProfile()
+        val saved = profiles.replace(id, sampleImport())
 
         assertEquals("Rafal Jankowski", saved.details.fullName)
         assertEquals(1, saved.links.size)
@@ -88,7 +92,8 @@ class ProfileServiceIntegrationTest(
 
     @Test
     fun `experiences keep import order and their bullets`() {
-        val saved = profiles.replace(sampleImport())
+        val id = createProfile()
+        val saved = profiles.replace(id, sampleImport())
 
         assertEquals(listOf("Acme", "Initech"), saved.experiences.map { it.company })
         assertEquals(
@@ -99,7 +104,8 @@ class ProfileServiceIntegrationTest(
 
     @Test
     fun `bullets carry the canonical skill ids they evidence`() {
-        val saved = profiles.replace(sampleImport())
+        val id = createProfile()
+        val saved = profiles.replace(id, sampleImport())
         val kotlinId = assertNotNull(catalog.resolve("Kotlin")).id
         val postgresId = assertNotNull(catalog.resolve("PostgreSQL")).id
 
@@ -111,7 +117,8 @@ class ProfileServiceIntegrationTest(
 
     @Test
     fun `held skill ids are the allowlist for everything downstream`() {
-        val saved = profiles.replace(sampleImport())
+        val id = createProfile()
+        val saved = profiles.replace(id, sampleImport())
         val expected = setOf("Kotlin", "Spring Boot", "PostgreSQL")
             .map { assertNotNull(catalog.resolve(it)).id }
             .toSet()
@@ -121,11 +128,13 @@ class ProfileServiceIntegrationTest(
 
     @Test
     fun `skill names resolve through aliases so the document can use any spelling`() {
+        val id = createProfile()
         val saved = profiles.replace(
+            id,
             sampleImport().copy(
                 skills = listOf(SkillImport("postgres", Proficiency.WORKING)),
                 experiences = emptyList(),
-            )
+            ),
         )
 
         assertEquals(assertNotNull(catalog.resolve("PostgreSQL")).id, saved.skills.single().skillId)
@@ -133,16 +142,18 @@ class ProfileServiceIntegrationTest(
 
     @Test
     fun `replace is a full replace, not a merge`() {
-        profiles.replace(sampleImport())
+        val id = createProfile()
+        profiles.replace(id, sampleImport())
 
         val replaced = profiles.replace(
+            id,
             sampleImport().copy(
                 skills = listOf(SkillImport("Kotlin", Proficiency.EXPERT)),
                 experiences = emptyList(),
                 education = emptyList(),
                 languages = emptyList(),
                 links = emptyList(),
-            )
+            ),
         )
 
         assertEquals(1, replaced.skills.size)
@@ -152,22 +163,26 @@ class ProfileServiceIntegrationTest(
 
     @Test
     fun `an unknown skill name rejects the whole import`() {
+        val id = createProfile()
         val failure = assertThrows<ProfileImportException> {
             profiles.replace(
+                id,
                 sampleImport().copy(
                     skills = sampleImport().skills + SkillImport("Frobnication", Proficiency.EXPERT)
-                )
+                ),
             )
         }
 
         assertEquals(listOf("Frobnication"), failure.unresolvedSkills)
-        assertNull(profiles.current(), "a rejected import must not leave partial data behind")
+        assertNull(profiles.current(id), "a rejected import must not leave partial data behind")
     }
 
     @Test
     fun `a bullet cannot evidence a skill the profile does not declare`() {
+        val id = createProfile()
         val failure = assertThrows<ProfileImportException> {
             profiles.replace(
+                id,
                 sampleImport().copy(
                     experiences = listOf(
                         ExperienceImport(
@@ -177,7 +192,7 @@ class ProfileServiceIntegrationTest(
                             bullets = listOf(BulletImport("Deployed to Kubernetes.", listOf("Kubernetes"))),
                         )
                     )
-                )
+                ),
             )
         }
 
@@ -186,7 +201,8 @@ class ProfileServiceIntegrationTest(
 
     @Test
     fun `language levels are queryable for offer requirements`() {
-        val saved = profiles.replace(sampleImport())
+        val id = createProfile()
+        val saved = profiles.replace(id, sampleImport())
 
         assertEquals(LanguageLevel.C1, saved.languageLevel("English"))
         assertEquals(LanguageLevel.C1, saved.languageLevel("english"))
@@ -196,9 +212,43 @@ class ProfileServiceIntegrationTest(
 
     @Test
     fun `current experience has no end date`() {
-        val saved = profiles.replace(sampleImport())
+        val id = createProfile()
+        val saved = profiles.replace(id, sampleImport())
 
         assertTrue(saved.experiences.first { it.company == "Acme" }.isCurrent)
         assertTrue(!saved.experiences.first { it.company == "Initech" }.isCurrent)
+    }
+
+    @Test
+    fun `two profiles hold independent skill sets`() {
+        val a = createProfile("Java developer")
+        val b = createProfile("Cloud consultant")
+
+        profiles.replace(a, sampleImport().copy(experiences = emptyList(), education = emptyList(), languages = emptyList()))
+        profiles.replace(
+            b,
+            sampleImport().copy(
+                skills = listOf(SkillImport("PostgreSQL", Proficiency.WORKING)),
+                experiences = emptyList(),
+                education = emptyList(),
+                languages = emptyList(),
+            ),
+        )
+
+        assertEquals(3, profiles.require(a).skills.size)
+        assertEquals(1, profiles.require(b).skills.size)
+    }
+
+    @Test
+    fun `defaultProfileId resolves to the flagged profile`() {
+        val a = createProfile("First")
+        createProfile("Second")
+
+        assertEquals(a, profiles.defaultProfileId())
+    }
+
+    @Test
+    fun `defaultProfileId throws when no profile exists yet`() {
+        assertThrows<IllegalStateException> { profiles.defaultProfileId() }
     }
 }

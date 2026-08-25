@@ -9,6 +9,7 @@ import java.time.Instant
 internal data class AnalysisRow(
     @Id val id: Long? = null,
     val jobOfferId: Long,
+    val profileId: Long,
     val state: String,
     val error: String? = null,
     val modelProfile: String? = null,

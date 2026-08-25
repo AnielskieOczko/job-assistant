@@ -57,7 +57,11 @@ internal class AnalysisRunner(
         }
         val offer = offers.findById(analysis.jobOfferId)
             ?: throw IllegalStateException("Analysis $analysisId points at missing offer ${analysis.jobOfferId}")
-        val profile = profiles.require()
+        // The profile this run analyses against was fixed the moment the analysis row was created
+        // (JdbcAnalysisService.start persisted it) - reading it here, rather than accepting a
+        // profileId parameter, keeps the async dispatch simple and guarantees a run can never drift
+        // onto a different profile than the one it was queued against.
+        val profile = profiles.require(analysis.profileId)
         // Recorded before any model work, so the report is stamped with the profile it actually
         // read rather than whatever the profile has become by the time the run finishes.
         analyses.save(analysis.copy(profileRevision = profile.revision))

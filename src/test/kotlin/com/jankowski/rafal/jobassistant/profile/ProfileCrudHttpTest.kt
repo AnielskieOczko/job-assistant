@@ -1,6 +1,7 @@
 package com.jankowski.rafal.jobassistant.profile
 
 import com.jankowski.rafal.jobassistant.catalog.SkillCatalog
+import com.jankowski.rafal.jobassistant.profile.internal.ProfileManagementService
 import com.jankowski.rafal.jobassistant.support.IntegrationTest
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -26,9 +27,10 @@ import java.time.LocalDate
  * they are asserted over HTTP.
  */
 @IntegrationTest
-class ProfileCrudHttpTest(
+internal class ProfileCrudHttpTest(
     @Autowired private val context: WebApplicationContext,
     @Autowired private val profiles: ProfileService,
+    @Autowired private val management: ProfileManagementService,
     @Autowired private val catalog: SkillCatalog,
     @Autowired private val jdbc: JdbcClient,
 ) {
@@ -42,14 +44,15 @@ class ProfileCrudHttpTest(
     @BeforeEach
     fun clearProfile() {
         mvc = MockMvcBuilders.webAppContextSetup(context).build()
-        listOf("work_experience", "profile_skill", "profile_link", "education", "language_skill")
-            .forEach { jdbc.sql("delete from $it").update() }
-        jdbc.sql("delete from profile_details").update()
+        jdbc.sql("delete from profile").update()
     }
 
     private fun skillId(name: String) = catalog.resolve(name)!!.id
 
-    private fun seed() = profiles.replace(
+    private fun createProfile(name: String = "Test") = management.create(name).id
+
+    private fun seed(profileId: Long = createProfile()) = profiles.replace(
+        profileId,
         ProfileImport(
             details = ProfileDetails(fullName = "Rafal Jankowski"),
             skills = listOf(SkillImport("Kotlin", Proficiency.EXPERT)),
@@ -61,18 +64,20 @@ class ProfileCrudHttpTest(
                     bullets = listOf(BulletImport("Built services in Kotlin.", listOf("Kotlin"))),
                 ),
             ),
-        )
+        ),
     )
 
     @Test
     fun `an empty profile is 204 rather than 404`() {
-        mvc.perform(get("/api/profile")).andExpect(status().isNoContent)
+        val id = createProfile()
+        mvc.perform(get("/api/profiles/$id")).andExpect(status().isNoContent)
     }
 
     @Test
-    fun `putting details creates the profile and returns it`() {
+    fun `putting details fills in an already-created profile and returns it`() {
+        val id = createProfile()
         mvc.perform(
-            put("/api/profile/details")
+            put("/api/profiles/$id/details")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""{"fullName":"Rafal Jankowski","headline":"Consultant"}""")
         )
@@ -80,14 +85,15 @@ class ProfileCrudHttpTest(
             .andExpect(jsonPath("$.details.fullName").value("Rafal Jankowski"))
             .andExpect(jsonPath("$.revision").value(1))
 
-        mvc.perform(get("/api/profile")).andExpect(status().isOk)
+        mvc.perform(get("/api/profiles/$id")).andExpect(status().isOk)
     }
 
     @Test
     fun `adding a skill answers 201 with the whole profile`() {
-        seed()
+        val id = createProfile()
+        seed(id)
         mvc.perform(
-            post("/api/profile/skills")
+            post("/api/profiles/$id/skills")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""{"skillId":${skillId("Docker")},"proficiency":"WORKING"}""")
         )
@@ -98,9 +104,10 @@ class ProfileCrudHttpTest(
 
     @Test
     fun `a blank required field is a 400 naming the field`() {
-        seed()
+        val id = createProfile()
+        seed(id)
         mvc.perform(
-            put("/api/profile/details")
+            put("/api/profiles/$id/details")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""{"fullName":"  "}""")
         )
@@ -111,9 +118,10 @@ class ProfileCrudHttpTest(
 
     @Test
     fun `holding a skill twice is a 409`() {
-        seed()
+        val id = createProfile()
+        seed(id)
         mvc.perform(
-            post("/api/profile/skills")
+            post("/api/profiles/$id/skills")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""{"skillId":${skillId("Kotlin")},"proficiency":"WORKING"}""")
         )
@@ -124,10 +132,11 @@ class ProfileCrudHttpTest(
     /** The frontend renders `blockingBullets` directly, so both the status and the name matter. */
     @Test
     fun `deleting a cited skill is a 409 naming the bullets in the way`() {
-        val profile = seed()
+        val id = createProfile()
+        val profile = seed(id)
         val kotlin = profile.skills.single()
 
-        mvc.perform(delete("/api/profile/skills/${kotlin.id}"))
+        mvc.perform(delete("/api/profiles/$id/skills/${kotlin.id}"))
             .andExpect(status().isConflict)
             .andExpect(jsonPath("$.blockingBullets.length()").value(1))
             .andExpect(jsonPath("$.blockingBullets[0].text").value("Built services in Kotlin."))
@@ -136,17 +145,19 @@ class ProfileCrudHttpTest(
 
     @Test
     fun `an unknown id is a 404`() {
-        seed()
-        mvc.perform(delete("/api/profile/skills/99999"))
+        val id = createProfile()
+        seed(id)
+        mvc.perform(delete("/api/profiles/$id/skills/99999"))
             .andExpect(status().isNotFound)
             .andExpect(jsonPath("$.title").value("Not on this profile"))
     }
 
     @Test
     fun `a bullet citing an undeclared skill is a 409`() {
-        val experience = seed().experiences.single()
+        val id = createProfile()
+        val experience = seed(id).experiences.single()
         mvc.perform(
-            post("/api/profile/experiences/${experience.id}/bullets")
+            post("/api/profiles/$id/experiences/${experience.id}/bullets")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""{"text":"Deployed with Kubernetes.","skillIds":[${skillId("Kubernetes")}]}""")
         )
@@ -156,8 +167,9 @@ class ProfileCrudHttpTest(
     /** Unchanged from before CRUD existed, and the SPA still reads both extension names. */
     @Test
     fun `an import naming an unknown skill is still a 400 listing it`() {
+        val id = createProfile()
         mvc.perform(
-            post("/api/profile/import")
+            post("/api/profiles/$id/import")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""{"details":{"fullName":"Rafal"},"skills":[{"skill":"Iceberg","proficiency":"EXPERT"}]}""")
         )
@@ -168,16 +180,17 @@ class ProfileCrudHttpTest(
 
     @Test
     fun `reordering answers with the collection in its new order`() {
-        seed()
+        val id = createProfile()
+        seed(id)
         mvc.perform(
-            post("/api/profile/skills")
+            post("/api/profiles/$id/skills")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""{"skillId":${skillId("Docker")},"proficiency":"WORKING"}""")
         ).andExpect(status().isCreated)
 
-        val ids = profiles.require().skills.map { it.id }
+        val ids = profiles.require(id).skills.map { it.id }
         mvc.perform(
-            put("/api/profile/skills/order")
+            put("/api/profiles/$id/skills/order")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""{"ids":[${ids.reversed().joinToString(",")}]}""")
         )
@@ -188,13 +201,24 @@ class ProfileCrudHttpTest(
     /** `/order` is a literal path that must win over the `{id}` template next to it. */
     @Test
     fun `a partial reorder is a 409 rather than a silent partial move`() {
-        seed()
-        val ids = profiles.require().skills.map { it.id }
+        val id = createProfile()
+        seed(id)
+        val ids = profiles.require(id).skills.map { it.id }
         mvc.perform(
-            put("/api/profile/skills/order")
+            put("/api/profiles/$id/skills/order")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""{"ids":[${ids.first()},${ids.first()}]}""")
         )
             .andExpect(status().isConflict)
+    }
+
+    @Test
+    fun `an edit against an unknown profile is a 404`() {
+        mvc.perform(
+            put("/api/profiles/99999/details")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"fullName":"Rafal Jankowski"}""")
+        )
+            .andExpect(status().isNotFound)
     }
 }

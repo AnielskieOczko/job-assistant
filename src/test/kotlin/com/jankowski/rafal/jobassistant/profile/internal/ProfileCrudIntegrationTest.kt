@@ -25,21 +25,24 @@ import kotlin.test.assertTrue
 @IntegrationTest
 internal class ProfileCrudIntegrationTest(
     @Autowired private val profiles: ProfileService,
+    @Autowired private val management: ProfileManagementService,
     @Autowired private val writes: ProfileWriteService,
     @Autowired private val catalog: SkillCatalog,
     @Autowired private val jdbc: JdbcClient,
 ) {
 
+    private var profileId: Long = 0
+
     @BeforeEach
     fun clearProfile() {
-        listOf("work_experience", "profile_skill", "profile_link", "education", "language_skill")
-            .forEach { jdbc.sql("delete from $it").update() }
-        jdbc.sql("delete from profile_details").update()
+        jdbc.sql("delete from profile").update()
+        profileId = management.create("Test").id
     }
 
     private fun skillId(name: String) = catalog.resolve(name)!!.id
 
     private fun seed() = profiles.replace(
+        profileId,
         ProfileImport(
             details = ProfileDetails(fullName = "Rafal Jankowski", headline = "Backend Engineer"),
             skills = listOf(
@@ -57,7 +60,7 @@ internal class ProfileCrudIntegrationTest(
                     ),
                 ),
             ),
-        )
+        ),
     )
 
     // ------------------------------------------------------------ bullet ids
@@ -74,6 +77,7 @@ internal class ProfileCrudIntegrationTest(
         val bulletIds = before.bullets.map { it.id }
 
         val after = writes.updateExperience(
+            profileId,
             before.id,
             ExperienceRequest(
                 company = "Acme Corporation",
@@ -91,9 +95,9 @@ internal class ProfileCrudIntegrationTest(
         val experience = seed().experiences.single()
         val (first, second) = experience.bullets
 
-        writes.updateBullet(first.id, BulletRequest("Rewritten.", setOf(skillId("Kotlin"))))
+        writes.updateBullet(profileId, first.id, BulletRequest("Rewritten.", setOf(skillId("Kotlin"))))
 
-        val after = profiles.require().experiences.single()
+        val after = profiles.require(profileId).experiences.single()
         assertEquals(listOf(first.id, second.id), after.bullets.map { it.id })
         assertEquals("Rewritten.", after.bullets.first().text)
         assertEquals("Ran the Postgres migration.", after.bullets.last().text)
@@ -104,7 +108,7 @@ internal class ProfileCrudIntegrationTest(
         val experience = seed().experiences.single()
         val (first, second) = experience.bullets
 
-        val after = writes.deleteBullet(first.id).experiences.single()
+        val after = writes.deleteBullet(profileId, first.id).experiences.single()
 
         assertEquals(listOf(second.id), after.bullets.map { it.id })
     }
@@ -116,7 +120,7 @@ internal class ProfileCrudIntegrationTest(
         val profile = seed()
         val kotlin = profile.skills.single { it.skillId == skillId("Kotlin") }
 
-        val rejected = assertThrows<ProfileConflictException> { writes.deleteSkill(kotlin.id) }
+        val rejected = assertThrows<ProfileConflictException> { writes.deleteSkill(profileId, kotlin.id) }
 
         assertContains(rejected.message!!, "Kotlin")
         assertEquals(
@@ -124,16 +128,16 @@ internal class ProfileCrudIntegrationTest(
             rejected.blockingBullets.map { it.text },
         )
         // The refusal must not have half-applied.
-        assertTrue(profiles.require().heldSkillIds.contains(skillId("Kotlin")))
+        assertTrue(profiles.require(profileId).heldSkillIds.contains(skillId("Kotlin")))
     }
 
     @Test
     fun `a skill no bullet cites can be deleted`() {
         val profile = seed()
-        writes.addSkill(SkillRequest(skillId = skillId("Docker"), proficiency = Proficiency.WORKING))
-        val docker = profiles.require().skills.single { it.skillId == skillId("Docker") }
+        writes.addSkill(profileId, SkillRequest(skillId = skillId("Docker"), proficiency = Proficiency.WORKING))
+        val docker = profiles.require(profileId).skills.single { it.skillId == skillId("Docker") }
 
-        val after = writes.deleteSkill(docker.id)
+        val after = writes.deleteSkill(profileId, docker.id)
 
         assertNull(after.skills.firstOrNull { it.skillId == skillId("Docker") })
         assertEquals(profile.skills.size, after.skills.size)
@@ -144,11 +148,11 @@ internal class ProfileCrudIntegrationTest(
         val experience = seed().experiences.single()
 
         val rejected = assertThrows<ProfileConflictException> {
-            writes.addBullet(experience.id, BulletRequest("Deployed with Kubernetes.", setOf(skillId("Kubernetes"))))
+            writes.addBullet(profileId, experience.id, BulletRequest("Deployed with Kubernetes.", setOf(skillId("Kubernetes"))))
         }
 
         assertContains(rejected.message!!, "Kubernetes")
-        assertEquals(2, profiles.require().experiences.single().bullets.size)
+        assertEquals(2, profiles.require(profileId).experiences.single().bullets.size)
     }
 
     @Test
@@ -156,28 +160,41 @@ internal class ProfileCrudIntegrationTest(
         seed()
 
         val rejected = assertThrows<ProfileConflictException> {
-            writes.addSkill(SkillRequest(skillId = skillId("Kotlin"), proficiency = Proficiency.WORKING))
+            writes.addSkill(profileId, SkillRequest(skillId = skillId("Kotlin"), proficiency = Proficiency.WORKING))
         }
 
         assertContains(rejected.message!!, "Kotlin")
     }
 
     /**
-     * `language_skill` is unique on `lower(language)` because CandidateProfile.languageLevel()
-     * matches case-insensitively - otherwise 'English' and 'english' could both exist and which one
-     * the analysis pipeline compared against would be arbitrary.
+     * `language_skill` is unique on `(profile_id, lower(language))` because
+     * CandidateProfile.languageLevel() matches case-insensitively - otherwise 'English' and
+     * 'english' could both exist and which one the analysis pipeline compared against would be
+     * arbitrary.
      */
     @Test
     fun `a language already listed under different casing is refused`() {
         seed()
-        writes.addLanguage(LanguageRequest("English", LanguageLevel.C1))
+        writes.addLanguage(profileId, LanguageRequest("English", LanguageLevel.C1))
 
         val rejected = assertThrows<ProfileConflictException> {
-            writes.addLanguage(LanguageRequest("english", LanguageLevel.B2))
+            writes.addLanguage(profileId, LanguageRequest("english", LanguageLevel.B2))
         }
 
         assertContains(rejected.message!!, "English")
-        assertEquals(1, profiles.require().languages.size)
+        assertEquals(1, profiles.require(profileId).languages.size)
+    }
+
+    @Test
+    fun `two profiles can each hold a language under the same name`() {
+        seed()
+        writes.addLanguage(profileId, LanguageRequest("English", LanguageLevel.C1))
+
+        val other = management.create("Other").id
+        writes.putDetails(other, DetailsRequest(fullName = "Someone Else"))
+        val added = writes.addLanguage(other, LanguageRequest("English", LanguageLevel.B1))
+
+        assertEquals(1, added.languages.size)
     }
 
     @Test
@@ -186,12 +203,13 @@ internal class ProfileCrudIntegrationTest(
 
         assertThrows<ProfileConflictException> {
             writes.addExperience(
+                profileId,
                 ExperienceRequest(
                     company = "Initech",
                     roleTitle = "Engineer",
                     startedOn = LocalDate.of(2020, 1, 1),
                     endedOn = LocalDate.of(2019, 1, 1),
-                )
+                ),
             )
         }
     }
@@ -199,33 +217,46 @@ internal class ProfileCrudIntegrationTest(
     @Test
     fun `an unknown id is reported as unknown rather than as a conflict`() {
         seed()
-        assertThrows<UnknownProfileEntityException> { writes.deleteSkill(99_999) }
-        assertThrows<UnknownProfileEntityException> { writes.updateBullet(99_999, BulletRequest("x")) }
+        assertThrows<UnknownProfileEntityException> { writes.deleteSkill(profileId, 99_999) }
+        assertThrows<UnknownProfileEntityException> { writes.updateBullet(profileId, 99_999, BulletRequest("x")) }
         assertThrows<UnknownProfileEntityException> {
-            writes.addBullet(99_999, BulletRequest("x"))
+            writes.addBullet(profileId, 99_999, BulletRequest("x"))
         }
+    }
+
+    @Test
+    fun `an id belonging to another profile is reported as unknown`() {
+        seed()
+        val kotlin = profiles.require(profileId).skills.single { it.skillId == skillId("Kotlin") }
+
+        val other = management.create("Other").id
+        writes.putDetails(other, DetailsRequest(fullName = "Someone Else"))
+
+        assertThrows<UnknownProfileEntityException> { writes.deleteSkill(other, kotlin.id) }
+        // Untouched on the profile it actually belongs to.
+        assertTrue(profiles.require(profileId).heldSkillIds.contains(skillId("Kotlin")))
     }
 
     // -------------------------------------------------------------- bootstrap
 
     @Test
-    fun `a profile can be created without importing a document`() {
-        assertNull(profiles.current())
+    fun `a fresh profile can have its details filled in without importing a document`() {
+        assertNull(profiles.current(profileId))
 
-        val created = writes.putDetails(DetailsRequest(fullName = "Rafal Jankowski", headline = "Consultant"))
+        val created = writes.putDetails(profileId, DetailsRequest(fullName = "Rafal Jankowski", headline = "Consultant"))
 
         assertEquals("Rafal Jankowski", created.details.fullName)
         assertEquals("Consultant", created.details.headline)
         assertTrue(created.skills.isEmpty())
-        assertNotNull(profiles.current())
+        assertNotNull(profiles.current(profileId))
     }
 
     @Test
     fun `entities added to a fresh profile land in insertion order`() {
-        writes.putDetails(DetailsRequest(fullName = "Rafal Jankowski"))
-        writes.addSkill(SkillRequest(skillId = skillId("Kotlin"), proficiency = Proficiency.EXPERT))
-        writes.addSkill(SkillRequest(skillId = skillId("Docker"), proficiency = Proficiency.WORKING))
-        val profile = writes.addSkill(SkillRequest(skillId = skillId("PostgreSQL"), proficiency = Proficiency.WORKING))
+        writes.putDetails(profileId, DetailsRequest(fullName = "Rafal Jankowski"))
+        writes.addSkill(profileId, SkillRequest(skillId = skillId("Kotlin"), proficiency = Proficiency.EXPERT))
+        writes.addSkill(profileId, SkillRequest(skillId = skillId("Docker"), proficiency = Proficiency.WORKING))
+        val profile = writes.addSkill(profileId, SkillRequest(skillId = skillId("PostgreSQL"), proficiency = Proficiency.WORKING))
 
         assertEquals(
             listOf(skillId("Kotlin"), skillId("Docker"), skillId("PostgreSQL")),
@@ -238,12 +269,12 @@ internal class ProfileCrudIntegrationTest(
     @Test
     fun `reordering skills round-trips`() {
         seed()
-        val ids = profiles.require().skills.map { it.id }
+        val ids = profiles.require(profileId).skills.map { it.id }
 
-        val reordered = writes.reorderSkills(ids.reversed())
+        val reordered = writes.reorderSkills(profileId, ids.reversed())
 
         assertEquals(ids.reversed(), reordered.skills.map { it.id })
-        assertEquals(ids.reversed(), profiles.require().skills.map { it.id })
+        assertEquals(ids.reversed(), profiles.require(profileId).skills.map { it.id })
     }
 
     @Test
@@ -251,7 +282,7 @@ internal class ProfileCrudIntegrationTest(
         val experience = seed().experiences.single()
         val ids = experience.bullets.map { it.id }
 
-        val reordered = writes.reorderBullets(experience.id, ids.reversed())
+        val reordered = writes.reorderBullets(profileId, experience.id, ids.reversed())
 
         assertEquals(ids.reversed(), reordered.experiences.single().bullets.map { it.id })
     }
@@ -260,45 +291,46 @@ internal class ProfileCrudIntegrationTest(
     @Test
     fun `a reorder naming only some of the collection is refused`() {
         seed()
-        val ids = profiles.require().skills.map { it.id }
+        val ids = profiles.require(profileId).skills.map { it.id }
 
-        assertThrows<ProfileConflictException> { writes.reorderSkills(listOf(ids.first())) }
-        assertThrows<ProfileConflictException> { writes.reorderSkills(ids + ids.first()) }
-        assertEquals(ids, profiles.require().skills.map { it.id })
+        assertThrows<ProfileConflictException> { writes.reorderSkills(profileId, listOf(ids.first())) }
+        assertThrows<ProfileConflictException> { writes.reorderSkills(profileId, ids + ids.first()) }
+        assertEquals(ids, profiles.require(profileId).skills.map { it.id })
     }
 
     // ---------------------------------------------------------------- revision
 
     @Test
     fun `every write path bumps the revision`() {
-        val start = profiles.revision()
+        val start = profiles.revision(profileId)
 
-        writes.putDetails(DetailsRequest(fullName = "Rafal Jankowski"))
-        assertEquals(start + 1, profiles.revision())
+        writes.putDetails(profileId, DetailsRequest(fullName = "Rafal Jankowski"))
+        assertEquals(start + 1, profiles.revision(profileId))
 
-        writes.addSkill(SkillRequest(skillId = skillId("Kotlin"), proficiency = Proficiency.EXPERT))
-        assertEquals(start + 2, profiles.revision())
+        writes.addSkill(profileId, SkillRequest(skillId = skillId("Kotlin"), proficiency = Proficiency.EXPERT))
+        assertEquals(start + 2, profiles.revision(profileId))
 
         val experience = writes.addExperience(
-            ExperienceRequest(company = "Acme", roleTitle = "Engineer", startedOn = LocalDate.of(2021, 1, 1))
+            profileId,
+            ExperienceRequest(company = "Acme", roleTitle = "Engineer", startedOn = LocalDate.of(2021, 1, 1)),
         ).experiences.single()
-        assertEquals(start + 3, profiles.revision())
+        assertEquals(start + 3, profiles.revision(profileId))
 
-        val bullet = writes.addBullet(experience.id, BulletRequest("Shipped things.", setOf(skillId("Kotlin"))))
+        val bullet = writes.addBullet(profileId, experience.id, BulletRequest("Shipped things.", setOf(skillId("Kotlin"))))
             .experiences.single().bullets.single()
-        assertEquals(start + 4, profiles.revision())
+        assertEquals(start + 4, profiles.revision(profileId))
 
-        writes.updateBullet(bullet.id, BulletRequest("Shipped better things.", setOf(skillId("Kotlin"))))
-        assertEquals(start + 5, profiles.revision())
+        writes.updateBullet(profileId, bullet.id, BulletRequest("Shipped better things.", setOf(skillId("Kotlin"))))
+        assertEquals(start + 5, profiles.revision(profileId))
 
-        writes.addLanguage(LanguageRequest("Polish", LanguageLevel.NATIVE))
-        assertEquals(start + 6, profiles.revision())
+        writes.addLanguage(profileId, LanguageRequest("Polish", LanguageLevel.NATIVE))
+        assertEquals(start + 6, profiles.revision(profileId))
 
-        writes.reorderSkills(profiles.require().skills.map { it.id })
-        assertEquals(start + 7, profiles.revision())
+        writes.reorderSkills(profileId, profiles.require(profileId).skills.map { it.id })
+        assertEquals(start + 7, profiles.revision(profileId))
 
-        writes.deleteBullet(bullet.id)
-        assertEquals(start + 8, profiles.revision())
+        writes.deleteBullet(profileId, bullet.id)
+        assertEquals(start + 8, profiles.revision(profileId))
     }
 
     /**
@@ -307,17 +339,17 @@ internal class ProfileCrudIntegrationTest(
      */
     @Test
     fun `importing a document bumps the revision too`() {
-        val before = profiles.revision()
+        val before = profiles.revision(profileId)
 
         val imported = seed()
 
         assertEquals(before + 1, imported.revision)
-        assertEquals(before + 1, profiles.revision())
+        assertEquals(before + 1, profiles.revision(profileId))
     }
 
     @Test
     fun `the revision is exposed on the profile itself`() {
-        val created = writes.putDetails(DetailsRequest(fullName = "Rafal Jankowski"))
-        assertEquals(profiles.revision(), created.revision)
+        val created = writes.putDetails(profileId, DetailsRequest(fullName = "Rafal Jankowski"))
+        assertEquals(profiles.revision(profileId), created.revision)
     }
 }

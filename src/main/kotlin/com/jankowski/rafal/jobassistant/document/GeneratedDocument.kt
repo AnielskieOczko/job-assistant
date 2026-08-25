@@ -7,6 +7,8 @@ enum class DocumentType { CV, COVER_LETTER }
 data class GeneratedDocument(
     val id: Long,
     val offerId: Long,
+    /** Which profile this document was tailored to. */
+    val profileId: Long = 0,
     val analysisId: Long?,
     val type: DocumentType,
     val language: String,

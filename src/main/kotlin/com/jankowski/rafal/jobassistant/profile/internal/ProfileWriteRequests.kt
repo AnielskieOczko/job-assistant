@@ -20,6 +20,10 @@ import java.time.LocalDate
  * the name already, so re-resolving it would only add a failure mode. Import keeps names because a
  * hand-written document is exactly where aliases earn their keep.
  */
+internal data class CreateProfileRequest(
+    @field:NotBlank val name: String = "",
+)
+
 internal data class DetailsRequest(
     @field:NotBlank val fullName: String = "",
     val headline: String? = null,

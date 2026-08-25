@@ -13,19 +13,27 @@ export OPENROUTER_API_KEY=sk-or-...
 
 The server binds to `127.0.0.1:8080` only — it is a single-user tool with no authentication.
 
-## 1. Build the profile
+## 1. Build a profile
 
-Either create one and edit it a piece at a time, or import a document wholesale.
+Profiles are plural: one persona per target role, e.g. "Java developer" or "Cloud consultant".
+Create one first, then fill it in a piece at a time or import a document wholesale.
 
 ```bash
-# Brings a profile into existence - no document needed.
-curl -X PUT localhost:8080/api/profile/details -H 'Content-Type: application/json' \
+# Creates a persona. The first one created becomes the default.
+curl -X POST localhost:8080/api/profiles -H 'Content-Type: application/json' \
+  -d '{"name":"Java developer"}'
+# -> {"id":1,"name":"Java developer","isDefault":true}
+```
+
+```bash
+# Fills in that profile's details. profileId below is the id from the create response.
+curl -X PUT localhost:8080/api/profiles/1/details -H 'Content-Type: application/json' \
   -d '{"fullName":"Rafal Jankowski","headline":"Backend Engineer"}'
 ```
 
 ```bash
 # Or seed it in bulk. A full replace: reassigns every id, so stored CVs and analyses read as stale.
-curl -X POST localhost:8080/api/profile/import \
+curl -X POST localhost:8080/api/profiles/1/import \
   -H 'Content-Type: application/json' --data @docs/sample-profile.json
 ```
 
@@ -39,29 +47,39 @@ curl -X POST localhost:8080/api/catalog/skills -H 'Content-Type: application/jso
 
 See `docs/profile-format.md` for the document format.
 
+### Managing profiles themselves
+
+```bash
+curl localhost:8080/api/profiles                    # list, each with isDefault
+curl -X PUT localhost:8080/api/profiles/2/default    # make profile 2 the default
+curl -X DELETE localhost:8080/api/profiles/2         # 409 if it's the default and another still exists
+```
+
 ### Per-entity editing
 
-Every collection has the same four operations. `{coll}` is one of `links`, `skills`, `experiences`,
-`education` or `languages`.
+Every collection has the same four operations, one path segment under the profile. `{coll}` is one
+of `links`, `skills`, `experiences`, `education` or `languages`.
 
 | Method | Path | |
 |---|---|---|
-| `POST` | `/api/profile/{coll}` | 201 |
-| `PUT` | `/api/profile/{coll}/{id}` | full-entity body, not a patch |
-| `DELETE` | `/api/profile/{coll}/{id}` | |
-| `PUT` | `/api/profile/{coll}/order` | `{"ids":[...]}`, must name every id exactly once |
+| `POST` | `/api/profiles/{profileId}/{coll}` | 201 |
+| `PUT` | `/api/profiles/{profileId}/{coll}/{id}` | full-entity body, not a patch |
+| `DELETE` | `/api/profiles/{profileId}/{coll}/{id}` | |
+| `PUT` | `/api/profiles/{profileId}/{coll}/order` | `{"ids":[...]}`, must name every id exactly once |
 
 Bullets hang off a role but are addressed on their own, so their ids survive edits to the role:
 
 ```
-POST   /api/profile/experiences/{experienceId}/bullets
-PUT    /api/profile/experiences/{experienceId}/bullets/order
-PUT    /api/profile/bullets/{id}
-DELETE /api/profile/bullets/{id}
+POST   /api/profiles/{profileId}/experiences/{experienceId}/bullets
+PUT    /api/profiles/{profileId}/experiences/{experienceId}/bullets/order
+PUT    /api/profiles/{profileId}/bullets/{id}
+DELETE /api/profiles/{profileId}/bullets/{id}
 ```
 
 Writes name skills by **catalog id**; only the import document uses names and aliases. Every
 mutation answers with the whole `CandidateProfile`, so there is nothing to reassemble client-side.
+A skill or language is unique **within** a profile, not globally — two profiles can each hold
+Kotlin, or each declare English at a different level.
 
 Failure shapes, all RFC 7807 `ProblemDetail`:
 
@@ -72,6 +90,7 @@ Failure shapes, all RFC 7807 `ProblemDetail`:
 | 404 | unknown id | |
 | 409 | skill already held, language already listed, role ending before it starts, partial reorder | |
 | 409 | deleting a skill that bullets still cite | `blockingBullets` |
+| 409 | deleting the default profile while another one exists | |
 
 ### Staleness
 
@@ -91,10 +110,15 @@ curl -X POST localhost:8080/api/offers -H 'Content-Type: application/json' \
 
 ## 3. Analyse it
 
+Offers stay unowned by a profile — only the analysis is profile-scoped, via `?profileId=`.
+
 ```bash
-curl -X POST localhost:8080/api/offers/1/analyses      # 202 + {"analysisId": 1}
-curl localhost:8080/api/analyses/1                     # poll until state is DONE or FAILED
+curl -X POST 'localhost:8080/api/offers/1/analyses?profileId=1'   # 202 + {"analysisId": 1}
+curl localhost:8080/api/analyses/1                                # poll until state is DONE or FAILED
 ```
+
+`GET .../analyses/latest` and `GET /api/analyses/aggregate` take the same `?profileId=` optionally,
+defaulting to the default profile when omitted.
 
 States run `PENDING → EXTRACTING → MATCHING → NARRATING → DONE`. A job interrupted by a restart is
 marked `FAILED` at startup rather than left polling forever.
@@ -113,9 +137,14 @@ curl -X POST 'localhost:8080/api/catalog/unmatched/3/approve?skillId=42'
 
 ## 4. Generate documents
 
+`profileId` is required here too, and must match the profile the analysis being tailored against
+was run for — `document/internal/JdbcDocumentService` looks up the latest analysis for that same
+`(offerId, profileId)` pair, so a document can never be tailored against one profile's analysis
+while reading another profile's skills.
+
 ```bash
-curl -X POST 'localhost:8080/api/offers/1/documents?type=CV&language=English'
-curl -X POST 'localhost:8080/api/offers/1/documents?type=COVER_LETTER'
+curl -X POST 'localhost:8080/api/offers/1/documents?profileId=1&type=CV&language=English'
+curl -X POST 'localhost:8080/api/offers/1/documents?profileId=1&type=COVER_LETTER'
 
 curl localhost:8080/api/documents/1/html -o cv.html   # the preview
 curl localhost:8080/api/documents/1/pdf  -o cv.pdf    # Chromium render, identical
@@ -130,7 +159,7 @@ profile does not contain. Nothing is stored in that case — regenerate.
 curl -X PUT localhost:8080/api/offers/1/status -H 'Content-Type: application/json' \
   -d '{"status":"APPLIED","appliedOn":"2026-08-23","notes":"Referred by a friend"}'
 
-curl localhost:8080/api/analyses/aggregate   # what to actually learn, across all offers
+curl 'localhost:8080/api/analyses/aggregate?profileId=1'   # what to actually learn, for that persona
 ```
 
 The aggregate counts each offer once, using its most recent completed analysis, and ranks by

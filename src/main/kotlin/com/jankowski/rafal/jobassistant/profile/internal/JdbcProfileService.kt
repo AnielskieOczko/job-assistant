@@ -31,45 +31,57 @@ internal class JdbcProfileService(
 ) : ProfileService {
 
     @Transactional(readOnly = true)
-    override fun current(): CandidateProfile? {
-        val details = readDetails() ?: return null
+    override fun current(profileId: Long): CandidateProfile? {
+        val details = readDetails(profileId) ?: return null
         // Bullets no longer hang off the experience aggregate, so they are read once for the whole
         // profile and grouped here rather than queried per role.
-        val bulletsByExperience = bullets.findAllOrdered().groupBy { it.workExperienceId }
+        val bulletsByExperience = bullets.findAllOrderedForProfile(profileId).groupBy { it.workExperienceId }
         return CandidateProfile(
             details = details,
-            links = links.findAllOrdered().map { ProfileLink(it.id!!, it.label, it.url) },
-            skills = skills.findAllOrdered().map { it.toDomain() },
-            experiences = experiences.findAllOrdered().map { row ->
+            links = links.findAllOrdered(profileId).map { ProfileLink(it.id!!, it.label, it.url) },
+            skills = skills.findAllOrdered(profileId).map { it.toDomain() },
+            experiences = experiences.findAllOrdered(profileId).map { row ->
                 row.toDomain(bulletsByExperience[row.id].orEmpty().map { it.toDomain() })
             },
-            education = education.findAllOrdered().map { it.toDomain() },
-            languages = languages.findAllOrdered().map { it.toDomain() },
-            revision = readRevision(),
+            education = education.findAllOrdered(profileId).map { it.toDomain() },
+            languages = languages.findAllOrdered(profileId).map { it.toDomain() },
+            revision = readRevision(profileId),
         )
     }
 
-    override fun require(): CandidateProfile =
-        current() ?: throw IllegalStateException(
-            "No profile yet. Create one at /api/profile/details, or POST a document to /api/profile/import."
+    override fun require(profileId: Long): CandidateProfile =
+        current(profileId) ?: throw IllegalStateException(
+            "No profile $profileId, or it has no details yet. PUT /api/profiles/$profileId/details, " +
+                "or POST a document to /api/profiles/$profileId/import."
         )
 
     @Transactional(readOnly = true)
-    override fun revision(): Long = readRevision()
+    override fun revision(profileId: Long): Long = readRevision(profileId)
+
+    @Transactional(readOnly = true)
+    override fun defaultProfileId(): Long =
+        jdbc.sql("select id from profile where is_default")
+            .query(Long::class.java)
+            .optional()
+            .orElseThrow { IllegalStateException("No profile exists yet. POST /api/profiles to create one.") }
 
     @Transactional
-    override fun replace(import: ProfileImport): CandidateProfile {
+    override fun replace(profileId: Long, import: ProfileImport): CandidateProfile {
+        requireProfileExists(profileId)
         val skillIdsByName = resolveSkillNames(import)
 
-        deleteEverything()
-        writeDetails(import.details)
+        deleteEverything(profileId)
+        writeDetails(profileId, import.details)
 
         links.saveAll(
-            import.links.mapIndexed { i, link -> ProfileLinkRow(label = link.label, url = link.url, displayOrder = i) }
+            import.links.mapIndexed { i, link ->
+                ProfileLinkRow(profileId = profileId, label = link.label, url = link.url, displayOrder = i)
+            }
         )
         skills.saveAll(
             import.skills.mapIndexed { i, it ->
                 ProfileSkillRow(
+                    profileId = profileId,
                     canonicalSkillId = skillIdsByName.getValue(it.skill.lowercase()),
                     proficiency = it.proficiency.name,
                     yearsOfExperience = it.yearsOfExperience,
@@ -81,6 +93,7 @@ internal class JdbcProfileService(
         import.experiences.forEachIndexed { i, exp ->
             val saved = experiences.save(
                 WorkExperienceRow(
+                    profileId = profileId,
                     company = exp.company,
                     roleTitle = exp.roleTitle,
                     location = exp.location,
@@ -106,6 +119,7 @@ internal class JdbcProfileService(
         education.saveAll(
             import.education.mapIndexed { i, e ->
                 EducationRow(
+                    profileId = profileId,
                     institution = e.institution,
                     degree = e.degree,
                     fieldOfStudy = e.fieldOfStudy,
@@ -117,12 +131,12 @@ internal class JdbcProfileService(
         )
         languages.saveAll(
             import.languages.mapIndexed { i, it ->
-                LanguageSkillRow(language = it.language, level = it.level.name, displayOrder = i)
+                LanguageSkillRow(profileId = profileId, language = it.language, level = it.level.name, displayOrder = i)
             }
         )
 
-        bumpRevision()
-        return require()
+        bumpRevision(profileId)
+        return require(profileId)
     }
 
     /**
@@ -152,8 +166,21 @@ internal class JdbcProfileService(
         return resolved.entries.associate { (name, skill) -> name.lowercase() to skill!!.id }
     }
 
-    private fun readDetails(): ProfileDetails? =
-        jdbc.sql("select full_name, headline, email, phone, location, summary from profile_details where id = 1")
+    private fun requireProfileExists(profileId: Long) {
+        val exists = jdbc.sql("select 1 from profile where id = :id")
+            .param("id", profileId)
+            .query(Int::class.java)
+            .optional()
+            .isPresent
+        if (!exists) throw UnknownProfileEntityException("No profile $profileId. POST /api/profiles first.")
+    }
+
+    private fun readDetails(profileId: Long): ProfileDetails? =
+        jdbc.sql(
+            "select full_name, headline, email, phone, location, summary " +
+                "from profile_details where profile_id = :profileId"
+        )
+            .param("profileId", profileId)
             .query { rs, _ ->
                 ProfileDetails(
                     fullName = rs.getString("full_name"),
@@ -167,12 +194,12 @@ internal class JdbcProfileService(
             .optional()
             .orElse(null)
 
-    private fun writeDetails(details: ProfileDetails) {
+    private fun writeDetails(profileId: Long, details: ProfileDetails) {
         jdbc.sql(
             """
-            insert into profile_details (id, full_name, headline, email, phone, location, summary)
-            values (1, :fullName, :headline, :email, :phone, :location, :summary)
-            on conflict (id) do update set
+            insert into profile_details (profile_id, full_name, headline, email, phone, location, summary)
+            values (:profileId, :fullName, :headline, :email, :phone, :location, :summary)
+            on conflict (profile_id) do update set
                 full_name = excluded.full_name,
                 headline  = excluded.headline,
                 email     = excluded.email,
@@ -181,6 +208,7 @@ internal class JdbcProfileService(
                 summary   = excluded.summary
             """
         )
+            .param("profileId", profileId)
             .param("fullName", details.fullName)
             .param("headline", details.headline)
             .param("email", details.email)
@@ -190,23 +218,26 @@ internal class JdbcProfileService(
             .update()
     }
 
-    private fun readRevision(): Long =
-        jdbc.sql("select revision from profile_details where id = 1")
+    private fun readRevision(profileId: Long): Long =
+        jdbc.sql("select revision from profile where id = :profileId")
+            .param("profileId", profileId)
             .query(Long::class.java)
             .optional()
             .orElse(0L)
 
-    private fun bumpRevision() {
-        jdbc.sql("update profile_details set revision = revision + 1 where id = 1").update()
+    private fun bumpRevision(profileId: Long) {
+        jdbc.sql("update profile set revision = revision + 1 where id = :profileId")
+            .param("profileId", profileId)
+            .update()
     }
 
-    private fun deleteEverything() {
+    private fun deleteEverything(profileId: Long) {
         // experience_bullet and experience_bullet_skill cascade from work_experience.
-        experiences.deleteAll()
-        skills.deleteAll()
-        links.deleteAll()
-        education.deleteAll()
-        languages.deleteAll()
+        experiences.deleteByProfileId(profileId)
+        skills.deleteByProfileId(profileId)
+        links.deleteByProfileId(profileId)
+        education.deleteByProfileId(profileId)
+        languages.deleteByProfileId(profileId)
     }
 }
 

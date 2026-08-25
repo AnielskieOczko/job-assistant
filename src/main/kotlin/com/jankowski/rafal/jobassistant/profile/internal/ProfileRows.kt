@@ -4,11 +4,22 @@ import org.springframework.data.annotation.Id
 import org.springframework.data.relational.core.mapping.MappedCollection
 import org.springframework.data.relational.core.mapping.Table
 import java.math.BigDecimal
+import java.time.Instant
 import java.time.LocalDate
+
+@Table("profile")
+internal data class ProfileRow(
+    @Id val id: Long? = null,
+    val name: String,
+    val isDefault: Boolean = false,
+    val revision: Long = 0,
+    val createdAt: Instant = Instant.now(),
+)
 
 @Table("profile_link")
 internal data class ProfileLinkRow(
     @Id val id: Long? = null,
+    val profileId: Long,
     val label: String,
     val url: String,
     val displayOrder: Int,
@@ -17,6 +28,7 @@ internal data class ProfileLinkRow(
 @Table("profile_skill")
 internal data class ProfileSkillRow(
     @Id val id: Long? = null,
+    val profileId: Long,
     val canonicalSkillId: Long,
     val proficiency: String,
     val yearsOfExperience: BigDecimal?,
@@ -27,6 +39,7 @@ internal data class ProfileSkillRow(
 @Table("work_experience")
 internal data class WorkExperienceRow(
     @Id val id: Long? = null,
+    val profileId: Long,
     val company: String,
     val roleTitle: String,
     val location: String?,
@@ -48,6 +61,9 @@ internal data class WorkExperienceRow(
  *
  * Skill tags stay an owned collection: `experience_bullet_skill` has a composite primary key and no
  * surrogate id, so rewriting the set churns nothing.
+ *
+ * Scoped to a profile transitively through `work_experience.profile_id` -- it needs no `profileId`
+ * column of its own.
  */
 @Table("experience_bullet")
 internal data class ExperienceBulletRow(
@@ -65,6 +81,7 @@ internal data class ExperienceBulletSkillRow(val canonicalSkillId: Long)
 @Table("education")
 internal data class EducationRow(
     @Id val id: Long? = null,
+    val profileId: Long,
     val institution: String,
     val degree: String,
     val fieldOfStudy: String?,
@@ -76,6 +93,7 @@ internal data class EducationRow(
 @Table("language_skill")
 internal data class LanguageSkillRow(
     @Id val id: Long? = null,
+    val profileId: Long,
     val language: String,
     val level: String,
     val displayOrder: Int,
