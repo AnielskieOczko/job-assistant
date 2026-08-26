@@ -1,0 +1,105 @@
+{
+  "details": {
+    "fullName": "Eval Fixture",
+    "headline": "Backend Engineer (Kotlin / Spring Boot)",
+    "email": "eval.fixture@example.com",
+    "phone": null,
+    "location": "Poland",
+    "summary": "JVM backend engineer working on payments and internal platform services."
+  },
+  "links": [],
+  "skills": [
+    { "skill": "Kotlin", "proficiency": "EXPERT", "yearsOfExperience": 6, "lastUsedYear": 2026 },
+    { "skill": "Java", "proficiency": "PROFICIENT", "yearsOfExperience": 8, "lastUsedYear": 2024 },
+    { "skill": "Spring Boot", "proficiency": "PROFICIENT", "yearsOfExperience": 6, "lastUsedYear": 2026 },
+    { "skill": "PostgreSQL", "proficiency": "PROFICIENT", "yearsOfExperience": 5, "lastUsedYear": 2026 },
+    { "skill": "Docker", "proficiency": "WORKING", "yearsOfExperience": 4, "lastUsedYear": 2026 },
+    { "skill": "REST", "proficiency": "PROFICIENT", "yearsOfExperience": 7 },
+    { "skill": "JUnit", "proficiency": "PROFICIENT", "yearsOfExperience": 7 },
+    { "skill": "Testcontainers", "proficiency": "WORKING", "yearsOfExperience": 3 },
+    { "skill": "Flyway", "proficiency": "WORKING", "yearsOfExperience": 4 },
+    { "skill": "Maven", "proficiency": "PROFICIENT", "yearsOfExperience": 8 },
+    { "skill": "Git", "proficiency": "EXPERT", "yearsOfExperience": 9 }
+  ],
+  "experiences": [
+    {
+      "company": "Northbound Payments",
+      "roleTitle": "Senior Backend Engineer",
+      "location": "Remote",
+      "startedOn": "2021-02-01",
+      "endedOn": null,
+      "summary": "Payments reconciliation platform.",
+      "bullets": [
+        {
+          "text": "Designed a reconciliation service settling 2M transactions a day against six upstream ledgers.",
+          "skills": ["Kotlin", "Spring Boot", "PostgreSQL"]
+        },
+        {
+          "text": "Cut p99 latency from 810ms to 120ms by replacing per-row lookups with a single projection query.",
+          "skills": ["PostgreSQL", "Kotlin"]
+        },
+        {
+          "text": "Introduced Testcontainers-backed integration tests, taking the suite from 40% to 86% line coverage.",
+          "skills": ["Testcontainers", "JUnit", "Docker"]
+        },
+        {
+          "text": "Split a shared database into per-service schemas with zero-downtime Flyway migrations.",
+          "skills": ["Flyway", "PostgreSQL"]
+        }
+      ]
+    },
+    {
+      "company": "Meridian Software House",
+      "roleTitle": "Backend Engineer",
+      "location": "Krakow",
+      "startedOn": "2018-03-01",
+      "endedOn": "2021-01-31",
+      "summary": "Client delivery team.",
+      "bullets": [
+        {
+          "text": "Extracted three services from a Java monolith without downtime for 400k daily users.",
+          "skills": ["Java", "Docker", "REST"]
+        },
+        {
+          "text": "Published a versioned REST API consumed by four external partners.",
+          "skills": ["REST", "Spring Boot"]
+        },
+        {
+          "text": "Standardised the team's Maven build, cutting CI time from 22 to 9 minutes.",
+          "skills": ["Maven", "Git"]
+        }
+      ]
+    },
+    {
+      "company": "Lakeside Systems",
+      "roleTitle": "Junior Java Developer",
+      "location": "Wroclaw",
+      "startedOn": "2016-09-01",
+      "endedOn": "2018-02-28",
+      "summary": null,
+      "bullets": [
+        {
+          "text": "Built scheduled batch jobs reconciling inventory across two warehouses.",
+          "skills": ["Java", "PostgreSQL"]
+        },
+        {
+          "text": "Wrote the team's first automated regression suite, replacing a manual release checklist.",
+          "skills": ["JUnit", "Java"]
+        }
+      ]
+    }
+  ],
+  "education": [
+    {
+      "institution": "Wroclaw University of Science and Technology",
+      "degree": "BSc",
+      "fieldOfStudy": "Computer Science",
+      "startedOn": "2012-10-01",
+      "endedOn": "2016-06-30"
+    }
+  ],
+  "languages": [
+    { "language": "Polish", "level": "NATIVE" },
+    { "language": "English", "level": "C1" }
+  ]
+}

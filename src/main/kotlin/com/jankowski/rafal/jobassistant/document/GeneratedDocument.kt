@@ -19,6 +19,17 @@ data class GeneratedDocument(
      * so a trailing revision does not make the document wrong - it makes it out of date.
      */
     val profileRevision: Long? = null,
+    /**
+     * How many of the model's choices had nothing behind them and were discarded.
+     *
+     * Not a warning about this document - selection drops them, so what was rendered is backed by
+     * the profile either way. It is the fabrication rate, measured on real offers rather than on
+     * fixtures, and worth watching: a number that climbs after a prompt or model change is the
+     * earliest signal that tailoring has started guessing. Always zero for a cover letter, which
+     * selects nothing.
+     */
+    val droppedBulletCount: Int = 0,
+    val droppedSkillCount: Int = 0,
 )
 
 /**

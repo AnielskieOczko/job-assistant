@@ -1,14 +1,16 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router'
-import { Download, FileText, RefreshCw, ShieldAlert, SquareArrowOutUpRight } from 'lucide-react'
+import {
+  Download, FileText, RefreshCw, ShieldAlert, ShieldCheck, SquareArrowOutUpRight,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import {
   documentHtmlUrl, documentPdfUrl, generateDocument, getLatestDocument,
 } from '@/api/documents'
 import { ApiError } from '@/api/http'
 import { keys } from '@/api/keys'
-import type { DocumentType } from '@/api/types'
+import type { DocumentType, GeneratedDocument } from '@/api/types'
 import { ApiErrorAlert } from '@/components/ApiErrorAlert'
 import { StaleProfileNotice } from '@/components/StaleProfileNotice'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -131,6 +133,7 @@ function DocumentPanel({ type, title }: { type: DocumentType; title: string }) {
             <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
               <Badge variant="secondary">{doc.language}</Badge>
               <span>Generated {formatDateTime(doc.createdAt)}</span>
+              <DiscardedChoices doc={doc} />
               <span className="ml-auto flex gap-2">
                 <Button asChild size="sm" variant="outline">
                   <a href={documentPdfUrl(doc.id)} target="_blank" rel="noreferrer">
@@ -165,6 +168,38 @@ function DocumentPanel({ type, title }: { type: DocumentType; title: string }) {
         )}
       </CardContent>
     </Card>
+  )
+}
+
+/**
+ * How much of what the model asked for had nothing behind it.
+ *
+ * Deliberately not an error: these choices were discarded before rendering, so the document on
+ * screen is fully backed by the profile. It is shown because the rate is worth watching — if it
+ * starts climbing after a prompt or model change, tailoring has begun guessing, and this is the
+ * only place that shows up on real offers rather than on test fixtures.
+ */
+function DiscardedChoices({ doc }: { doc: GeneratedDocument }) {
+  const { droppedBulletCount: bullets, droppedSkillCount: skills } = doc
+  if (bullets === 0 && skills === 0) return null
+
+  const parts = [
+    bullets > 0 ? `${bullets} bullet${bullets === 1 ? '' : 's'}` : null,
+    skills > 0 ? `${skills} skill${skills === 1 ? '' : 's'}` : null,
+  ].filter(Boolean)
+
+  return (
+    <Badge
+      variant="outline"
+      className="gap-1 border-amber-500/40 text-amber-700 dark:text-amber-400"
+      title={
+        'The model asked for these and the profile could not back them, so they were left out. ' +
+        'The document is sound; a rising count means tailoring is guessing more than it used to.'
+      }
+    >
+      <ShieldCheck className="size-3" />
+      {parts.join(' and ')} discarded
+    </Badge>
   )
 }
 

@@ -55,14 +55,15 @@ internal class JdbcDocumentService(
         val company = offer.company ?: "the company"
 
         // Scoped so the model call's audit row names the profile it was about and is erased with it.
-        val (html, selection) = LlmCallScope.forProfile(profileId) {
+        val built = LlmCallScope.forProfile(profileId) {
             when (type) {
                 DocumentType.CV -> buildCv(profile, report, roleTitle, company, language)
                 DocumentType.COVER_LETTER -> buildCoverLetter(profile, report, roleTitle, company, language)
             }
         }
 
-        enforceNoFabrication(html, profile)
+        enforceNoFabrication(built.html, profile)
+        recordDrops(offerId, type, built)
 
         val saved = documents.save(
             GeneratedDocumentRow(
@@ -71,13 +72,37 @@ internal class JdbcDocumentService(
                 analysisId = report.id,
                 type = type.name,
                 language = language,
-                html = html,
-                selectionJson = json.writeValueAsString(selection),
+                html = built.html,
+                selectionJson = json.writeValueAsString(built.selection),
+                droppedBulletCount = built.droppedBulletCount,
+                droppedSkillCount = built.droppedSkillCount,
                 profileRevision = profile.revision,
             )
         )
         return saved.toDomain()
     }
+
+    /**
+     * The document is sound either way - selection dropped these before they could be rendered.
+     * Logged because the rate is the thing worth noticing, and a rate nobody ever sees is a rate
+     * nobody acts on. The counts persist alongside the row so the trend outlives the log buffer.
+     */
+    private fun recordDrops(offerId: Long, type: DocumentType, built: Built) {
+        if (built.droppedBulletCount == 0 && built.droppedSkillCount == 0) return
+        log.warn(
+            "Tailoring for offer {} ({}) cited {} bullet id(s) and {} skill(s) absent from the profile; dropped: {}",
+            offerId, type, built.droppedBulletCount, built.droppedSkillCount, built.droppedNames,
+        )
+    }
+
+    /** A rendered document plus what the model asked for that the profile could not back. */
+    private data class Built(
+        val html: String,
+        val selection: Any,
+        val droppedBulletCount: Int = 0,
+        val droppedSkillCount: Int = 0,
+        val droppedNames: List<String> = emptyList(),
+    )
 
     private fun buildCv(
         profile: CandidateProfile,
@@ -85,7 +110,7 @@ internal class JdbcDocumentService(
         roleTitle: String,
         company: String,
         language: String,
-    ): Pair<String, Any> {
+    ): Built {
         val tailored = aiServices.create(CvTailor::class.java, LlmTask.DOCUMENT).tailor(
             roleTitle = roleTitle,
             company = company,
@@ -95,7 +120,13 @@ internal class JdbcDocumentService(
         )
 
         val selection = CvSelection.from(tailored, profile, catalog)
-        return render("cv", mapOf("cv" to selection.toView(profile, catalog), "langCode" to langCode(language))) to selection
+        return Built(
+            html = render("cv", mapOf("cv" to selection.toView(profile, catalog), "langCode" to langCode(language))),
+            selection = selection,
+            droppedBulletCount = selection.droppedBulletIds.size,
+            droppedSkillCount = selection.droppedSkillNames.size,
+            droppedNames = selection.droppedSkillNames + selection.droppedBulletIds.map { "bullet#$it" },
+        )
     }
 
     private fun buildCoverLetter(
@@ -104,7 +135,7 @@ internal class JdbcDocumentService(
         roleTitle: String,
         company: String,
         language: String,
-    ): Pair<String, Any> {
+    ): Built {
         val letter = aiServices.create(CoverLetterWriter::class.java, LlmTask.DOCUMENT).write(
             roleTitle = roleTitle,
             company = company,
@@ -121,8 +152,12 @@ internal class JdbcDocumentService(
             roleLine = "Re: $roleTitle at $company",
             paragraphs = paragraphs,
         )
-        return render("cover-letter", mapOf("letter" to view, "langCode" to langCode(language))) to
-            mapOf("paragraphs" to paragraphs)
+        // A letter selects nothing by id, so it has no drop count of its own. CvInvariant over the
+        // rendered text remains its only guard, and that runs on the way out of generate().
+        return Built(
+            html = render("cover-letter", mapOf("letter" to view, "langCode" to langCode(language))),
+            selection = mapOf("paragraphs" to paragraphs),
+        )
     }
 
     /**
@@ -175,4 +210,6 @@ private fun GeneratedDocumentRow.toDomain() = GeneratedDocument(
     html = html,
     createdAt = createdAt,
     profileRevision = profileRevision,
+    droppedBulletCount = droppedBulletCount,
+    droppedSkillCount = droppedSkillCount,
 )

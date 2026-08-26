@@ -16,6 +16,10 @@ internal data class GeneratedDocumentRow(
     val language: String,
     val html: String,
     val selectionJson: String,
+    /** Bullet ids the model cited that the profile does not contain. See V12. */
+    val droppedBulletCount: Int = 0,
+    /** Skill names the model claimed that the profile does not hold. See V12. */
+    val droppedSkillCount: Int = 0,
     val createdAt: Instant = Instant.now(),
     /** Profile revision this document was built from - null for rows that predate the counter. */
     val profileRevision: Long? = null,

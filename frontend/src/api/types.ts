@@ -434,6 +434,16 @@ export interface GeneratedDocument {
    * HTML was true when written, so a trailing revision means out of date, not wrong.
    */
   profileRevision: number | null
+  /**
+   * How many of the model's tailoring choices had nothing behind them and were discarded.
+   *
+   * Not a defect in this document - the selection dropped them, so everything rendered is backed
+   * by a profile record. It is the fabrication rate measured on real offers, and a number that
+   * climbs after a prompt or model change is the first sign tailoring has started guessing.
+   * Always 0 for a cover letter, which selects nothing by id.
+   */
+  droppedBulletCount: number
+  droppedSkillCount: number
 }
 
 /* ---------------------------------------------------------------------- llm */

@@ -210,7 +210,7 @@ class ApiContractTest {
                     language = "English", html = "<html/>", createdAt = Instant.EPOCH,
                 ),
                 "id", "offerId", "profileId", "analysisId", "type", "language", "html", "createdAt",
-                "profileRevision",
+                "profileRevision", "droppedBulletCount", "droppedSkillCount",
             )
         },
         {

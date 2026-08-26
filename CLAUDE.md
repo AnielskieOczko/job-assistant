@@ -226,8 +226,21 @@ prompt, response, token usage and latency.
   `MockMvc` from the `WebApplicationContext` — Boot 4 moved the MockMvc autoconfiguration out of
   `spring-boot-test-autoconfigure`, so `@AutoConfigureMockMvc` is not on the classpath.
   `ProfileCrudHttpTest` is the pattern.
-- The eval tier scores extraction against labelled fixture pairs in `src/test/resources/eval/offers`
-  (`NN-name.txt` plus its expected `NN-name.json`).
+- The eval tier scores a **live** model against labelled fixture pairs in
+  `src/test/resources/eval/offers` (`NN-name.txt` plus its expected `NN-name.json`), shared
+  through `EvalFixtures`. `OfferExtractionEvalTest` scores extraction; `CvTailoringEvalTest` scores
+  tailoring by counting what `CvSelection` had to drop, which needs no rubric because a bullet id
+  or skill the profile cannot back is an objective fabrication. The tailoring fixture profile
+  (`src/test/resources/eval/profile.json`) deliberately lacks Kubernetes, Kafka and Terraform so
+  the offers asking for them create a real opportunity to invent.
+- **Every eval writes to `EvalScorecard`, not to stdout.** The tier exists to be comparable across
+  runs, and a number that only ever reached the terminal cannot be compared with one from last
+  week. Each run leaves `target/eval-report.json` and `target/eval-report.md`, stamped with the
+  model profile that produced it. The write is a JVM shutdown hook armed on first use, so the fast
+  tier leaves no report behind; `ScorecardTest` covers the rendering in the fast tier, because the
+  tier it serves is run by hand and would not notice a scorecard that silently wrote nothing.
+- Assertions in the eval tier are regression floors, not quality targets. The number that matters
+  is in the scorecard; the assertion only exists to fail a run that has fallen off a cliff.
 
 ## Spring Data JDBC gotchas
 
@@ -259,6 +272,17 @@ plus short ambiguous names (`Go`, `C`, `REST`). It is a floor, not a ceiling: it
 Kubernetes, Kafka and Terraform, and knowingly ignores vocabulary where a false positive would
 reject every honest CV. A rejected generation stores nothing and surfaces as HTTP 422 with
 `fabricatedClaims`.
+
+`CvSelection` counts what it drops, and those counts are persisted on `generated_document`
+(`dropped_bullet_count`, `dropped_skill_count`, added in `V12`) and served on `GeneratedDocument`.
+They are not a warning about any one document — selection already removed the offending choices, so
+what rendered is backed by the profile either way. They are a **fabrication rate measured on real
+offers**, which fixtures cannot give you: a count that climbs after a prompt or model change is the
+first sign tailoring has started guessing. Query the distribution, don't read rows:
+
+```sql
+select type, count(*), avg(dropped_skill_count) from generated_document group by type;
+```
 
 **The cover letter prompt must never invite naming an absent technology**, even in an honest
 negative ("I have not used Kubernetes"). The invariant has no notion of negation, so such a letter
