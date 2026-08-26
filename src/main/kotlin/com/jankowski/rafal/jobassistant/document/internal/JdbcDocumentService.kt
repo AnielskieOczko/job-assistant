@@ -9,6 +9,7 @@ import com.jankowski.rafal.jobassistant.document.DocumentType
 import com.jankowski.rafal.jobassistant.document.FabricatedClaimException
 import com.jankowski.rafal.jobassistant.document.GeneratedDocument
 import com.jankowski.rafal.jobassistant.llm.AiServiceFactory
+import com.jankowski.rafal.jobassistant.llm.LlmCallScope
 import com.jankowski.rafal.jobassistant.llm.LlmTask
 import com.jankowski.rafal.jobassistant.offer.OfferService
 import com.jankowski.rafal.jobassistant.profile.CandidateProfile
@@ -53,9 +54,12 @@ internal class JdbcDocumentService(
         val roleTitle = offer.title ?: offer.displayTitle
         val company = offer.company ?: "the company"
 
-        val (html, selection) = when (type) {
-            DocumentType.CV -> buildCv(profile, report, roleTitle, company, language)
-            DocumentType.COVER_LETTER -> buildCoverLetter(profile, report, roleTitle, company, language)
+        // Scoped so the model call's audit row names the profile it was about and is erased with it.
+        val (html, selection) = LlmCallScope.forProfile(profileId) {
+            when (type) {
+                DocumentType.CV -> buildCv(profile, report, roleTitle, company, language)
+                DocumentType.COVER_LETTER -> buildCoverLetter(profile, report, roleTitle, company, language)
+            }
         }
 
         enforceNoFabrication(html, profile)

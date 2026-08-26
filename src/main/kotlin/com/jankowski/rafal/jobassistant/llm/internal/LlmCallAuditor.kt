@@ -20,10 +20,10 @@ internal class LlmCallAuditor(private val jdbc: JdbcClient) {
             """
             insert into llm_call
                 (task, model_profile, model_name, request_json, response_text, error,
-                 input_tokens, output_tokens, latency_ms)
+                 input_tokens, output_tokens, latency_ms, profile_id)
             values
                 (:task, :profile, :modelName, :request, :response, :error,
-                 :inputTokens, :outputTokens, :latencyMs)
+                 :inputTokens, :outputTokens, :latencyMs, :profileId)
             """
         )
             .param("task", entry.task)
@@ -35,6 +35,7 @@ internal class LlmCallAuditor(private val jdbc: JdbcClient) {
             .param("inputTokens", entry.inputTokens)
             .param("outputTokens", entry.outputTokens)
             .param("latencyMs", entry.latencyMs)
+            .param("profileId", entry.profileId)
             .update()
     }
 
@@ -48,5 +49,7 @@ internal class LlmCallAuditor(private val jdbc: JdbcClient) {
         val inputTokens: Int?,
         val outputTokens: Int?,
         val latencyMs: Long?,
+        /** Whose data this call concerned, so the row is erased with them. Null outside a scope. */
+        val profileId: Long?,
     )
 }

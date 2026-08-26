@@ -16,7 +16,10 @@ import com.jankowski.rafal.jobassistant.profile.CandidateProfile
 internal object ProfileBriefing {
 
     fun profile(profile: CandidateProfile, catalog: SkillCatalog): String = buildString {
-        appendLine("Name: ${profile.details.fullName}")
+        // The candidate's name is deliberately absent. No prompt references it, and the model
+        // cannot return it - TailoredCv and CoverLetter have no contact fields - so the rendered
+        // header is rebuilt from the profile afterwards. Sending it bought nothing and disclosed
+        // the strongest identifier there is. PromptPrivacyInvariant enforces that it stays out.
         profile.details.headline?.let { appendLine("Headline: $it") }
         appendLine()
 

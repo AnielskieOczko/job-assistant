@@ -14,6 +14,7 @@ import java.time.Duration
 data class LlmProperties(
     val profiles: Map<String, ModelProfile> = emptyMap(),
     val tasks: Map<LlmTask, String> = emptyMap(),
+    val audit: AuditProperties = AuditProperties(),
 ) {
     fun profileNameFor(task: LlmTask): String =
         tasks[task] ?: throw IllegalStateException(
@@ -28,6 +29,11 @@ data class LlmProperties(
         )
     }
 }
+
+/** How long a copy of a prompt is kept. [Duration.ZERO] keeps them forever. */
+data class AuditProperties(
+    val retention: Duration = Duration.ofDays(30),
+)
 
 data class ModelProfile(
     val baseUrl: String,

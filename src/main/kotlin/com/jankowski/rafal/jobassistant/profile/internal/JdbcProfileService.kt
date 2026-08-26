@@ -9,6 +9,7 @@ import com.jankowski.rafal.jobassistant.profile.LanguageSkill
 import com.jankowski.rafal.jobassistant.profile.Proficiency
 import com.jankowski.rafal.jobassistant.profile.ProfileDetails
 import com.jankowski.rafal.jobassistant.profile.ProfileImport
+import com.jankowski.rafal.jobassistant.profile.ProfileIdentity
 import com.jankowski.rafal.jobassistant.profile.ProfileImportException
 import com.jankowski.rafal.jobassistant.profile.ProfileLink
 import com.jankowski.rafal.jobassistant.profile.ProfileService
@@ -57,6 +58,33 @@ internal class JdbcProfileService(
 
     @Transactional(readOnly = true)
     override fun revision(profileId: Long): Long = readRevision(profileId)
+
+    /**
+     * Two small indexed reads rather than loading whole profiles. Not cached on purpose: a model
+     * call costs seconds and these cost microseconds, so a cache would buy nothing and would need
+     * invalidating on every profile write - a staleness bug here means the guard checks against a
+     * name the user has already changed.
+     */
+    @Transactional(readOnly = true)
+    override fun identities(): List<ProfileIdentity> {
+        val urlsByProfile = jdbc.sql("select profile_id, url from profile_link")
+            .query { rs, _ -> rs.getLong("profile_id") to rs.getString("url") }
+            .list()
+            .groupBy({ it.first }, { it.second })
+
+        return jdbc.sql("select profile_id, full_name, email, phone from profile_details")
+            .query { rs, _ ->
+                val profileId = rs.getLong("profile_id")
+                ProfileIdentity(
+                    profileId = profileId,
+                    fullName = rs.getString("full_name"),
+                    email = rs.getString("email"),
+                    phone = rs.getString("phone"),
+                    linkUrls = urlsByProfile[profileId].orEmpty(),
+                )
+            }
+            .list()
+    }
 
     @Transactional(readOnly = true)
     override fun defaultProfileId(): Long =

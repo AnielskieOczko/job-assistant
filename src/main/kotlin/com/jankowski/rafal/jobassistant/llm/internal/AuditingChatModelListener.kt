@@ -1,5 +1,6 @@
 package com.jankowski.rafal.jobassistant.llm.internal
 
+import com.jankowski.rafal.jobassistant.llm.LlmCallScope
 import com.jankowski.rafal.jobassistant.llm.LlmTask
 import dev.langchain4j.data.message.ChatMessage
 import dev.langchain4j.data.message.SystemMessage
@@ -76,6 +77,7 @@ internal class AuditingChatModelListener(
                     inputTokens = inputTokens,
                     outputTokens = outputTokens,
                     latencyMs = elapsedNanos?.let { (System.nanoTime() - it) / 1_000_000 },
+                    profileId = LlmCallScope.currentProfileId(),
                 )
             )
         }.onFailure { log.warn("Failed to audit {} call: {}", task, it.message) }

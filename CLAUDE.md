@@ -28,6 +28,35 @@ walks the whole HTTP flow end to end, `docs/profile-format.md` documents the pro
 When adding a feature, ask which side of that boundary it falls on. Generated prose is fine;
 generated *facts* are not.
 
+## The second rule: no personal data leaves the machine
+
+**A direct identifier must never reach a model provider.** The first rule is about what comes back
+from a model; this one is about what goes out. Prompts go to OpenRouter, so every byte in one is
+disclosed to a third party.
+
+Name, email, phone and profile links are never sent. Employers, schools, dates and bullet text still
+are — tailoring is worthless without them — so the boundary is *direct identifiers*, not "anything
+personal".
+
+Three layers, in order:
+
+1. **Minimize.** Prompt builders leave identifiers out. `ProfileBriefing` sends no name: nothing in
+   the prompts references it, `TailoredCv`/`CoverLetter` have no contact fields, and the rendered
+   header is rebuilt from the database afterwards. Sending it bought nothing.
+2. **Scrub.** `OfferTextScrubber` strips recruiter emails and phone numbers out of pasted offer text
+   before extraction — that is a third party's data and the extractor has no use for it.
+3. **Assert.** `PromptPrivacyInvariant`, wired in via `InspectingChatModel`, refuses any outgoing
+   request carrying an identifier. Like `CvInvariant` it is a floor, not a ceiling: it deliberately
+   ignores `location` and single name tokens, because a hard refusal on "Poland" or a common surname
+   would break every Polish job offer.
+
+If the guard ever fires, **a prompt builder is the bug** — do not loosen the check. And note
+`SensitiveDataInPromptException` reports field *names*, never values: its message is persisted to
+`analysis.error` and served over HTTP, so echoing the value would leak what the refusal prevented.
+
+When adding a prompt, ask what profile fields it interpolates. `PromptPrivacyIntegrationTest` runs
+every flow with sentinel values and fails if one reaches a model.
+
 ## Before you change code
 
 **Never commit to `main`.** Before starting any code change, bring `main` up to date

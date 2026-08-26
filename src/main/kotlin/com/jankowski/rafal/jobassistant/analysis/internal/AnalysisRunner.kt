@@ -7,8 +7,10 @@ import com.jankowski.rafal.jobassistant.analysis.RequirementStatus
 import com.jankowski.rafal.jobassistant.catalog.SkillCatalog
 import com.jankowski.rafal.jobassistant.llm.AiServiceFactory
 import com.jankowski.rafal.jobassistant.llm.ChatModelRegistry
+import com.jankowski.rafal.jobassistant.llm.LlmCallScope
 import com.jankowski.rafal.jobassistant.llm.LlmTask
 import com.jankowski.rafal.jobassistant.offer.OfferService
+import com.jankowski.rafal.jobassistant.privacy.OfferTextScrubber
 import com.jankowski.rafal.jobassistant.profile.LanguageLevel
 import com.jankowski.rafal.jobassistant.profile.ProfileService
 import org.slf4j.LoggerFactory
@@ -44,7 +46,11 @@ internal class AnalysisRunner(
     @Async("analysisExecutor")
     fun run(analysisId: Long) {
         try {
-            execute(analysisId)
+            // The scope opens here, on the pool thread that goes on to make both model calls, so
+            // their audit rows carry the profile and are erased along with it.
+            val profileId = analyses.findById(analysisId).map { it.profileId }.orElse(null)
+            if (profileId == null) execute(analysisId)
+            else LlmCallScope.forProfile(profileId) { execute(analysisId) }
         } catch (failure: Exception) {
             log.warn("Analysis {} failed", analysisId, failure)
             markFailed(analysisId, failure)
@@ -69,9 +75,11 @@ internal class AnalysisRunner(
         transition(analysisId, AnalysisState.EXTRACTING, startedAt = Instant.now())
 
         val skills = catalog.findAll()
+        // The stored raw text keeps whatever was pasted; only the copy the model sees loses the
+        // recruiter's email and phone, which are a third party's data and useless for extraction.
         val extracted = aiServices
             .create(OfferExtractor::class.java, LlmTask.EXTRACTION)
-            .extract(offer.rawText, AnalysisPromptFormatter.catalogListing(skills))
+            .extract(OfferTextScrubber.scrub(offer.rawText), AnalysisPromptFormatter.catalogListing(skills))
 
         offers.describe(
             offerId = offer.id,

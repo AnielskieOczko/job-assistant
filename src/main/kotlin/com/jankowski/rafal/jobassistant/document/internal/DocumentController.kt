@@ -4,6 +4,7 @@ import com.jankowski.rafal.jobassistant.document.DocumentService
 import com.jankowski.rafal.jobassistant.document.DocumentType
 import com.jankowski.rafal.jobassistant.document.FabricatedClaimException
 import com.jankowski.rafal.jobassistant.document.GeneratedDocument
+import com.jankowski.rafal.jobassistant.privacy.SensitiveDataInPromptException
 import org.springframework.http.ContentDisposition
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
@@ -67,6 +68,20 @@ internal class DocumentController(private val documents: DocumentService) {
             ProblemDetail.forStatusAndDetail(HttpStatus.UNPROCESSABLE_ENTITY, exception.message!!).apply {
                 title = "Generated document rejected"
                 setProperty("fabricatedClaims", exception.claims)
+            }
+        )
+
+    /**
+     * Same shape as the fabrication handler and for the same reason: the request was well formed and
+     * the work was refused on its content. `sensitiveFields` names fields, never values - see
+     * [SensitiveDataInPromptException].
+     */
+    @ExceptionHandler(SensitiveDataInPromptException::class)
+    fun handleSensitiveData(exception: SensitiveDataInPromptException): ResponseEntity<ProblemDetail> =
+        ResponseEntity.unprocessableEntity().body(
+            ProblemDetail.forStatusAndDetail(HttpStatus.UNPROCESSABLE_ENTITY, exception.message!!).apply {
+                title = "Generation refused to protect personal data"
+                setProperty("sensitiveFields", exception.fields)
             }
         )
 
