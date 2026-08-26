@@ -38,6 +38,11 @@ job-assistant:
   llm:
     # Named model profiles. All three endpoints are OpenAI-compatible, so switching
     # provider is base-url + key only (decision 6).
+    #
+    # log-requests / log-responses are stated explicitly on every profile even though false is
+    # already the default. They dump whole prompt and response bodies to the console, and there is
+    # no logback config filtering anything, so turning one on would spill profile data into the
+    # logs. Written out so enabling it is a visible diff rather than an invisible default flip.
     profiles:
       openrouter:
         base-url: https://openrouter.ai/api/v1
@@ -46,6 +51,8 @@ job-assistant:
         temperature: 0.2
         strict-schema: true
         timeout: PT120S
+        log-requests: false
+        log-responses: false
       requesty:
         base-url: https://router.requesty.ai/v1
         api-key: ${REQUESTY_API_KEY:}
@@ -53,6 +60,8 @@ job-assistant:
         temperature: 0.2
         strict-schema: true
         timeout: PT120S
+        log-requests: false
+        log-responses: false
       local:
         base-url: http://localhost:11434/v1
         api-key: ollama
@@ -61,6 +70,12 @@ job-assistant:
         # Small local models rarely honour strict JSON schema; rely on parse-repair.
         strict-schema: false
         timeout: PT300S
+        log-requests: false
+        log-responses: false
+    audit:
+      # How long a copy of a prompt is kept in llm_call. Even with identifiers kept out of prompts,
+      # what remains describes who worked where. PT0S keeps rows forever.
+      retention: P30D
     # Which profile serves which task (decision 22: all remote by default).
     tasks:
       extraction: openrouter

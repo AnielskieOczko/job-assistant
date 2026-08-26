@@ -1,8 +1,8 @@
 {
   "details": {
-    "fullName": "Rafal Jankowski",
+    "fullName": "Alex Novak",
     "headline": "Backend Engineer (Kotlin / Spring Boot)",
-    "email": "rafaljankowski7@gmail.com",
+    "email": "alex.novak@example.com",
     "phone": null,
     "location": "Poland",
     "summary": "Backend engineer focused on JVM services, Postgres and clean module boundaries."

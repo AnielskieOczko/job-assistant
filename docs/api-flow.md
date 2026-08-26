@@ -28,7 +28,7 @@ curl -X POST localhost:8080/api/profiles -H 'Content-Type: application/json' \
 ```bash
 # Fills in that profile's details. profileId below is the id from the create response.
 curl -X PUT localhost:8080/api/profiles/1/details -H 'Content-Type: application/json' \
-  -d '{"fullName":"Rafal Jankowski","headline":"Backend Engineer"}'
+  -d '{"fullName":"Alex Novak","headline":"Backend Engineer"}'
 ```
 
 ```bash

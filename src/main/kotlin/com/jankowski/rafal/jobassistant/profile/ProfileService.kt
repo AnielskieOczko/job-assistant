@@ -46,4 +46,15 @@ interface ProfileService {
      * @throws IllegalStateException when no profile exists yet.
      */
     fun defaultProfileId(): Long
+
+    /**
+     * The identifying fields of *every* profile, for the privacy guard that vets outgoing prompts.
+     *
+     * Deliberately every profile rather than one: the guard runs beneath the AI-service call, where
+     * there is no reliable way to know which profile a given request belongs to, and a
+     * "current profile" mechanism would fail open the moment a call crossed a thread boundary. This
+     * is a single-user tool with a handful of personas, so checking against all of them costs
+     * nothing and can never leave the guard with nothing to check.
+     */
+    fun identities(): List<ProfileIdentity>
 }
