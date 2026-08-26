@@ -28,6 +28,15 @@ walks the whole HTTP flow end to end, `docs/profile-format.md` documents the pro
 When adding a feature, ask which side of that boundary it falls on. Generated prose is fine;
 generated *facts* are not.
 
+## Before you change code
+
+**Never commit to `main`.** Before starting any code change, bring `main` up to date
+(`git checkout main && git pull`) and branch from it (`git checkout -b <type>/<short-description>`).
+Do the work on that branch, and leave `main` for merges only.
+
+If you notice you have already started editing on `main`, branch before committing rather than
+after — `git checkout -b <branch>` carries uncommitted changes across.
+
 ## Commands
 
 ```bash
@@ -262,3 +271,13 @@ The reasoning behind all of this is in `docs/adr/0001-per-entity-profile-crud.md
 Flyway, `src/main/resources/db/migration`, Postgres-specific. Never test against H2. The catalog
 seed (`V2`) is generated from a compact definition — if you edit it, keep `normalized_alias`
 consistent with `SkillNormalizer` or the drift test will catch you.
+
+## graphify
+
+This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
+
+Rules:
+- For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
+- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
+- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
+- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
