@@ -62,6 +62,21 @@ them silently is the main way an effort like this goes wrong.
   applications under Rafal's name to the very people deciding whether to hire him — and its upside
   is about two minutes per application.
 
+## Foundation, as distinct from ranked features
+
+The repository has no `.github` directory, no Dockerfile and no host configuration, so there is no CI
+at all. CI/CD scores zero on the ranking axis above — not for lack of value, but because it is
+developer infrastructure rather than a user-facing feature, and ranking a build pipeline against a CV
+redesign on "interviews per application" is a category error.
+
+It is therefore proposed as **foundation sequenced ahead of the ranked list** rather than as an entry
+within it. **Rank and sequence the roadmap** will confirm or overturn that, and is asked to say so
+explicitly either way rather than letting the item drift to the bottom by default.
+
+Note also that CI is the cheapest half. `docker-compose.yml` says "Production/staging uses Neon", but
+that is the *database*: nothing in the repository says where the application itself would run, so
+the "CD" half may be aspirational until a host and a Dockerfile exist.
+
 ## Two rules every ticket is checked against
 
 Both are from `CLAUDE.md` and neither is negotiable within this effort:
@@ -95,11 +110,12 @@ Charting turned up four items that were assumed missing and are not:
 | [12](https://github.com/AnielskieOczko/job-assistant/issues/12) | What can GitHub tell us about a repository? | research | open |
 | [13](https://github.com/AnielskieOczko/job-assistant/issues/13) | What should the offer market dashboard answer? | grilling | open |
 | [14](https://github.com/AnielskieOczko/job-assistant/issues/14) | What should a tailored CV look like? | prototype | open |
-| [15](https://github.com/AnielskieOczko/job-assistant/issues/15) | Rank and sequence the roadmap | grilling | blocked by 10–14 |
+| [16](https://github.com/AnielskieOczko/job-assistant/issues/16) | What should CI/CD actually do, and does CD have a target? | grilling | open |
+| [15](https://github.com/AnielskieOczko/job-assistant/issues/15) | Rank and sequence the roadmap | grilling | blocked by 10–14, 16 |
 
-The first five are independent and can run in any order or at once. **Rank and sequence the
-roadmap** is deliberately last: ranking automated ingestion before knowing whether ingestable
-sources exist, or ranking the dashboard before its scope is fixed, would be ranking a guess.
+The first six are independent and can run in any order or at once. **Rank and sequence the roadmap**
+is deliberately last: ranking automated ingestion before knowing whether ingestable sources exist, or
+ranking the dashboard before its scope is fixed, would be ranking a guess.
 
 ## Not yet specified
 
@@ -135,6 +151,8 @@ Beyond this map's destination. These do not graduate; they return only as a fres
   deliberately, not rejected.
 - **Model and prompt regression as a merge gate** — extending `EvalScorecard` to narrative and cover
   letter quality so model swaps are measured rather than felt. Real hygiene, no user-visible value,
-  so it would rank last and clutter the ordering. Parked deliberately, not rejected.
+  so it would rank last and clutter the ordering. Parked deliberately, not rejected. **Its cost drops
+  sharply once a pipeline exists**, since it becomes one more job rather than a new mechanism — which
+  makes it the out-of-scope item most likely to return.
 - **Multi-user accounts and authentication** — already a separate step in `docs/roadmap.md`, and it
   reverses `CLAUDE.md`'s "single user, no authentication" premise.
