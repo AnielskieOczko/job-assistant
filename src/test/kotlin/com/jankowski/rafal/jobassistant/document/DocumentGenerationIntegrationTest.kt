@@ -215,11 +215,13 @@ internal class DocumentGenerationIntegrationTest(
             """.trimIndent()
         )
 
-        val html = documents.generate(offerId, profileId, DocumentType.CV).html
+        val document = documents.generate(offerId, profileId, DocumentType.CV)
 
-        assertTrue(html.contains("Kotlin"))
-        assertFalse(html.contains("Kubernetes"), "an unheld skill must never reach the skills list")
-        assertFalse(html.contains("Kafka"))
+        assertTrue(document.html.contains("Kotlin"))
+        assertFalse(document.html.contains("Kubernetes"), "an unheld skill must never reach the skills list")
+        assertFalse(document.html.contains("Kafka"))
+        assertEquals(2, document.droppedSkillCount, "both unheld skills should be counted, not just filtered")
+        assertEquals(0, document.droppedBulletCount)
     }
 
     @Test
@@ -231,10 +233,42 @@ internal class DocumentGenerationIntegrationTest(
             """.trimIndent()
         )
 
-        val html = documents.generate(offerId, profileId, DocumentType.CV).html
+        val document = documents.generate(offerId, profileId, DocumentType.CV)
 
-        assertTrue(html.contains("Built payment services in Kotlin."))
-        assertFalse(html.contains("Invented achievement."))
+        assertTrue(document.html.contains("Built payment services in Kotlin."))
+        assertFalse(document.html.contains("Invented achievement."))
+        assertEquals(1, document.droppedBulletCount, "the invented bullet id should be counted, not just ignored")
+        assertEquals(0, document.droppedSkillCount)
+    }
+
+    /**
+     * The counts are a fabrication *rate*, so a clean generation has to report zero - otherwise a
+     * rising number could not be told apart from a rising number of documents.
+     */
+    @Test
+    fun `an honest CV reports nothing discarded`() {
+        scriptCv(honestCv)
+
+        val document = documents.generate(offerId, profileId, DocumentType.CV)
+
+        assertEquals(0, document.droppedBulletCount)
+        assertEquals(0, document.droppedSkillCount)
+    }
+
+    @Test
+    fun `the discard counts survive being read back`() {
+        scriptCv(
+            """
+            {"summaryLine":"Backend engineer.","skillNames":["Kotlin","Kubernetes"],
+             "bullets":[{"bulletId":$kotlinBulletId,"text":""},{"bulletId":987654,"text":"Invented."}]}
+            """.trimIndent()
+        )
+
+        val generated = documents.generate(offerId, profileId, DocumentType.CV)
+        val reloaded = documents.findById(generated.id)
+
+        assertEquals(1, reloaded?.droppedBulletCount)
+        assertEquals(1, reloaded?.droppedSkillCount)
     }
 
     @Test
@@ -256,6 +290,19 @@ internal class DocumentGenerationIntegrationTest(
         val prompt = models[LlmTask.DOCUMENT].requests.single().messages().joinToString { it.toString() }
         assertTrue(prompt.contains("[id=$kotlinBulletId]"))
         assertTrue(prompt.contains("Kubernetes [MISSING]"), "the tailor should see what the offer wants")
+    }
+
+    /** A letter selects nothing by id, so it has no drop count of its own to report. */
+    @Test
+    fun `a cover letter reports no discards`() {
+        models[LlmTask.DOCUMENT].enqueue(
+            """{"paragraphs":["I build Kotlin services.","I would like to help."]}"""
+        )
+
+        val document = documents.generate(offerId, profileId, DocumentType.COVER_LETTER)
+
+        assertEquals(0, document.droppedBulletCount)
+        assertEquals(0, document.droppedSkillCount)
     }
 
     @Test
