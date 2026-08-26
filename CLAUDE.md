@@ -15,6 +15,21 @@ walks the whole HTTP flow end to end, `docs/profile-format.md` documents the pro
 `docs/frontend.md` covers the UI. Decisions already taken for work not yet started live in
 `docs/roadmap.md`; `docs/adr/` records the ones that were hard to reverse.
 
+## What is being decided right now
+
+The next phase of the application is being planned as a wayfinder map, and
+**`docs/roadmap-wayfinding.md` is where a new session picks that up.** Read it before proposing a
+feature: it records what the effort is aiming at, what has already been ruled out and why, and four
+things that look missing but already ship — application lifecycle tracking, the unmatched-term
+triage UI, output-language parameterisation, and cross-offer skill aggregation.
+
+The live map is GitHub issue #9 with its child issues; `docs/roadmap-wayfinding.md` is a checked-in
+snapshot of it and says so. Continue the effort with `/mattpocock-skills:wayfinder 9`, and refresh
+the snapshot in the same commit that resolves a ticket. When the two disagree, GitHub is right.
+
+`docs/roadmap.md` is a different file with a different job: it holds decisions already taken for
+work not yet started. Rewriting it is the last act of the current map, not an input to it.
+
 ## The rule that governs the whole design
 
 **The AI must never be able to invent experience the candidate does not have.**
