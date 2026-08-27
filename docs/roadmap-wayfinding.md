@@ -113,15 +113,19 @@ comment; the underlying findings, with a source cited against every factual clai
 under **`docs/research/`**.
 
 - **[Which job-offer sources can we ingest without scraping?](https://github.com/AnielskieOczko/job-assistant/issues/10)**
-  → `docs/research/10-offer-ingestion-sources.md`. The Polish boards are closed: JustJoin.IT,
-  NoFluffJobs, Pracuj.pl, theprotocol.it and Bulldogjob publish nothing a personal tool is
-  sanctioned to consume, and JustJoin.IT's own `robots.txt` disallows `/api/`. What is clean is a
-  set of general remote boards — **Arbeitnow, Himalayas and WeWorkRemotely** — every one confirmed
-  to return the **full** description text rather than a snippet, keyless and free. Adzuna is the
-  near-miss worth not re-proposing: clean API, Poland covered, permissive terms, and a description
-  field its own docs call a snippet. Ingestion is worth building as a thin poller — one `@Scheduled`
-  fetch, one DTO, dedup on the content hash `offer` already computes — but it will surface a trickle,
-  not replace pasting.
+  → `docs/research/10-offer-ingestion-sources.md`. A first pass concluded the Polish market was
+  closed. A second pass, prompted by Rafal naming six sources on the PR, **overturned that**:
+  [solid.jobs](https://solid.jobs/api-ofert-pracy) publishes a documented, keyless, sanctioned read
+  API whose `description` field carries full posting prose, and whose `robots.txt` names `ClaudeBot`
+  and `anthropic-ai` as welcome. It also returns structured `salary` on 500 of 500 offers — currency,
+  period and the B2B-versus-employment distinction — and `skills` with a required `level` enum, which
+  reaches straight into ticket 13. The other Polish boards do stay shut: JustJoin.IT forbids its own
+  API in `robots.txt`, NoFluffJobs has a real RSS feed carrying no posting text, theprotocol.it 403s
+  its own homepage behind a WAF, Bulldogjob's `/feeds` path never resolves. Arbeitnow, Himalayas and
+  WeWorkRemotely round out the set with confirmed full text. Adzuna is the near-miss worth not
+  re-proposing: clean API, Poland covered, permissive terms, description its own docs call a snippet.
+  jobright.ai is not a source at all, and as a product it auto-submits applications — which this map
+  ruled out deliberately.
 - **[What does a model call actually cost, and can we know it per call?](https://github.com/AnielskieOczko/job-assistant/issues/11)**
   → `docs/research/11-model-call-cost.md`. Yes, and the data is already arriving and being discarded.
   OpenRouter and Requesty both return `usage.cost` inline on the completion, with no request flag,
