@@ -61,9 +61,22 @@ internal data class CvSelection(
     companion object {
 
         fun from(tailored: TailoredCv, profile: CandidateProfile, catalog: SkillCatalog): CvSelection {
+            // Not dead code, however much the compiler protests. LangChain4j deserialises a service
+            // return type reflectively, without the Jackson Kotlin module, so it never enforces
+            // Kotlin nullability: a model that emits `"bullets": null` produces a null here despite
+            // the non-null type. The default values on TailoredCv cover a *missing* key only.
+            @Suppress("USELESS_ELVIS")
+            val requestedBullets = tailored.bullets ?: emptyList()
+
+            @Suppress("USELESS_ELVIS")
+            val requestedSkills = tailored.skillNames ?: emptyList()
+
+            @Suppress("USELESS_ELVIS")
+            val summary = tailored.summaryLine ?: ""
+
             val bulletsById = profile.bullets.associateBy { it.id }
 
-            val requestedIds = tailored.bullets.map { it.bulletId }
+            val requestedIds = requestedBullets.map { it.bulletId }
             val keptIds = requestedIds.filter { it in bulletsById }.distinct()
             val dropped = requestedIds.filterNot { it in bulletsById }.distinct()
 
@@ -71,20 +84,20 @@ internal data class CvSelection(
             // which is worse than an untailored one.
             val bulletOrder = keptIds.ifEmpty { profile.bullets.map { it.id } }
 
-            val rewritten = tailored.bullets
+            val rewritten = requestedBullets
                 .filter { it.bulletId in bulletsById && it.text.isNotBlank() }
                 .associate { it.bulletId to it.text.trim() }
 
             val heldNames = profile.heldSkillIds.mapNotNull { catalog.findById(it)?.name }
-            val keptSkills = tailored.skillNames.mapNotNull { requested ->
+            val keptSkills = requestedSkills.mapNotNull { requested ->
                 catalog.resolve(requested)?.takeIf { it.id in profile.heldSkillIds }?.name
             }.distinct()
-            val droppedSkills = tailored.skillNames.filter { requested ->
+            val droppedSkills = requestedSkills.filter { requested ->
                 catalog.resolve(requested)?.takeIf { it.id in profile.heldSkillIds } == null
             }.distinct()
 
             return CvSelection(
-                summaryLine = tailored.summaryLine.trim().ifBlank { null },
+                summaryLine = summary.trim().ifBlank { null },
                 skillNames = keptSkills.ifEmpty { heldNames },
                 bulletOrder = bulletOrder,
                 rewrittenText = rewritten,
