@@ -49,23 +49,7 @@ job-assistant:
         api-key: ${OPENROUTER_API_KEY:}
         model: minimax/minimax-m3
         temperature: 0.2
-        # Off deliberately, and this is a hypothesis under test rather than a settled choice.
-        #
-        # Three consecutive eval runs on 2026-08-27 showed minimax/minimax-m3 producing degenerate
-        # structured output: null response content (which crashed the call until #24), zero claimed
-        # bullets on three of five tailoring fixtures, response-mode identifiers arriving as skill
-        # names ("json-only", "json-only-response", "general_assistant"), and 03-polish-java-offer
-        # swinging from recall 1.00 to 0.00 between two runs twenty minutes apart.
-        #
-        # That pattern is what a provider that does not really honour strict JSON-schema mode looks
-        # like - the same reason the `local` profile below has always had this off. Setting it false
-        # stops AiServices declaring RESPONSE_FORMAT_JSON_SCHEMA, so JSON is asked for in prose and
-        # JsonOutputGuardrail repairs what comes back.
-        #
-        # Compare the next eval scorecard against target/eval-report.md from run 33125173396. If the
-        # numbers recover, the flag was wrong; if they do not, the model is, and `tasks` below can
-        # point EXTRACTION and DOCUMENT at a different profile with no code change.
-        strict-schema: false
+        strict-schema: true
         timeout: PT120S
         log-requests: false
         log-responses: false
