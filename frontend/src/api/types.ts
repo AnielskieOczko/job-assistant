@@ -457,6 +457,8 @@ export interface LlmCall {
   task: string
   modelProfile: string
   modelName: string | null
+  /** Upstream provider behind a router (OpenRouter reports one); null for direct providers. */
+  servingProvider: string | null
   inputTokens: number | null
   outputTokens: number | null
   latencyMs: number | null

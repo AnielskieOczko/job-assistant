@@ -49,4 +49,18 @@ data class ModelProfile(
     val maxRetries: Int = 2,
     val logRequests: Boolean = false,
     val logResponses: Boolean = false,
+    /**
+     * Extra fields merged verbatim into the request body, for provider extensions that are not
+     * part of the OpenAI schema.
+     *
+     * Deliberately an opaque map rather than a typed class. A profile is a base URL, a key, a
+     * model name and a few flags; giving one provider's routing options first-class Kotlin types
+     * would be the beginning of the provider SPI this design does not have.
+     *
+     * The reason it exists: OpenRouter serves a single model slug from many upstream providers,
+     * and treats `response_format` as a soft preference - a request happily routes to a provider
+     * that cannot honour a JSON schema and silently ignores it. `provider.require_parameters`
+     * restricts routing to providers that can.
+     */
+    val customParameters: Map<String, Any> = emptyMap(),
 )

@@ -53,6 +53,21 @@ job-assistant:
         timeout: PT120S
         log-requests: false
         log-responses: false
+        # OpenRouter serves one model slug from many upstream providers, and only some of them
+        # implement structured outputs - for minimax/minimax-m3 it was 3 of 11 in August 2026,
+        # the first-party Minimax endpoint among those that do not. Without this, response_format
+        # is only a soft preference: the request routes to a provider that cannot honour the JSON
+        # schema and that provider silently ignores it, which is what produced empty tailorings,
+        # response-mode identifiers arriving as skill names, and the same fixture scoring 1.00 and
+        # then 0.00 on identical configuration.
+        #
+        # require_parameters restricts routing to providers supporting every parameter sent, so
+        # strict-schema: true above actually means something. Add `only: [CoreWeave, Parasail]`
+        # here to pin harder; the cost is availability, since a pinned provider being down becomes
+        # a failed call rather than a silently degraded one.
+        custom-parameters:
+          provider:
+            require_parameters: true
       requesty:
         base-url: https://router.requesty.ai/v1
         api-key: ${REQUESTY_API_KEY:}

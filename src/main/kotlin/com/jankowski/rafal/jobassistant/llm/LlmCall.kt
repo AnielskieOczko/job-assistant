@@ -8,6 +8,14 @@ data class LlmCall(
     val task: String,
     val modelProfile: String,
     val modelName: String?,
+    /**
+     * The upstream provider that served the call, when a router reports one.
+     *
+     * A router can serve one model slug from providers with different capabilities, so this is
+     * what makes a bad result attributable: the model name is identical whether the request was
+     * constrained to a JSON schema or answered by a provider that discarded it.
+     */
+    val servingProvider: String?,
     val inputTokens: Int?,
     val outputTokens: Int?,
     val latencyMs: Long?,
