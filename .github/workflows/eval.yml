@@ -1,0 +1,62 @@
+# The eval tier scores a LIVE model against labelled fixtures, so every run spends real tokens
+# (roughly ten model calls across five fixture offers). It therefore never runs automatically.
+#
+# Two rules this repository keeps, and this is the file they are about:
+#   1. `pull_request_target` is never used here. It would run fork code with access to secrets.
+#   2. No workflow other than this one references OPENROUTER_API_KEY.
+#
+# The key lives in the `eval` GitHub Environment behind a required reviewer rather than in plain
+# repository secrets, so a token spend is always something a human approved.
+name: Eval
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: read
+
+jobs:
+  eval:
+    name: eval
+    # The label is the seam that lets model-and-prompt regression become a merge gate later:
+    # one `if:` condition rather than a new mechanism.
+    if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'run-eval'
+    runs-on: ubuntu-latest
+    environment: eval
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Eval tier
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: ./mvnw -B -Peval test
+
+      # The scorecard exists so numbers are comparable across runs; a number that only ever
+      # reached a terminal cannot be compared with one from last week. The summary makes it
+      # readable on the run page, the artifact makes it diffable against the next run.
+      - name: Scorecard to job summary
+        if: always()
+        run: |
+          if [ -f target/eval-report.md ]; then
+            cat target/eval-report.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'No scorecard produced — the eval tier skips silently without an API key.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload scorecard
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: eval-report
+          path: |
+            target/eval-report.json
+            target/eval-report.md
+          if-no-files-found: warn

@@ -23,9 +23,9 @@ ticket, claims it, and resolves it. Resolve **one ticket per session**, except r
 which can be run in parallel because they only gather facts.
 
 **All three research tickets are now closed** and their findings are checked in under
-`docs/research/`. Every remaining leaf is HITL — grilling, a prototype, and one manual task — so a
-session needs Rafal in the loop for each. An agent that answers its own grilling questions has broken
-the method, and the parallelisable work is gone.
+`docs/research/`; so are the CV prototype and the CI/CD grilling. The two remaining leaves are HITL
+— one grilling and one manual task — so a session needs Rafal in the loop for each. An agent that
+answers its own grilling questions has broken the method, and the parallelisable work is gone.
 
 To pick a ticket yourself, pass it: `/mattpocock-skills:wayfinder 9 --ticket 13`.
 
@@ -69,18 +69,22 @@ them silently is the main way an effort like this goes wrong.
 
 ## Foundation, as distinct from ranked features
 
-The repository has no `.github` directory, no Dockerfile and no host configuration, so there is no CI
-at all. CI/CD scores zero on the ranking axis above — not for lack of value, but because it is
-developer infrastructure rather than a user-facing feature, and ranking a build pipeline against a CV
-redesign on "interviews per application" is a category error.
+CI/CD scores zero on the ranking axis above — not for lack of value, but because it is developer
+infrastructure rather than a user-facing feature, and ranking a build pipeline against a CV redesign
+on "interviews per application" is a category error.
 
-It is therefore proposed as **foundation sequenced ahead of the ranked list** rather than as an entry
-within it. **Rank and sequence the roadmap** will confirm or overturn that, and is asked to say so
-explicitly either way rather than letting the item drift to the bottom by default.
+It was therefore treated as **foundation sequenced ahead of the ranked list** rather than as an entry
+within it, and **built rather than ranked** — resolved by
+[ticket 16](https://github.com/AnielskieOczko/job-assistant/issues/16) on 2026-08-27. **Rank and
+sequence the roadmap** should confirm that framing in one line rather than re-ranking a pipeline that
+now exists.
 
-Note also that CI is the cheapest half. `docker-compose.yml` says "Production/staging uses Neon", but
-that is the *database*: nothing in the repository says where the application itself would run, so
-the "CD" half may be aspirational until a host and a Dockerfile exist.
+The **CD half was found to have no target and was deliberately not built.** `docker-compose.yml` says
+"Production/staging uses Neon", but that is the *database*: nothing in the repository says where the
+application itself would run. Publishing a container image on merge was considered and rejected as
+speculative — an image nobody pulls. Spring Boot's `spring-boot:build-image` uses Paketo buildpacks,
+so if a host is ever chosen, the deploy job is an append and **no Dockerfile is owed then either**.
+See `CLAUDE.md` § *Continuous integration* for what now runs.
 
 ## Two rules every ticket is checked against
 
@@ -108,8 +112,8 @@ Charting turned up four items that were assumed missing and are not:
 
 ## Decisions so far
 
-Three research tickets resolved on 2026-08-26. Each ticket carries the full answer as a resolution
-comment; the underlying findings, with a source cited against every factual claim, are checked in
+Five tickets resolved, on 2026-08-26 and 2026-08-27. Each carries the full answer as a resolution
+comment; the research findings, with a source cited against every factual claim, are checked in
 under **`docs/research/`**.
 
 - **[Which job-offer sources can we ingest without scraping?](https://github.com/AnielskieOczko/job-assistant/issues/10)**
@@ -155,6 +159,22 @@ under **`docs/research/`**.
   identifier**: it follows the rule the name already follows — never in a prompt, added by the
   renderer from the database afterwards, cascade-deleted with the profile.
 
+- **[What should CI/CD actually do, and does CD have a target?](https://github.com/AnielskieOczko/job-assistant/issues/16)**
+  → built, not just decided: `.github/workflows/ci.yml` and `eval.yml`, a `coverage` profile in
+  `pom.xml`, and `CLAUDE.md` § *Continuous integration*. **CD has no target and none was invented.**
+  The fast tier and a `frontend` job (`npm ci`, `oxlint`, `tsc -b` — oxlint being the one check
+  nothing previously ran) are required on every PR; `pdf` runs on every PR but stays advisory,
+  because a Playwright browser download is a network dependency and a required check that flakes is
+  worse than none. **The eval tier never runs automatically** — `workflow_dispatch` or the
+  `run-eval` label, with the key in an approval-gated GitHub Environment, which is also the seam
+  that makes model-and-prompt regression a merge gate later for one `if:` condition rather than a
+  new mechanism. SonarQube Cloud is **CI-based, not Automatic**: automatic analysis does support
+  Kotlin, but fully covers only the default branch, and `main` is merges-only, so every finding
+  would land after the decision. Two coverage exclusions are honest rather than cosmetic — the
+  frontend has no test suite, and `PlaywrightDocumentRenderer` is tested by the tier the coverage
+  job skips. The default "Sonar way" gate was kept unweakened; existing Kotlin coverage measured
+  **87.1% by line**, so its 80% bar is a floor already cleared rather than an aspiration.
+
 ## Tickets
 
 | # | Ticket | Type | State |
@@ -164,18 +184,19 @@ under **`docs/research/`**.
 | [12](https://github.com/AnielskieOczko/job-assistant/issues/12) | What can GitHub tell us about a repository? | research | **closed** |
 | [13](https://github.com/AnielskieOczko/job-assistant/issues/13) | What should the offer market dashboard answer? | grilling | open |
 | [14](https://github.com/AnielskieOczko/job-assistant/issues/14) | What should a tailored CV look like? | prototype | **closed** |
-| [16](https://github.com/AnielskieOczko/job-assistant/issues/16) | What should CI/CD actually do, and does CD have a target? | grilling | open |
+| [16](https://github.com/AnielskieOczko/job-assistant/issues/16) | What should CI/CD actually do, and does CD have a target? | grilling | **closed** |
 | [18](https://github.com/AnielskieOczko/job-assistant/issues/18) | Do the Polish boards' alert emails carry the full offer text? | task | open |
-| [15](https://github.com/AnielskieOczko/job-assistant/issues/15) | Rank and sequence the roadmap | grilling | blocked by 13, 16, 18 |
+| [15](https://github.com/AnielskieOczko/job-assistant/issues/15) | Rank and sequence the roadmap | grilling | blocked by 13, 18 |
 | [19](https://github.com/AnielskieOczko/job-assistant/issues/19) | How does a GitHub repository become a profile Project? | grilling | blocked by 15 |
 
-The three open leaf tickets are independent and can run in any order. **Rank and sequence the
+The two open leaf tickets are independent and can run in either order. **Rank and sequence the
 roadmap** is deliberately last: ranking the dashboard before its scope is fixed, or ingestion before
 the email path is settled, would be ranking a guess.
 
-All three remaining leaves are **HITL** — two grillings and a manual task. A session cannot resolve
-any of them alone, because an agent that answers its own grilling questions has broken the method.
-The parallelisable AFK work is done.
+Both remaining leaves are **HITL** — one grilling and one manual task. A session cannot resolve
+either alone, because an agent that answers its own grilling questions has broken the method, and
+[18](https://github.com/AnielskieOczko/job-assistant/issues/18) needs a human to subscribe to a job
+alert and read the delivered email. The parallelisable AFK work is done.
 
 ## Not yet specified
 

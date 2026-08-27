@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
 import java.time.LocalDate
+import java.time.temporal.ChronoUnit
 
 @Service
 internal class JdbcOfferService(
@@ -39,7 +40,7 @@ internal class JdbcOfferService(
             ApplicationRow(
                 jobOfferId = saved.id!!,
                 status = ApplicationStatus.SAVED.name,
-                statusChangedAt = Instant.now(),
+                statusChangedAt = stamp(),
                 appliedOn = null,
                 notes = null,
             )
@@ -94,7 +95,7 @@ internal class JdbcOfferService(
                 status = status.name,
                 // Only stamp the change time when the status actually moved, so editing notes
                 // does not make an old application look freshly touched.
-                statusChangedAt = if (row.status == status.name) row.statusChangedAt else Instant.now(),
+                statusChangedAt = if (row.status == status.name) row.statusChangedAt else stamp(),
                 appliedOn = appliedOn ?: row.appliedOn,
                 notes = notes ?: row.notes,
             )
@@ -103,6 +104,14 @@ internal class JdbcOfferService(
 }
 
 internal class UnknownOfferException(offerId: Long) : NoSuchElementException("No job offer $offerId")
+
+/**
+ * Postgres `timestamptz` holds microseconds and rounds anything finer, so a nanosecond
+ * `Instant.now()` comes back from a re-read as a different value than the one just written — the
+ * object a write returns would not equal the row the database holds. Linux exposes this; macOS
+ * hides it by handing out microsecond-resolution clocks, which is why CI found it and no laptop did.
+ */
+private fun stamp(): Instant = Instant.now().truncatedTo(ChronoUnit.MICROS)
 
 private fun JobOfferRow.toDomain() = JobOffer(
     id = requireNotNull(id),
