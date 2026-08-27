@@ -215,9 +215,9 @@ class ApiContractTest {
         },
         {
             assertKeys(
-                LlmCall(1, "EXTRACTION", "openrouter", "model", 1, 1, 1L, null, Instant.EPOCH),
-                "id", "task", "modelProfile", "modelName", "inputTokens", "outputTokens",
-                "latencyMs", "error", "createdAt",
+                LlmCall(1, "EXTRACTION", "openrouter", "model", "CoreWeave", 1, 1, 1L, null, Instant.EPOCH),
+                "id", "task", "modelProfile", "modelName", "servingProvider", "inputTokens",
+                "outputTokens", "latencyMs", "error", "createdAt",
             )
         },
     )

@@ -19,16 +19,17 @@ internal class LlmCallAuditor(private val jdbc: JdbcClient) {
         jdbc.sql(
             """
             insert into llm_call
-                (task, model_profile, model_name, request_json, response_text, error,
-                 input_tokens, output_tokens, latency_ms, profile_id)
+                (task, model_profile, model_name, serving_provider, request_json, response_text,
+                 error, input_tokens, output_tokens, latency_ms, profile_id)
             values
-                (:task, :profile, :modelName, :request, :response, :error,
-                 :inputTokens, :outputTokens, :latencyMs, :profileId)
+                (:task, :profile, :modelName, :servingProvider, :request, :response,
+                 :error, :inputTokens, :outputTokens, :latencyMs, :profileId)
             """
         )
             .param("task", entry.task)
             .param("profile", entry.modelProfile)
             .param("modelName", entry.modelName)
+            .param("servingProvider", entry.servingProvider)
             .param("request", entry.requestJson)
             .param("response", entry.responseText)
             .param("error", entry.error)
@@ -43,6 +44,8 @@ internal class LlmCallAuditor(private val jdbc: JdbcClient) {
         val task: String,
         val modelProfile: String,
         val modelName: String?,
+        /** Upstream provider behind a router, when it reports one. Null for direct providers. */
+        val servingProvider: String? = null,
         val requestJson: String,
         val responseText: String?,
         val error: String?,

@@ -248,6 +248,24 @@ name and a `strict-schema` flag — there is no provider SPI, and adding one wou
 by name, so extraction can run on a different provider from narrative writing with no code change.
 A task pointing at an undefined profile fails loudly at first use.
 
+**A router's model name is not a model.** OpenRouter serves one slug from many upstream providers
+whose capabilities genuinely differ — `minimax/minimax-m3` had 3 of 11 implementing structured
+outputs in August 2026, the first-party Minimax endpoint among the eight that did not. And
+`response_format` is only a *soft preference*: a request routes to a provider that cannot honour a
+JSON schema, which then silently ignores it. `strict-schema: true` therefore means nothing on its
+own; `custom-parameters.provider.require_parameters` is what makes it real, by restricting routing
+to providers supporting every parameter sent.
+
+Symptoms of getting this wrong are not obviously schema-related, which is why it cost a day: empty
+but well-formed responses, prompt-mode identifiers arriving as data, `AiMessage.text()` coming back
+null, and the same fixture scoring 1.00 then 0.00 on identical configuration — that last one being
+routing non-determinism, not model non-determinism. **`llm_call.serving_provider` records who
+actually answered**, so this is now a query rather than an argument.
+
+`custom-parameters` is an opaque `Map<String, Any>` merged into the request body verbatim. Keep it
+opaque: typing one router's options would be the first step toward the provider SPI this design
+deliberately does not have.
+
 Environment: `OPENROUTER_API_KEY` / `REQUESTY_API_KEY` for models, `DB_URL` / `DB_USER` /
 `DB_PASSWORD` for Postgres (defaults match `docker-compose.yml`). Local dev uses the compose
 Postgres; deployment targets Neon, which is why the Hikari pool is tiny and tolerant of cold starts.

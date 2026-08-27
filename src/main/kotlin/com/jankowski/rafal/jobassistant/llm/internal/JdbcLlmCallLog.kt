@@ -34,6 +34,7 @@ internal class JdbcLlmCallLog(private val jdbc: JdbcClient) : LlmCallLog {
         task = getString("task"),
         modelProfile = getString("model_profile"),
         modelName = getString("model_name"),
+        servingProvider = getString("serving_provider"),
         inputTokens = getObject("input_tokens") as Int?,
         outputTokens = getObject("output_tokens") as Int?,
         latencyMs = getObject("latency_ms") as Long?,
@@ -43,8 +44,8 @@ internal class JdbcLlmCallLog(private val jdbc: JdbcClient) : LlmCallLog {
 
     private companion object {
         const val SUMMARY_COLUMNS = """
-            select id, task, model_profile, model_name, input_tokens, output_tokens,
-                   latency_ms, error, created_at
+            select id, task, model_profile, model_name, serving_provider, input_tokens,
+                   output_tokens, latency_ms, error, created_at
             from llm_call
         """
     }

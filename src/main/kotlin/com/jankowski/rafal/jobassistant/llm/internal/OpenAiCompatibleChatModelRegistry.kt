@@ -54,6 +54,10 @@ internal class OpenAiCompatibleChatModelRegistry(
                 if (profile.strictSchema) {
                     supportedCapabilities(setOf(Capability.RESPONSE_FORMAT_JSON_SCHEMA))
                 }
+                // Merged into the request body as-is. Empty for providers that need nothing extra.
+                if (profile.customParameters.isNotEmpty()) {
+                    customParameters(profile.customParameters)
+                }
             }
             .listeners(listOf(auditing.listenerFor(task, profileName)))
             .build()

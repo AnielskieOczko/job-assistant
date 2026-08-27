@@ -76,6 +76,13 @@ export function LlmCallsPage() {
                   <TableCell className="max-w-0 truncate">
                     <span className="font-mono text-xs">{call.modelName ?? '—'}</span>
                     <span className="ml-2 text-xs text-muted-foreground">{call.modelProfile}</span>
+                    {/* A router serves one model slug from providers with different capabilities,
+                        so this is what makes two identical-looking rows tell different stories. */}
+                    {call.servingProvider ? (
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        via {call.servingProvider}
+                      </span>
+                    ) : null}
                     {call.error ? (
                       <span className="ml-2 text-xs text-red-600">failed</span>
                     ) : null}
