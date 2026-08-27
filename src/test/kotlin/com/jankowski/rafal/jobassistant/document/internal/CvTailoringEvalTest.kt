@@ -70,6 +70,27 @@ internal class CvTailoringEvalTest(
          * the prompt has stopped steering, and the scorecard is where the real number lives.
          */
         const val MAX_DROP_RATE = 0.34
+
+        /**
+         * Below this, a drop *rate* is not a rate. With one claim the only possible values are 0.0
+         * and 1.0, so no response can land under [MAX_DROP_RATE] however well the system behaved —
+         * a run that claimed one junk skill and correctly dropped it scored 1.00 and failed, which
+         * says the denominator was small rather than that anything was fabricated.
+         *
+         * The count is still recorded every time. A rate is asserted only when there is a sample
+         * to take a rate of.
+         */
+        const val MIN_CLAIMS_FOR_A_RATE = 3
+
+        /**
+         * A floor taken from observed behaviour, not a target: one fixture in the 2026-08-27 run
+         * produced a document [CvInvariant] would reject, and pretending otherwise by asserting
+         * zero would fail every run until the prompt changed. It exists to catch the cliff where
+         * most fixtures start producing documents that cannot ship — an invariant rejection is a
+         * user-visible HTTP 422, which makes it the most consequential number here. The one to
+         * watch is the scorecard mean over time.
+         */
+        const val MAX_INVARIANT_VIOLATIONS = 1
     }
 
     private lateinit var profile: CandidateProfile
@@ -102,8 +123,18 @@ internal class CvTailoringEvalTest(
 
         val selection = CvSelection.from(tailored, profile, catalog)
 
-        val bulletDropRate = rate(selection.droppedBulletIds.size, tailored.bullets.map { it.bulletId }.distinct().size)
-        val skillDropRate = rate(selection.droppedSkillNames.size, tailored.skillNames.distinct().size)
+        // The same reflective-deserialisation exposure CvSelection.from was hardened against: a
+        // model emitting `"bullets": null` produces a null here despite the non-null type, because
+        // the codec writes fields directly and never runs Kotlin's constructor checks. See
+        // CLAUDE.md, "Writing an AI service".
+        @Suppress("USELESS_ELVIS")
+        val claimedBullets = (tailored.bullets ?: emptyList()).map { it.bulletId }.distinct().size
+
+        @Suppress("USELESS_ELVIS")
+        val claimedSkills = (tailored.skillNames ?: emptyList()).distinct().size
+
+        val bulletDropRate = rate(selection.droppedBulletIds.size, claimedBullets)
+        val skillDropRate = rate(selection.droppedSkillNames.size, claimedSkills)
 
         // The invariant is the shipping safety net; here it is simply another thing to count. A
         // rejection means the free-text summary or a rewritten bullet named an absent technology,
@@ -122,6 +153,10 @@ internal class CvTailoringEvalTest(
             metrics = mapOf(
                 "bulletDropRate" to bulletDropRate,
                 "skillDropRate" to skillDropRate,
+                // The denominators. Without them a reader cannot tell 1/1 from 9/9, which is
+                // exactly what made the 2026-08-27 failure hard to read.
+                "bulletsClaimed" to claimedBullets.toDouble(),
+                "skillsClaimed" to claimedSkills.toDouble(),
                 "invariantViolations" to violations.size.toDouble(),
                 "bulletsSelected" to selection.bulletOrder.size.toDouble(),
                 "summaryWords" to summaryWords.toDouble(),
@@ -137,19 +172,28 @@ internal class CvTailoringEvalTest(
             },
         )
 
-        assertTrue(
-            bulletDropRate <= MAX_DROP_RATE,
-            "$fixture: ${"%.0f%%".format(bulletDropRate * 100)} of selected bullet ids do not exist " +
-                "(${selection.droppedBulletIds})",
-        )
-        assertTrue(
-            skillDropRate <= MAX_DROP_RATE,
-            "$fixture: ${"%.0f%%".format(skillDropRate * 100)} of claimed skills are not held " +
-                "(${selection.droppedSkillNames})",
-        )
+        if (claimedBullets >= MIN_CLAIMS_FOR_A_RATE) {
+            assertTrue(
+                bulletDropRate <= MAX_DROP_RATE,
+                "$fixture: ${"%.0f%%".format(bulletDropRate * 100)} of $claimedBullets selected bullet " +
+                    "ids do not exist (${selection.droppedBulletIds})",
+            )
+        }
+        if (claimedSkills >= MIN_CLAIMS_FOR_A_RATE) {
+            assertTrue(
+                skillDropRate <= MAX_DROP_RATE,
+                "$fixture: ${"%.0f%%".format(skillDropRate * 100)} of $claimedSkills claimed skills are " +
+                    "not held (${selection.droppedSkillNames})",
+            )
+        }
         assertTrue(
             selection.bulletOrder.isNotEmpty(),
             "$fixture: tailoring selected no bullets at all",
+        )
+        assertTrue(
+            violations.size <= MAX_INVARIANT_VIOLATIONS,
+            "$fixture: the tailored document would be rejected at generation time, naming " +
+                "${violations.size} technologies the profile cannot back ($violations)",
         )
     }
 
