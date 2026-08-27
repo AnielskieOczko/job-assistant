@@ -270,6 +270,20 @@ data class Extracted(
 )
 ```
 
+**A default covers a missing key, not an explicit null.** The same reflective deserialisation that
+makes defaults necessary also means the constructor is never called, so Kotlin's intrinsic null
+checks never run: a model emitting `"requirements": null` produces a genuinely null `List` inside a
+property typed non-null. **At the boundary where a service return type is first read, the Kotlin
+type is a claim rather than a guarantee** — `?: emptyList()` there is not dead code, and needs
+`@Suppress("USELESS_ELVIS")` plus a comment saying so. `CvSelection.from` is the worked example.
+
+**An empty model response must be normalised, not passed on.** A model that emits only `thinking`
+returns an `AiMessage` whose `text()` is null. `JsonOutputGuardrail` reprompts correctly, but
+LangChain4j 1.19's `OutputGuardrailExecutor.rewriteResult` then compares the reprompted text against
+the null original without a null check, throws, and **discards the reprompt that had just succeeded**.
+`InspectingChatModel` substitutes `""` on the way back to stop that. Remove it when upstream adds
+the check; keep it until then, because no scripted test can produce the case that needs it.
+
 Non-JSON responses are handled by `JsonOutputGuardrail`: markdown fences and surrounding
 commentary are stripped in place at no cost, and only a genuinely JSON-free response triggers a
 single reprompt. Both round trips are audited — every model call lands in `llm_call` with its
