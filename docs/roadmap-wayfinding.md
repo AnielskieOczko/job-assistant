@@ -142,6 +142,19 @@ under **`docs/research/`**.
   strongest honest evidence, 404s unpredictably on repositories with equivalent manifests, so the
   reliable path is parsing `pom.xml` / `package.json` locally.
 
+- **[What should a tailored CV look like?](https://github.com/AnielskieOczko/job-assistant/issues/14)**
+  → prototypes on branch `prototype/cv-layouts`, under `docs/prototypes/cv/`. **Register** wins:
+  single column, skills sorted into `SkillCategory` instead of one undifferentiated chip run, dates
+  in a mono rail, an **optional portrait**, and **skill badges per job** — the union of a role's
+  bullet skills, taken over the bullets that actually render so a skill whose evidence was dropped
+  cannot survive into the badge row. Two-column Dossier was rejected on parsing: its sidebar is a
+  genuinely separate reading order. Three things generalise beyond this layout. Fonts must be
+  base64-embedded **with the `latin-ext` subset**, because Chromium embeds whatever it resolved at
+  render time and `latin` carries no ł, ą, ę, ś or ż. A near-miss costs a whole page, and a trailing
+  `margin-bottom` on the last section is the invisible culprit. And a portrait is a **direct
+  identifier**: it follows the rule the name already follows — never in a prompt, added by the
+  renderer from the database afterwards, cascade-deleted with the profile.
+
 ## Tickets
 
 | # | Ticket | Type | State |
@@ -150,19 +163,19 @@ under **`docs/research/`**.
 | [11](https://github.com/AnielskieOczko/job-assistant/issues/11) | What does a model call actually cost, and can we know it per call? | research | **closed** |
 | [12](https://github.com/AnielskieOczko/job-assistant/issues/12) | What can GitHub tell us about a repository? | research | **closed** |
 | [13](https://github.com/AnielskieOczko/job-assistant/issues/13) | What should the offer market dashboard answer? | grilling | open |
-| [14](https://github.com/AnielskieOczko/job-assistant/issues/14) | What should a tailored CV look like? | prototype | open |
+| [14](https://github.com/AnielskieOczko/job-assistant/issues/14) | What should a tailored CV look like? | prototype | **closed** |
 | [16](https://github.com/AnielskieOczko/job-assistant/issues/16) | What should CI/CD actually do, and does CD have a target? | grilling | open |
 | [18](https://github.com/AnielskieOczko/job-assistant/issues/18) | Do the Polish boards' alert emails carry the full offer text? | task | open |
-| [15](https://github.com/AnielskieOczko/job-assistant/issues/15) | Rank and sequence the roadmap | grilling | blocked by 13, 14, 16, 18 |
+| [15](https://github.com/AnielskieOczko/job-assistant/issues/15) | Rank and sequence the roadmap | grilling | blocked by 13, 16, 18 |
 | [19](https://github.com/AnielskieOczko/job-assistant/issues/19) | How does a GitHub repository become a profile Project? | grilling | blocked by 15 |
 
-The four open leaf tickets are independent and can run in any order. **Rank and sequence the roadmap**
-is deliberately last: ranking the dashboard before its scope is fixed, or ingestion before the email
-path is settled, would be ranking a guess.
+The three open leaf tickets are independent and can run in any order. **Rank and sequence the
+roadmap** is deliberately last: ranking the dashboard before its scope is fixed, or ingestion before
+the email path is settled, would be ranking a guess.
 
-Note the remaining leaves are all **HITL** — grilling, prototype and a manual task. A session cannot
-resolve any of them alone, because an agent that answers its own grilling questions has broken the
-method. The parallelisable AFK work is done.
+All three remaining leaves are **HITL** — two grillings and a manual task. A session cannot resolve
+any of them alone, because an agent that answers its own grilling questions has broken the method.
+The parallelisable AFK work is done.
 
 ## Not yet specified
 
