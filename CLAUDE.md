@@ -24,7 +24,8 @@ things that look missing but already ship — application lifecycle tracking, th
 triage UI, output-language parameterisation, and cross-offer skill aggregation.
 
 The live map is GitHub issue #9 with its child issues; `docs/roadmap-wayfinding.md` is a checked-in
-snapshot of it and says so. Continue the effort with `/mattpocock-skills:wayfinder 9`, and refresh
+snapshot of it and says so. Findings from resolved research tickets live in
+`docs/research/`, one file per ticket, each citing a source against every claim. Continue the effort with `/mattpocock-skills:wayfinder 9`, and refresh
 the snapshot in the same commit that resolves a ticket. When the two disagree, GitHub is right.
 
 `docs/roadmap.md` is a different file with a different job: it holds decisions already taken for

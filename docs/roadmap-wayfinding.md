@@ -22,6 +22,11 @@ Run `/mattpocock-skills:wayfinder 9`. That loads the map, picks the first unbloc
 ticket, claims it, and resolves it. Resolve **one ticket per session**, except research tickets,
 which can be run in parallel because they only gather facts.
 
+**All three research tickets are now closed** and their findings are checked in under
+`docs/research/`. Every remaining leaf is HITL — grilling, a prototype, and one manual task — so a
+session needs Rafal in the loop for each. An agent that answers its own grilling questions has broken
+the method, and the parallelisable work is gone.
+
 To pick a ticket yourself, pass it: `/mattpocock-skills:wayfinder 9 --ticket 13`.
 
 To see what is takeable right now:
@@ -101,21 +106,63 @@ Charting turned up four items that were assumed missing and are not:
 - **Cross-offer skill demand and gap aggregation** — `AggregateGapReport` and `GapsPage.tsx`. The
   *skill* half of market intelligence exists; only the *market* half is missing.
 
+## Decisions so far
+
+Three research tickets resolved on 2026-08-26. Each ticket carries the full answer as a resolution
+comment; the underlying findings, with a source cited against every factual claim, are checked in
+under **`docs/research/`**.
+
+- **[Which job-offer sources can we ingest without scraping?](https://github.com/AnielskieOczko/job-assistant/issues/10)**
+  → `docs/research/10-offer-ingestion-sources.md`. A first pass concluded the Polish market was
+  closed. A second pass, prompted by Rafal naming six sources on the PR, **overturned that**:
+  [solid.jobs](https://solid.jobs/api-ofert-pracy) publishes a documented, keyless, sanctioned read
+  API whose `description` field carries full posting prose, and whose `robots.txt` names `ClaudeBot`
+  and `anthropic-ai` as welcome. It also returns structured `salary` on 500 of 500 offers — currency,
+  period and the B2B-versus-employment distinction — and `skills` with a required `level` enum, which
+  reaches straight into ticket 13. The other Polish boards do stay shut: JustJoin.IT forbids its own
+  API in `robots.txt`, NoFluffJobs has a real RSS feed carrying no posting text, theprotocol.it 403s
+  its own homepage behind a WAF, Bulldogjob's `/feeds` path never resolves. Arbeitnow, Himalayas and
+  WeWorkRemotely round out the set with confirmed full text. Adzuna is the near-miss worth not
+  re-proposing: clean API, Poland covered, permissive terms, description its own docs call a snippet.
+  jobright.ai is not a source at all, and as a product it auto-submits applications — which this map
+  ruled out deliberately.
+- **[What does a model call actually cost, and can we know it per call?](https://github.com/AnielskieOczko/job-assistant/issues/11)**
+  → `docs/research/11-model-call-cost.md`. Yes, and the data is already arriving and being discarded.
+  OpenRouter and Requesty both return `usage.cost` inline on the completion, with no request flag,
+  and LangChain4j 1.19 hands the raw provider JSON to the `AuditingChatModelListener` that already
+  runs, through `OpenAiChatResponseMetadata.rawHttpResponse()` — verified against the 1.19.0 jar,
+  where the field is set unconditionally. Capturing cost is a cast and a permissive JSON read, not a
+  new seam. Four nullable columns on `llm_call` (`cost_usd`, `upstream_cost_usd`,
+  `cached_input_tokens`, `reasoning_output_tokens`) unblock both cost display and the spend guardrail.
+- **[What can GitHub tell us about a repository?](https://github.com/AnielskieOczko/job-assistant/issues/12)**
+  → `docs/research/12-github-project-import.md`. A project import is not mechanical. Owner-stated
+  fields are safe but thin on a real account — `description` present on 5 of 11 repositories,
+  `topics` on **none**, `license` on none — and everything richer is a derived signal that must be
+  confirmed by a human before it becomes profile truth. The SBOM endpoint, which would have been the
+  strongest honest evidence, 404s unpredictably on repositories with equivalent manifests, so the
+  reliable path is parsing `pom.xml` / `package.json` locally.
+
 ## Tickets
 
 | # | Ticket | Type | State |
 |---|---|---|---|
-| [10](https://github.com/AnielskieOczko/job-assistant/issues/10) | Which job-offer sources can we ingest without scraping? | research | open |
-| [11](https://github.com/AnielskieOczko/job-assistant/issues/11) | What does a model call actually cost, and can we know it per call? | research | open |
-| [12](https://github.com/AnielskieOczko/job-assistant/issues/12) | What can GitHub tell us about a repository? | research | open |
+| [10](https://github.com/AnielskieOczko/job-assistant/issues/10) | Which job-offer sources can we ingest without scraping? | research | **closed** |
+| [11](https://github.com/AnielskieOczko/job-assistant/issues/11) | What does a model call actually cost, and can we know it per call? | research | **closed** |
+| [12](https://github.com/AnielskieOczko/job-assistant/issues/12) | What can GitHub tell us about a repository? | research | **closed** |
 | [13](https://github.com/AnielskieOczko/job-assistant/issues/13) | What should the offer market dashboard answer? | grilling | open |
 | [14](https://github.com/AnielskieOczko/job-assistant/issues/14) | What should a tailored CV look like? | prototype | open |
 | [16](https://github.com/AnielskieOczko/job-assistant/issues/16) | What should CI/CD actually do, and does CD have a target? | grilling | open |
-| [15](https://github.com/AnielskieOczko/job-assistant/issues/15) | Rank and sequence the roadmap | grilling | blocked by 10–14, 16 |
+| [18](https://github.com/AnielskieOczko/job-assistant/issues/18) | Do the Polish boards' alert emails carry the full offer text? | task | open |
+| [15](https://github.com/AnielskieOczko/job-assistant/issues/15) | Rank and sequence the roadmap | grilling | blocked by 13, 14, 16, 18 |
+| [19](https://github.com/AnielskieOczko/job-assistant/issues/19) | How does a GitHub repository become a profile Project? | grilling | blocked by 15 |
 
-The first six are independent and can run in any order or at once. **Rank and sequence the roadmap**
-is deliberately last: ranking automated ingestion before knowing whether ingestable sources exist, or
-ranking the dashboard before its scope is fixed, would be ranking a guess.
+The four open leaf tickets are independent and can run in any order. **Rank and sequence the roadmap**
+is deliberately last: ranking the dashboard before its scope is fixed, or ingestion before the email
+path is settled, would be ranking a guess.
+
+Note the remaining leaves are all **HITL** — grilling, prototype and a manual task. A session cannot
+resolve any of them alone, because an agent that answers its own grilling questions has broken the
+method. The parallelisable AFK work is done.
 
 ## Not yet specified
 
@@ -128,16 +175,17 @@ run, because until then it is not known which items earn detailed shaping.
   certificates, vendor certifications and conference talks all fit `EducationImport`
   (institution / degree / fieldOfStudy) badly. The sharp version is whether a credential *grants
   catalog skills* — if it does it feeds `heldSkillIds` and therefore the fabrication guard, making it
-  a domain decision rather than a form field.
-- **How a GitHub repository becomes a profile Project without becoming a fabrication vector.**
-  Blocked on ticket 12.
+  a domain decision rather than a form field. Ticket 19 asks the same question of an imported
+  repository, so the two may share one answer.
 - **What outcome calibration can honestly claim at small n.** Correlating `matchScore` against real
   application outcomes is the best value-per-effort idea on the list precisely because the data
   already exists and nothing reads it — but at a few dozen applications any correlation is noise.
-- **Where a cross-offer shortlist ranking lives.** Urgent only if automated ingestion ships.
-- **Placement of two small insurance policies:** an LLM spend guardrail (a budget that refuses calls
-  past a cap, as distinct from merely displaying cost), and profile durability (ground truth is
-  hand-authored in one Postgres; import exists, scheduled export does not).
+- **Where a cross-offer shortlist ranking lives.** Urgent only if automated ingestion ships — and
+  ticket 10 concluded it would ship as a trickle, which weakens the case rather than strengthening it.
+- **Placement of two small insurance policies.** The LLM spend guardrail's *mechanism* is no longer
+  fog: ticket 11 established that `usage.cost` arrives inline and the audit listener already receives
+  it, so only its rank remains open. Profile durability is untouched — ground truth is hand-authored
+  in one Postgres, import exists, scheduled export does not.
 
 ## Out of scope
 
