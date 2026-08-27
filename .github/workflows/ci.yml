@@ -53,7 +53,13 @@ jobs:
         # Absent on pull requests from forks, which receive no secrets by design. Skipping keeps
         # such a PR green on the checks it can run rather than red on a token it cannot have.
         if: env.SONAR_TOKEN != ''
-        run: ./mvnw -B org.sonarsource.scanner.maven:sonar-maven-plugin:5.1.0.4751:sonar
+        # scanAll makes the scanner index the frontend as well as the Java source roots — the
+        # TS/TSX half is the larger one. It must be a command-line -D: as a pom property it is
+        # ignored without warning. Note it is disabled outright if sonar.sources is overridden,
+        # so the two are alternatives and the pom deliberately sets neither.
+        run: >
+          ./mvnw -B org.sonarsource.scanner.maven:sonar-maven-plugin:5.1.0.4751:sonar
+          -Dsonar.maven.scanAll=true
 
   # Advisory until it has a run history: a Playwright browser download is a network dependency,
   # and a required check that flakes is worse than no required check.

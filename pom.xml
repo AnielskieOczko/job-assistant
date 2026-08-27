@@ -41,9 +41,13 @@
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
         <sonar.organization>anielskieoczko</sonar.organization>
         <sonar.projectKey>AnielskieOczko_job-assistant</sonar.projectKey>
-        <!-- The frontend is the larger half of the codebase (~7.7k lines of TS/TSX against ~5.5k
-             of Kotlin), and the Maven scanner sees only Java source roots without this. -->
-        <sonar.maven.scanAll>true</sonar.maven.scanAll>
+        <!--
+            NOTE: sonar.maven.scanAll is deliberately NOT here. It is a sonar.maven.* property,
+            read from Maven's user properties rather than the project's, so a value in this block
+            is silently ignored — the scanner logs no complaint and simply indexes Java source
+            roots only. It is passed as -D on the command line in .github/workflows/ci.yml.
+            Ordinary sonar.* properties below are read from here normally.
+        -->
         <sonar.exclusions>
             frontend/node_modules/**,frontend/dist/**,frontend/.mvn-node/**,src/main/resources/static/**,graphify-out/**,target/**
         </sonar.exclusions>

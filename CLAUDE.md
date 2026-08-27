@@ -143,6 +143,20 @@ arrives after the decision. It also cannot import coverage at all. The `sonar.*`
 no test suite yet, and `PlaywrightDocumentRenderer` *is* tested, by the `pdf` tier that the coverage
 job deliberately does not run.
 
+Two Sonar traps, both of which fail silently rather than loudly:
+
+- **`sonar.maven.scanAll` must be a command-line `-D`.** It is a `sonar.maven.*` property, read from
+  Maven's *user* properties rather than the project's, so putting it in `pom.xml` does nothing and
+  says nothing — the scanner just indexes the Java source roots and the frontend vanishes from the
+  report. Ordinary `sonar.*` properties in the pom are read normally, which is what makes this
+  look like it worked. Verify by grepping the scanner log for `Quality profile for ts`.
+- **Setting `sonar.sources` disables `scanAll` entirely.** They are alternatives, not complements,
+  which is why the pom sets neither.
+
+Also: **Automatic Analysis and CI-based analysis cannot both be on.** If Automatic is enabled in the
+SonarQube Cloud project, the CI analysis fails and takes the build with it. It is on by default when
+a repository is first imported; turn it off at Project → Administration → Analysis Method.
+
 `main` is protected: pull request required, zero approvals (GitHub does not let you approve your own
 PR, so any higher number deadlocks a single-committer repo), no force-push, no admin bypass.
 
