@@ -108,6 +108,44 @@ groups have to be swapped rather than added to.
 | pdf | `./mvnw test -Ppdf` | Chromium (downloaded to `~/.cache/ms-playwright` on first run) |
 | eval | `./mvnw test -Peval` | `OPENROUTER_API_KEY`; costs tokens, skips silently without it |
 
+There is a fourth profile, `coverage`, which is not a tier: it adds JaCoCo to whichever tier is
+running and writes `target/site/jacoco/jacoco.xml` during `verify`. It exists for the CI Sonar job
+and is off by default on the same principle as the tiers — a plain `./mvnw test` should not carry an
+agent it has no use for.
+
+## Continuous integration
+
+Two workflows in `.github/workflows`. Job names are the check names, so renaming a job silently
+un-requires it in the branch ruleset.
+
+| Workflow | Job | Runs on | Required |
+|---|---|---|---|
+| `ci.yml` | `build` — fast tier, JaCoCo, SonarQube Cloud | every PR, push to `main` | **yes** |
+| `ci.yml` | `frontend` — `npm ci`, `oxlint`, `tsc -b` | every PR, push to `main` | **yes** |
+| `ci.yml` | `pdf` — `-Ppdf` with a cached Chromium | every PR, push to `main` | no, advisory |
+| `ci.yml` | `package` — `-Pfrontend clean package -DskipTests` | push to `main` only | no |
+| `eval.yml` | `eval` — `-Peval`, scorecard to artifact and job summary | `workflow_dispatch`, or the `run-eval` label | no |
+
+`pdf` and the Sonar quality gate stay advisory until each has a run history behind it. A required
+check that flakes is worse than no required check; promoting either later is one checkbox.
+
+**`eval.yml` is the only workflow that may reference `OPENROUTER_API_KEY`**, and the key lives in
+the `eval` GitHub Environment behind a required reviewer, not in plain repository secrets, so every
+token spend is something a human approved. **`pull_request_target` is never used in this
+repository** — it would run fork code with access to that secret. The repository is public, so a
+fork PR receives no secrets at all; the Sonar step is written to skip rather than fail when
+`SONAR_TOKEN` is absent, which is what that case looks like.
+
+Sonar analysis is CI-based rather than Automatic. Automatic analysis supports Kotlin, but fully
+covers only the default branch — and `main` here is merges-only, so a finding that arrives on `main`
+arrives after the decision. It also cannot import coverage at all. The `sonar.*` properties live in
+`pom.xml`, including two coverage exclusions that are honest rather than cosmetic: the frontend has
+no test suite yet, and `PlaywrightDocumentRenderer` *is* tested, by the `pdf` tier that the coverage
+job deliberately does not run.
+
+`main` is protected: pull request required, zero approvals (GitHub does not let you approve your own
+PR, so any higher number deadlocks a single-committer repo), no force-push, no admin bypass.
+
 ## Tech stack
 
 - Kotlin 2.3.21 / Java 21, Maven, `spring-boot-starter-parent` 4.1.1

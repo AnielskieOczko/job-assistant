@@ -29,6 +29,34 @@
              JUnit applies exclusions before inclusions, so these must be swapped, not added to. -->
         <test.groups/>
         <test.excludedGroups>eval,pdf</test.excludedGroups>
+
+        <!-- Coverage; only used by the `coverage` profile below. -->
+        <jacoco.version>0.8.13</jacoco.version>
+
+        <!--
+            SonarQube Cloud. Analysis is CI-based rather than Automatic, because `main` is
+            merges-only: automatic analysis fully covers the default branch, which is the one place
+            a finding arrives too late to act on. It also cannot import coverage at all.
+        -->
+        <sonar.host.url>https://sonarcloud.io</sonar.host.url>
+        <sonar.organization>anielskieoczko</sonar.organization>
+        <sonar.projectKey>AnielskieOczko_job-assistant</sonar.projectKey>
+        <!-- The frontend is the larger half of the codebase (~7.7k lines of TS/TSX against ~5.5k
+             of Kotlin), and the Maven scanner sees only Java source roots without this. -->
+        <sonar.maven.scanAll>true</sonar.maven.scanAll>
+        <sonar.exclusions>
+            frontend/node_modules/**,frontend/dist/**,frontend/.mvn-node/**,src/main/resources/static/**,graphify-out/**,target/**
+        </sonar.exclusions>
+        <!--
+            Two honest exclusions, neither of them a way to hide untested code:
+            - the frontend has no test suite yet, so measuring it would report 0%, not a fact;
+            - PlaywrightDocumentRenderer IS tested, by the `pdf` tier, which the coverage job
+              deliberately does not run (it would mean downloading Chromium a second time).
+            Delete the first line the day frontend tests exist.
+        -->
+        <sonar.coverage.exclusions>
+            frontend/**,**/PlaywrightDocumentRenderer.kt
+        </sonar.coverage.exclusions>
     </properties>
 
     <profiles>
@@ -39,6 +67,43 @@
                 <test.groups>pdf</test.groups>
                 <test.excludedGroups/>
             </properties>
+        </profile>
+        <profile>
+            <!--
+                JaCoCo, for the SonarQube Cloud job. Off by default on the same principle as the
+                test tiers: a plain `./mvnw test` should not carry an agent it has no use for.
+                `prepare-agent` instruments the fast tier, `report` writes the XML the scanner
+                auto-detects at target/site/jacoco/jacoco.xml during `verify`.
+            -->
+            <id>coverage</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.jacoco</groupId>
+                        <artifactId>jacoco-maven-plugin</artifactId>
+                        <version>${jacoco.version}</version>
+                        <executions>
+                            <execution>
+                                <id>prepare-agent</id>
+                                <goals>
+                                    <goal>prepare-agent</goal>
+                                </goals>
+                            </execution>
+                            <execution>
+                                <id>report</id>
+                                <goals>
+                                    <goal>report</goal>
+                                </goals>
+                                <configuration>
+                                    <formats>
+                                        <format>XML</format>
+                                    </formats>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
         </profile>
         <profile>
             <!-- Calls a live model against labelled fixtures. Costs tokens. -->
