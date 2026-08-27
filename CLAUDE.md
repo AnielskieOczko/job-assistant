@@ -323,6 +323,11 @@ prompt, response, token usage and latency.
   tier it serves is run by hand and would not notice a scorecard that silently wrote nothing.
 - Assertions in the eval tier are regression floors, not quality targets. The number that matters
   is in the scorecard; the assertion only exists to fail a run that has fallen off a cliff.
+- **Never assert a rate without checking the denominator.** A model that claimed one skill and had
+  it dropped scores 1.00, identical to one that claimed twenty and lost all twenty — no single-claim
+  response can pass any threshold below 1.0, however well the system behaved. Gate a ratio on a
+  minimum sample (`MIN_CLAIMS_FOR_A_RATE`) and **record the raw counts alongside every rate**, or a
+  future reader cannot tell `1/1` from `9/9` and will misread the failure as fabrication.
 
 ## Spring Data JDBC gotchas
 
