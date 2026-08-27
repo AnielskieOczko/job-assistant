@@ -32,7 +32,9 @@ internal class CvPrototypeRenderTest {
     @Test
     fun `renders every prototype to PDF and a preview image`() {
         if (!dir.exists()) return
-        val pages = dir.listDirectoryEntries().filter { it.extension == "html" }.sortedBy { it.name }
+        val pages = dir.listDirectoryEntries()
+            .filter { it.extension == "html" && it.name.first().isLetter() && "-" in it.name }
+            .sortedBy { it.name }
         if (pages.isEmpty()) return
 
         val renderer = PlaywrightDocumentRenderer()

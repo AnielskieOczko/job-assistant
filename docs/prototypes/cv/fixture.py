@@ -68,3 +68,29 @@ CV = {
     ],
     "languages": [("Polish", "native"), ("English", "C1"), ("German", "B1")],
 }
+
+# A neutral stand-in for an uploaded portrait. Deliberately not a real face: the prototype has to
+# show the layout with an image in it, and no real person belongs in a fixture.
+PHOTO_PLACEHOLDER = (
+    "data:image/svg+xml;utf8,"
+    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 260'>"
+    "<rect width='200' height='260' fill='%23dde2e8'/>"
+    "<circle cx='100' cy='96' r='42' fill='%23b3bcc7'/>"
+    "<path d='M28 260c0-44 32-74 72-74s72 30 72 74z' fill='%23b3bcc7'/>"
+    "</svg>"
+)
+
+
+def role_stack(role):
+    """Skills for a whole job, not a single task: the union of what its bullets evidence.
+
+    Order is first-appearance, so the technology the strongest bullet rests on leads. Taking the
+    union of the *rendered* bullets matters — a skill whose only evidence was dropped during
+    tailoring must not survive into the badge row, or the CV claims something nothing backs.
+    """
+    seen = []
+    for _, skills in role["bullets"]:
+        for s in skills:
+            if s not in seen:
+                seen.append(s)
+    return seen
