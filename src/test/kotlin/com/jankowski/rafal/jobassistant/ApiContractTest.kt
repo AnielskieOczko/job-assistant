@@ -102,7 +102,7 @@ class ApiContractTest {
                 assertKeys(
                     requirement,
                     "id", "rawText", "skillId", "skillName", "importance", "status", "evidence",
-                    "rationale",
+                    "rationale", "category",
                 )
             },
             {
@@ -127,16 +127,17 @@ class ApiContractTest {
                     ),
                     "id", "offerId", "profileId", "state", "error", "matchScore", "summaryMarkdown",
                     "requirements", "languageRequirements", "learningPlan", "createdAt",
-                    "completedAt", "profileRevision",
+                    "completedAt", "profileRevision", "scoringRule",
                     // Computed getters the frontend treats as optional convenience.
-                    "mustHaves", "niceToHaves", "missingMustHaves", "scoreExplanation",
+                    "mustHaves", "niceToHaves", "missingMustHaves", "reportedNotScored",
+                    "scoreExplanation",
                 )
             },
             {
                 assertKeys(
                     AggregateGapEntry(1, "Kotlin", 2, 1, 1),
                     "skillId", "skillName", "demandCount", "gapCount", "mustHaveGapCount",
-                    "gapRatio",
+                    "category", "gapRatio",
                 )
             },
         )

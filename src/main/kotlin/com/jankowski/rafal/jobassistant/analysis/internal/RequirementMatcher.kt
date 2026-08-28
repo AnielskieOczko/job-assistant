@@ -4,6 +4,7 @@ import com.jankowski.rafal.jobassistant.analysis.Importance
 import com.jankowski.rafal.jobassistant.analysis.LanguageFinding
 import com.jankowski.rafal.jobassistant.analysis.RequirementStatus
 import com.jankowski.rafal.jobassistant.catalog.CoverageStatus
+import com.jankowski.rafal.jobassistant.catalog.SkillCategory
 import com.jankowski.rafal.jobassistant.catalog.SkillCoverage
 import com.jankowski.rafal.jobassistant.profile.LanguageLevel
 
@@ -14,6 +15,8 @@ internal data class ResolvedRequirement(
     val skillName: String?,
     val importance: Importance,
     val rationale: String?,
+    /** Null when the term resolved to nothing. Trailing and defaulted so callers need not care. */
+    val category: SkillCategory? = null,
 )
 
 internal data class MatchedRequirement(
@@ -24,6 +27,7 @@ internal data class MatchedRequirement(
     val status: RequirementStatus,
     val evidence: String?,
     val rationale: String?,
+    val category: SkillCategory? = null,
 )
 
 /**
@@ -63,23 +67,39 @@ internal object RequirementMatcher {
                 null
             },
             rationale = requirement.rationale,
+            category = requirement.category,
         )
     }
 
     /**
-     * `(met + 0.5 * partial) / total` over must-haves only.
+     * Which requirements the score is computed over. The denominator, in one place.
      *
      * Nice-to-haves are excluded because including them lets a job with a long wish list score
-     * better than a focused one you are equally qualified for. UNRESOLVED requirements are
-     * excluded from both halves: they say nothing about the candidate, so counting them as
-     * missing would punish gaps in our own catalog.
+     * better than a focused one you are equally qualified for. UNRESOLVED requirements are excluded
+     * because they say nothing about the candidate - counting them as missing would punish gaps in
+     * our own catalog.
+     *
+     * **SOFT skills are excluded, but still reported.** A "Communication" must-have the profile
+     * does not declare is a real thing the offer asked for and belongs in the gap report; counting
+     * it makes the number answer a question it cannot answer. The score says how *technically*
+     * qualified someone is, and no catalog lookup can tell you whether they communicate well.
+     *
+     * Public so the narrator's explanation is computed from the same list the score is. These two
+     * were separately implemented filters until the rule changed and they disagreed.
+     */
+    fun scoreable(matched: List<MatchedRequirement>): List<MatchedRequirement> = matched.filter {
+        it.importance == Importance.MUST_HAVE &&
+            it.status != RequirementStatus.UNRESOLVED &&
+            it.category != SkillCategory.SOFT
+    }
+
+    /**
+     * `(met + 0.5 * partial) / total` over [scoreable].
      *
      * Returns null when there is nothing scoreable, rather than a misleading 0.0 or 1.0.
      */
     fun score(matched: List<MatchedRequirement>): Double? {
-        val scoreable = matched.filter {
-            it.importance == Importance.MUST_HAVE && it.status != RequirementStatus.UNRESOLVED
-        }
+        val scoreable = scoreable(matched)
         if (scoreable.isEmpty()) return null
 
         val met = scoreable.count { it.status == RequirementStatus.MET }

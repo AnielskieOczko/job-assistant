@@ -12,6 +12,17 @@ export function MatchScore({ report }: { report: AnalysisReport }) {
   const explanation =
     report.scoreExplanation ?? fallbackExplanation(report)
 
+  /*
+    Reports scored before soft skills were excluded counted them in the denominator. Their score is
+    stored and deliberately not recomputed — rewriting it would change a number past decisions were
+    made on, and could not rewrite the model-written summary that already narrates it. So the report
+    says which rule it used, and an older one is labelled rather than quietly reinterpreted.
+  */
+  const note =
+    report.scoringRule === 'V1_ALL_CATEGORIES'
+      ? 'Scored before soft skills were excluded, so they count toward this number.'
+      : null
+
   if (report.matchScore === null) {
     return (
       <div className="flex items-center gap-4">
@@ -20,7 +31,10 @@ export function MatchScore({ report }: { report: AnalysisReport }) {
           <br />
           scoreable
         </div>
-        <p className="text-sm text-muted-foreground">{explanation}</p>
+        <div className="min-w-0">
+          <p className="text-sm text-muted-foreground">{explanation}</p>
+          {note ? <p className="mt-1 text-xs text-muted-foreground/80">{note}</p> : null}
+        </div>
       </div>
     )
   }
@@ -44,6 +58,7 @@ export function MatchScore({ report }: { report: AnalysisReport }) {
       <div className="min-w-0">
         <p className="text-sm font-medium">Must-have coverage</p>
         <p className="mt-0.5 text-sm text-muted-foreground">{explanation}</p>
+        {note ? <p className="mt-1 text-xs text-muted-foreground/80">{note}</p> : null}
       </div>
     </div>
   )
@@ -51,9 +66,13 @@ export function MatchScore({ report }: { report: AnalysisReport }) {
 
 /** Only used if the computed getter is ever dropped from the wire format. */
 function fallbackExplanation(report: AnalysisReport): string {
-  const scored = mustHaves(report).filter((r) => r.status !== 'UNRESOLVED')
+  const softExcluded = report.scoringRule === 'V2_SOFT_EXCLUDED'
+  const scored = mustHaves(report)
+    .filter((r) => r.status !== 'UNRESOLVED')
+    .filter((r) => !softExcluded || r.category !== 'SOFT')
   if (scored.length === 0) return 'No resolvable must-have requirements were found.'
   const met = scored.filter((r) => r.status === 'MET').length
   const partial = scored.filter((r) => r.status === 'PARTIAL').length
-  return `(${met} met + 0.5 x ${partial} partial) / ${scored.length} must-have requirements`
+  const noun = softExcluded ? 'technical must-have requirements' : 'must-have requirements'
+  return `(${met} met + 0.5 x ${partial} partial) / ${scored.length} ${noun}`
 }
