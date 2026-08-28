@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service
 internal class TriageQueueService(
     private val catalog: SkillCatalog,
     private val demand: MarketDemand,
+    private val modelSuggestions: TriageSuggestionRepository,
 ) : TriageService {
 
     override fun queue(minOccurrences: Int, ranking: TriageRanking, limit: Int): TriageQueue {
@@ -54,9 +55,17 @@ internal class TriageQueueService(
         // hundred would be the work of the whole queue thrown away every request.
         val page = matching.sortedWith(comparatorFor(ranking)).take(limit)
         val suggestions = catalog.suggestAll(page.map { it.term })
+        // Read, never generated. Producing a model suggestion costs a call, so it happens only when
+        // someone asks for it through the suggest endpoint; this page shows what is already stored.
+        val fromModel = modelSuggestions.findFor(page.map { it.termId })
 
         return TriageQueue(
-            entries = page.map { it.copy(suggestions = suggestions[it.term] ?: emptyList()) },
+            entries = page.map {
+                it.copy(
+                    suggestions = suggestions[it.term] ?: emptyList(),
+                    modelSuggestions = fromModel[it.termId] ?: emptyList(),
+                )
+            },
             matching = matching.size,
             pending = entries.size,
             minOccurrences = minOccurrences,

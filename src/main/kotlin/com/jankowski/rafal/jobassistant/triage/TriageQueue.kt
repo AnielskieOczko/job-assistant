@@ -1,5 +1,6 @@
 package com.jankowski.rafal.jobassistant.triage
 
+import com.jankowski.rafal.jobassistant.catalog.SkillCategory
 import com.jankowski.rafal.jobassistant.catalog.SkillSuggestion
 import java.time.Instant
 
@@ -23,13 +24,38 @@ data class TriageEntry(
     val firstSeenAt: Instant,
     val lastSeenAt: Instant,
     /**
-     * Catalog entries this term might mean, best first, or empty when nothing scored well enough.
+     * Catalog entries this term might mean by string similarity, best first.
      *
      * Computed on read rather than stored, because it is a pure function of the term and the
      * catalog: storing it would mean a suggestion that survives the skill it points at being
      * renamed. Deliberately not a decision - the reviewer still picks and still clicks approve.
      */
     val suggestions: List<SkillSuggestion> = emptyList(),
+    /**
+     * Catalog entries a *model* proposed, with its reasoning.
+     *
+     * Kept separate from [suggestions] rather than merged, because provenance is the point: one is
+     * arithmetic over spellings and the other is a model's reading, and a reviewer weighs them
+     * differently. Stored rather than recomputed - producing these costs a model call, so a page
+     * load must never trigger one.
+     */
+    val modelSuggestions: List<ModelSuggestion> = emptyList(),
+)
+
+/**
+ * A model's proposed reading of a term.
+ *
+ * Carries a [rationale] instead of a score: a model has no calibrated confidence to report, and
+ * printing one would invite a reviewer to trust a number that means nothing. A sentence they can
+ * check is the honest equivalent.
+ */
+data class ModelSuggestion(
+    val skillId: Long,
+    val skillName: String,
+    val category: SkillCategory,
+    val rationale: String?,
+    /** Which model profile produced it, so a change in quality can be attributed. */
+    val modelProfile: String?,
 )
 
 /**
@@ -67,3 +93,23 @@ enum class TriageRanking {
     /** Demand across the whole ingested corpus, scope ignored. */
     CORPUS,
 }
+
+/**
+ * What one suggestion run did.
+ *
+ * Counts rather than a rate, and every count named. A run that sent fifty terms and stored three is
+ * a different event from one that sent three and stored three, and a single "3 suggestions" would
+ * hide which happened. [droppedUnresolvable] climbing is the first sign the model has started
+ * naming skills the catalog does not have.
+ */
+data class SuggestionRun(
+    /** Terms on the page that was examined. */
+    val termsConsidered: Int,
+    /** Of those, how many were actually sent - terms with a stored suggestion are skipped. */
+    val termsSent: Int,
+    val suggestionsStored: Int = 0,
+    /** Returned rows naming a skill the catalog could not resolve. Discarded, never queued. */
+    val droppedUnresolvable: Int = 0,
+    /** Returned rows for a term that was not asked about. */
+    val droppedUnrequested: Int = 0,
+)

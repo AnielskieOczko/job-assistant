@@ -207,7 +207,7 @@ Feature slices under the base package, each a Spring Modulith module. Anything i
 | `document` | CV and cover letter generation, templates, PDF rendering, invariant enforcement |
 | `llm` | Model profiles, `ChatModel` factory, AI services, call audit, parse-repair |
 | `market` | Ingested board offers as a market corpus, the solid.jobs client, the scheduled poll |
-| `triage` | The ranked, filtered review queue: joins `catalog`'s queue to `market`'s demand |
+| `triage` | The ranked, filtered review queue, plus model-assisted suggestions for it |
 
 `catalog` is depended on by nearly everything; it has no dependencies of its own — and keeping it
 that way is why `triage` exists.
@@ -221,7 +221,24 @@ held are different jobs. **`triage` reads and never writes**: approve and reject
 `/api/catalog/unmatched/{id}`, because `unmatched_term` exists so that only a human decision can
 grow the catalog and a second write path is a second place to forget it. When model-assisted
 suggestions land, `triage` gains `llm` and `catalog` still depends on nothing.
-`docs/adr/0003-triage-outside-the-catalog.md` records the reasoning.
+`docs/adr/0003-triage-outside-the-catalog.md` records the reasoning. `triage` depends on `catalog`,
+`market` and `llm`; `catalog` still depends on nothing, which was the point.
+
+**Suggestions come from two mechanisms and are kept apart on purpose.** `SkillCatalog.suggest` is
+deterministic trigram similarity, computed on read, and carries a score. `TriageSuggester` is a
+model, **stored** rather than recomputed, and carries a *rationale* instead — a model has no
+calibrated confidence to report and printing a number would invite trust it has not earned.
+Provenance is why they are separate fields rather than one merged list: a reviewer weighs
+arithmetic-over-spellings differently from a model's reading.
+
+**`GET /api/triage/queue` never calls a model.** Suggestions are produced only by
+`POST /api/triage/suggest`, one call per batch of at most 50 terms, because a page load that
+silently spends tokens would contradict the approval-gated eval environment and the 2-thread
+analysis pool. Every `catalogSkill` a model returns is re-resolved through `catalog.resolve` and
+dropped if it does not exist — `CvSelection.from` transplanted — and a row naming a term that was
+not sent is dropped too. `SuggestionRun` reports those counts rather than a bare total, on the same
+principle as `dropped_skill_count`: `droppedUnresolvable` climbing is the first sign the model has
+started naming skills the catalog cannot back.
 
 Two rules the queue itself enforces, both instances of *never report a number without its
 denominator*: the frequency filter applies to the **sum** of `occurrences` and `market_occurrences`
