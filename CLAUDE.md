@@ -253,6 +253,19 @@ covers it. The rule is provably unchanged on ASCII input, which is why the seed'
 Terms the extractor can't place go to `unmatched_term` for human review. **Do not let code create
 canonical skills automatically** — the review queue is the point.
 
+**The catalog is English-canonical with original-language terms as aliases.** `V17` broadened it to
+the QA, BA and PM vocabulary the ingested corpus actually shows demand for, and gave the ten
+measured Polish terms English homes (`Komunikacja` → Communication, `Analiza wymagań` →
+Requirements Analysis). Two measured terms — `Zarządzanie zespołem` and `Samodzielność` — were
+deliberately *not* seeded: they are collapses rather than translations, and a reviewer with a
+suggestion in front of them is a better decision surface than a migration author guessing.
+
+**Category choice is a CvInvariant decision, not just a label.** It scans `TESTING` and `TOOL` but
+not `PRACTICE`, `OTHER` or `SOFT`, so activity vocabulary (`Test Cases`, `Manual Testing`) is
+`PRACTICE`: a tailored CV describing honest work as "wrote test cases" must not be rejected as a
+fabricated claim. Named products (`TestRail`, `Salesforce`) stay `TOOL`, where a false claim is
+exactly what should be caught. Ask which side a new skill falls on before picking its category.
+
 `SkillCatalog.suggest` / `suggestAll` answer *"what might this be"* and are the one place the
 catalog does anything other than a lookup. **Suggestions are candidates for a human and are never
 consulted by `resolve`**: `SkillSimilarity` is a pure trigram Dice score over *normalised keys*,
@@ -311,8 +324,8 @@ plain `SkillCoverage` over an offer's listed skills, deliberately a different nu
 field and it appears on 3.4% of mentions. Reusing `matchScore` would mean two numbers with one name.
 
 Skill names resolve through `SkillCatalog.resolveAll`; **unresolved is the normal case**, not an
-error — 900 distinct names per 500 offers against a 210-entry catalog, many of them Polish soft
-skills. They go to `unmatched_term` under `market_occurrences`, a **separate counter** from
+error — 900 distinct names per 500 offers against a catalog seeded for JVM backend work, many of
+them Polish soft skills. They go to `unmatched_term` under `market_occurrences`, a **separate counter** from
 `occurrences`, because the queue is ranked by occurrences and one poll would otherwise bury every
 term that came from an offer the candidate actually read.
 
