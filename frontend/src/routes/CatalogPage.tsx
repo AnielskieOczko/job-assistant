@@ -3,11 +3,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Check, Inbox, Plus, X } from 'lucide-react'
 import { toast } from 'sonner'
 import {
-  approveUnmatched, createSkill, deleteSkill, listUnmatched, rejectUnmatched, updateSkill,
+  approveUnmatched, createSkill, deleteSkill, rejectUnmatched, updateSkill,
 } from '@/api/catalog'
+import { fetchTriageQueue } from '@/api/triage'
 import { keys } from '@/api/keys'
 import { SKILL_CATEGORIES, SKILL_CATEGORY_LABELS } from '@/api/types'
-import type { CanonicalSkill, SkillCategory } from '@/api/types'
+import type { CanonicalSkill, SkillCategory, TriageRanking } from '@/api/types'
 import { ApiErrorAlert } from '@/components/ApiErrorAlert'
 import { EmptyState } from '@/components/EmptyState'
 import { PageHeader } from '@/components/PageHeader'
@@ -50,13 +51,34 @@ export function CatalogPage() {
   )
 }
 
+/** How many rows one page of the queue shows. The response says how many it left out. */
+const QUEUE_LIMIT = 100
+
+/**
+ * Thresholds offered in the UI, applied to your count plus the market's.
+ *
+ * 3 is the default because 56% of distinct corpus names appear exactly once and those are what
+ * make the queue unopenable. 1 is kept so the tail stays reachable - the filter hides terms, it
+ * never deletes them, and there has to be a way to see that for yourself.
+ */
+const THRESHOLDS = [1, 2, 3, 5, 10] as const
+
 function ReviewQueue() {
   const queryClient = useQueryClient()
-  const unmatched = useQuery({ queryKey: keys.unmatched, queryFn: () => listUnmatched(100) })
+  const [minOccurrences, setMinOccurrences] = useState<number>(3)
+  const [ranking, setRanking] = useState<TriageRanking>('SCOPE')
+  const queue = useQuery({
+    queryKey: keys.triageQueue(minOccurrences, ranking, QUEUE_LIMIT),
+    queryFn: () => fetchTriageQueue(minOccurrences, ranking, QUEUE_LIMIT),
+  })
   const [selection, setSelection] = useState<Record<number, number>>({})
   const [createFor, setCreateFor] = useState<string | null>(null)
 
   function invalidate() {
+    // Every threshold and ranking combination is a separate cache entry, so invalidate the whole
+    // triage prefix rather than the one currently on screen - an approval removes the term from
+    // all of them.
+    queryClient.invalidateQueries({ queryKey: ['triage'] })
     queryClient.invalidateQueries({ queryKey: keys.unmatched })
     queryClient.invalidateQueries({ queryKey: keys.skills })
   }
@@ -78,15 +100,70 @@ function ReviewQueue() {
     },
   })
 
-  if (unmatched.isPending) return <Skeleton className="h-48 w-full" />
-  if (unmatched.isError) return <ApiErrorAlert error={unmatched.error} />
-  if (unmatched.data.length === 0) {
+  if (queue.isPending) return <Skeleton className="h-48 w-full" />
+  if (queue.isError) return <ApiErrorAlert error={queue.error} />
+
+  const { entries, matching, pending, scopeSkills } = queue.data
+  const scopeLabel = scopeSkills.length > 0 ? scopeSkills.join(', ') : 'nothing configured'
+
+  const controls = (
+    <div className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-3">
+      <div className="flex items-center gap-2">
+        <Label htmlFor="queue-threshold" className="text-sm font-normal text-muted-foreground">
+          Seen at least
+        </Label>
+        <Select
+          value={String(minOccurrences)}
+          onValueChange={(value) => setMinOccurrences(Number(value))}
+        >
+          <SelectTrigger id="queue-threshold" className="w-20"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {THRESHOLDS.map((n) => (
+              <SelectItem key={n} value={String(n)}>{n}×</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <Label htmlFor="queue-ranking" className="text-sm font-normal text-muted-foreground">
+          Rank by
+        </Label>
+        <Select value={ranking} onValueChange={(value) => setRanking(value as TriageRanking)}>
+          <SelectTrigger id="queue-ranking" className="w-44"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="SCOPE">Your part of the market</SelectItem>
+            <SelectItem value="CORPUS">The whole corpus</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/*
+        The denominator, always. With 1,500 queued terms and a 100-row page, a short list with no
+        counts reads as a finished queue — the same failure as a rate printed without its
+        denominator. Say what was returned, what matched, and what is queued in total.
+      */}
+      <p className="text-sm text-muted-foreground">
+        Showing <strong className="font-medium text-foreground">{entries.length}</strong> of{' '}
+        {matching.toLocaleString()} matching · {pending.toLocaleString()} queued
+      </p>
+    </div>
+  )
+
+  if (entries.length === 0) {
     return (
-      <EmptyState
-        icon={Inbox}
-        title="Nothing to review"
-        description="Skill names the catalog cannot place collect here — from offers you analyse, and from the ingested market corpus."
-      />
+      <>
+        {controls}
+        <EmptyState
+          icon={Inbox}
+          title={pending === 0 ? 'Nothing to review' : 'Nothing above this threshold'}
+          description={
+            pending === 0
+              ? 'Skill names the catalog cannot place collect here — from offers you analyse, and from the ingested market corpus.'
+              : `${pending.toLocaleString()} terms are queued, none seen ${minOccurrences} times or more. Nothing was deleted — lower the threshold to see them.`
+          }
+        />
+      </>
     )
   }
 
@@ -95,28 +172,35 @@ function ReviewQueue() {
       {approve.isError ? <ApiErrorAlert error={approve.error} /> : null}
       {reject.isError ? <ApiErrorAlert error={reject.error} /> : null}
 
+      {controls}
+
       <div className="rounded-lg border">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Term</TableHead>
               <TableHead className="w-24">Your offers</TableHead>
+              <TableHead className="w-24" title={`Corpus offers that also ask for: ${scopeLabel}`}>
+                In scope
+              </TableHead>
               <TableHead className="w-24">Market</TableHead>
               <TableHead className="w-32">Last seen</TableHead>
               <TableHead className="w-[29rem]">Resolve to</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {unmatched.data.map((term) => (
-              <TableRow key={term.id}>
+            {entries.map((term) => (
+              <TableRow key={term.termId}>
                 <TableCell className="max-w-0 truncate font-medium" title={term.term}>{term.term}</TableCell>
-                <TableCell className="text-muted-foreground">{term.occurrences}×</TableCell>
                 {/*
-                  Market volume is shown as context but never ranks this queue: one ingestion poll
-                  sees hundreds of distinct terms, and sorting by them would bury the handful that
-                  came from offers actually read. "Seen once by you, 47× by the market" is the
-                  prompt worth acting on.
+                  Three counters, never summed in the UI. What you read outranks both market
+                  numbers; in-scope demand is the market you are actually applying to; the corpus
+                  column is the whole IT division including the QA and BA roles you are not.
                 */}
+                <TableCell className="text-muted-foreground">{term.occurrences}×</TableCell>
+                <TableCell className={term.inScopeDemand > 0 ? 'font-medium' : 'text-muted-foreground'}>
+                  {term.inScopeDemand > 0 ? `${term.inScopeDemand}×` : '—'}
+                </TableCell>
                 <TableCell className="text-muted-foreground">
                   {term.marketOccurrences > 0 ? `${term.marketOccurrences}×` : '—'}
                 </TableCell>
@@ -126,15 +210,15 @@ function ReviewQueue() {
                 <TableCell>
                   <div className="flex flex-wrap items-center gap-2">
                     <SkillCombobox
-                      value={selection[term.id] ?? null}
-                      onChange={(skillId) => setSelection((s) => ({ ...s, [term.id]: skillId }))}
+                      value={selection[term.termId] ?? null}
+                      onChange={(skillId) => setSelection((s) => ({ ...s, [term.termId]: skillId }))}
                       className="w-44"
                     />
                     <Button
                       size="sm"
-                      disabled={selection[term.id] === undefined || approve.isPending}
+                      disabled={selection[term.termId] === undefined || approve.isPending}
                       onClick={() =>
-                        approve.mutate({ termId: term.id, skillId: selection[term.id] })
+                        approve.mutate({ termId: term.termId, skillId: selection[term.termId] })
                       }
                     >
                       <Check /> Approve
@@ -146,7 +230,7 @@ function ReviewQueue() {
                       size="sm"
                       variant="ghost"
                       disabled={reject.isPending}
-                      onClick={() => reject.mutate(term.id)}
+                      onClick={() => reject.mutate(term.termId)}
                     >
                       <X /> Reject
                     </Button>

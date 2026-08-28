@@ -134,6 +134,9 @@ internal class JdbcSkillCatalog(
     override fun pendingUnmatchedTerms(limit: Int): List<UnmatchedTerm> =
         unmatched.findPending(limit).map { it.toDomain() }
 
+    override fun allPendingUnmatchedTerms(): List<UnmatchedTerm> =
+        unmatched.findAllPending().map { it.toDomain() }
+
     @Transactional
     override fun approveUnmatchedTerm(termId: Long, skillId: Long): CanonicalSkill {
         val row = unmatched.findById(termId).orElseThrow {

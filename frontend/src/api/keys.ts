@@ -1,4 +1,4 @@
-import type { DocumentType } from './types'
+import type { DocumentType, TriageRanking } from './types'
 
 /** Query key factory. Keeping them here stops invalidation from drifting out of sync. */
 export const keys = {
@@ -17,6 +17,9 @@ export const keys = {
 
   skills: ['catalog', 'skills'] as const,
   unmatched: ['catalog', 'unmatched'] as const,
+
+  triageQueue: (minOccurrences: number, ranking: TriageRanking, limit: number) =>
+    ['triage', 'queue', minOccurrences, ranking, limit] as const,
 
   llmCalls: (limit: number) => ['llm', 'calls', limit] as const,
   llmCall: (id: number) => ['llm', 'call', id] as const,
