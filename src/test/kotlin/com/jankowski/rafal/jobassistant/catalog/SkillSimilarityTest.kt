@@ -103,6 +103,28 @@ class SkillSimilarityTest {
         assertTrue(matches.first().score > SkillSimilarity.THRESHOLD)
     }
 
+    /**
+     * Containment is weak evidence when the match accounts for little of the longer name: the
+     * material around it is doing the naming. Google Cloud Platform is not Cloud.
+     */
+    @Test
+    fun `containment needs the shorter name to cover half the longer one`() {
+        val matches = rank("Cloud", "Google Cloud Platform", "Spring Cloud", "Cloudflare")
+
+        assertTrue(
+            matches.none { it.spelling == "Google Cloud Platform" || it.spelling == "Spring Cloud" },
+            "a fragment of a longer name is not a suggestion, got $matches",
+        )
+    }
+
+    /** The tightening must not cost the case containment exists for. */
+    @Test
+    fun `a substantial containment still counts`() {
+        val matches = rank("Spring Boot Framework", "Spring Boot")
+
+        assertEquals("Spring Boot", matches.single().spelling)
+    }
+
     /** Every returned score has to clear the bar, or the threshold is decorative. */
     @Test
     fun `nothing below the threshold is returned`() {
