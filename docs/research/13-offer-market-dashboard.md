@@ -10,6 +10,20 @@ It is not a specification. It fixes the shape of the feature so that
 [ticket 15](https://github.com/AnielskieOczko/job-assistant/issues/15) can rank it against a known
 scope instead of against a guess, which is the whole reason the ticket existed.
 
+> **Corrected on 2026-08-28, while building the ingestion module.** Four claims below were made from
+> ticket 10's summary rather than against the payload itself. Building against the live API found
+> them wrong; they are corrected in place and listed here so a reader who remembers the original does
+> not act on it.
+>
+> - **`NiceToHave` is one of the `level` values** (`Basic` / `Advanced` / `Expert` / `NiceToHave`),
+>   so the source *does* carry an importance signal. Decision 7's conclusion stands; its reasoning is
+>   rewritten below.
+> - **`isRemote` has no coverage gap.** It is a boolean present on every offer; ticket 10's "214 of
+>   500" was counting `true`, not presence.
+> - **`validFrom` and `validTo` are present on every offer**, so the corpus stores stated validity
+>   instead of inferring an offer's life from when we happened to poll.
+> - **`employmentType` has five values**, not two: B2B 385, UoP 105, UZ 8, Staż 1, UoD 1 per 500.
+
 ## The one-line answer
 
 **The dashboard answers what a skill gap is worth.** Not "what should I learn" — `GapsPage.tsx`
@@ -91,8 +105,13 @@ chart, which reads as loading rather than as declined.
 ### 4. Attributes: typed columns for what is queried, plus the whole payload
 
 Promote to typed columns the fields the dashboard queries: salary's five parts, `experienceLevel`,
-`isRemote` / `isHybrid`, `locations`, and the skills array with its levels. **Keep the original API
-response as `jsonb` alongside them.**
+`isRemote` / `isHybrid`, `locations`, `contractTime`, the stated validity window, and the skills array
+with its levels. **Keep the original API response as `jsonb` alongside them.**
+
+`isRemote` and `isHybrid` are booleans present on every offer — 205 remote and 268 hybrid per 500 —
+so neither needs a coverage caveat. `employmentType` takes five values rather than two, so a
+"B2B versus employment" split has to state how it groups UZ, UoD and Staż rather than quietly
+dropping them.
 
 Offers expire and get delisted, so a field you did not store is not re-fetchable later, and the
 second question you ask of this corpus will not be the first one. This is the same instinct as
@@ -140,9 +159,13 @@ prune it without touching anything you have applied to.
 
 ### 7. The market measure is not `matchScore`, and must not be called one
 
-**solid.jobs does not distinguish must-have from nice-to-have.** It gives skills with a level and
-nothing more. `RequirementMatcher.score()` scores must-haves only and returns `null` when nothing is
-scoreable — so *every* market offer would score `null`.
+**solid.jobs carries an importance signal, but a weak one, on the wrong field.** `NiceToHave` is one
+of the four values the skill `level` enum takes, so the source conflates *how well you must know it*
+with *whether it is required at all* — and it is rare: 128 of 3,746 skill mentions in a 500-offer
+sample, against 2,113 `Advanced`, 967 `Basic` and 538 `Expert`. Mapping everything else to must-have
+and running `RequirementMatcher.score()` would produce a number within a rounding error of plain
+coverage on 96.6% of the input, while *calling* it the same thing the analysis module calls its own
+weighted score.
 
 The market-side measure is therefore a **different measure with a different name**: coverage of the
 offer's listed skills, "you cover 7 of 9", computed straight from `SkillCoverage` with no importance
@@ -152,10 +175,13 @@ This dissolves a coupling worry rather than solving it. The `market` module depe
 `profile` only — **never on `analysis`** — so there is no duplicated matcher and nothing that can
 drift, because it is a different question with a different name.
 
+The level is stored per skill, `NiceToHave` included, so a later decision to weight by it needs a
+different query rather than a re-ingest.
+
 Rejected: having a model classify importance on ingested offers (token cost at 1,491×, and it puts a
-model back where this design just removed one), and treating every listed skill as must-have so
-`matchScore` could be reused (two numbers called the same thing, one importance-weighted and one
-not, disagreeing about the same offer).
+model back where this design just removed one), and reusing `matchScore` over a mapped importance —
+two numbers called the same thing, computed from signals of different quality: one a reader's
+must-have judgement about an offer they read, the other a poster's level dropdown.
 
 Matching ingested offers is otherwise **free**: extraction is the model step, and solid.jobs hands
 over skill *names*, so `SkillNormalizer` → `SkillCoverage` is pure Kotlin over the whole corpus.
@@ -185,7 +211,8 @@ asked for it 47 times" is a better prompt for a decision than either number alon
 
 ### 10. The corpus accumulates and is never deleted
 
-Record `first_seen_at` / `last_seen_at` per offer key and keep everything. Rows are tiny and
+Record `first_seen_at` / `last_seen_at` per offer key and keep everything, alongside the source's own
+`validFrom` / `validTo`, which are present on every offer. Rows are tiny and
 re-ingest is impossible after an offer is delisted. Trend-over-time was dropped as a *purpose* in
 decision 1, which is not the same as throwing away the data that would allow it later.
 
@@ -202,8 +229,8 @@ wrong instinct. It also forbids dual-axis outright, so demand and salary cannot 
    the offers you'd clear by learning Kubernetes"* over *"Java/Kotlin/Spring · Poland · n=340 ·
    ingested 12–28 Aug"*.
 2. **A KPI row of stat tiles** for the scope's salary shape: median, p25–p75, B2B versus employment
-   split, remote share — each carrying its own coverage, so the remote tile states its gap rather
-   than hiding it.
+   split, remote share — each carrying its own coverage. The employment-type tile has to name how it
+   groups five contract types into a split, rather than implying there are two.
 3. **One chart, in the emphasis form**: top ~8 skills by *offers gained if learned*, single
    sequential hue, your gaps in the accent and everything else in de-emphasis gray. Not categorical
    — categorical buries the one row that matters.

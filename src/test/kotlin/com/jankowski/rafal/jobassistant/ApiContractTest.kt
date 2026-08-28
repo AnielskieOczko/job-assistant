@@ -199,8 +199,9 @@ class ApiContractTest {
         { assertKeys(CanonicalSkill(1, "Kotlin", SkillCategory.LANGUAGE), "id", "name", "category") },
         {
             assertKeys(
-                UnmatchedTerm(1, "iceberg", 2, Instant.EPOCH, Instant.EPOCH, UnmatchedTermStatus.PENDING, null),
-                "id", "term", "occurrences", "firstSeenAt", "lastSeenAt", "status", "resolvedSkillId",
+                UnmatchedTerm(1, "iceberg", 2, 47, Instant.EPOCH, Instant.EPOCH, UnmatchedTermStatus.PENDING, null),
+                "id", "term", "occurrences", "marketOccurrences", "firstSeenAt", "lastSeenAt", "status",
+                "resolvedSkillId",
             )
         },
         {

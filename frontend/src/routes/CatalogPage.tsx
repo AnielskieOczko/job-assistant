@@ -85,7 +85,7 @@ function ReviewQueue() {
       <EmptyState
         icon={Inbox}
         title="Nothing to review"
-        description="Requirement phrases the catalog cannot place will collect here as you analyse offers."
+        description="Skill names the catalog cannot place collect here — from offers you analyse, and from the ingested market corpus."
       />
     )
   }
@@ -100,7 +100,8 @@ function ReviewQueue() {
           <TableHeader>
             <TableRow>
               <TableHead>Term</TableHead>
-              <TableHead className="w-24">Seen</TableHead>
+              <TableHead className="w-24">Your offers</TableHead>
+              <TableHead className="w-24">Market</TableHead>
               <TableHead className="w-32">Last seen</TableHead>
               <TableHead className="w-[29rem]">Resolve to</TableHead>
             </TableRow>
@@ -110,6 +111,15 @@ function ReviewQueue() {
               <TableRow key={term.id}>
                 <TableCell className="max-w-0 truncate font-medium" title={term.term}>{term.term}</TableCell>
                 <TableCell className="text-muted-foreground">{term.occurrences}×</TableCell>
+                {/*
+                  Market volume is shown as context but never ranks this queue: one ingestion poll
+                  sees hundreds of distinct terms, and sorting by them would bury the handful that
+                  came from offers actually read. "Seen once by you, 47× by the market" is the
+                  prompt worth acting on.
+                */}
+                <TableCell className="text-muted-foreground">
+                  {term.marketOccurrences > 0 ? `${term.marketOccurrences}×` : '—'}
+                </TableCell>
                 <TableCell className="text-sm text-muted-foreground">
                   {formatRelative(term.lastSeenAt)}
                 </TableCell>

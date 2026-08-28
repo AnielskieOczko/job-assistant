@@ -35,6 +35,26 @@ logging:
     com.jankowski.rafal.jobassistant: DEBUG
 
 job-assistant:
+  market:
+    # The ingested market corpus behind the offer market dashboard. Structured salary, skills and
+    # experience level arrive as data, so ingestion involves no model and cannot hallucinate.
+    #
+    # enabled gates the scheduled poll only - POST /api/market/ingest works either way.
+    enabled: true
+    # Daily. The whole IT division is three requests against a published 300/minute limit, and the
+    # source caches hourly, so polling harder would buy nothing and spend someone else's capacity.
+    cron: "0 20 4 * * *"
+    solid-jobs:
+      base-url: https://solid.jobs
+      # The API is keyless; its docs ask callers to identify themselves with a campaign parameter
+      # and its FAQ invites integrations. Sending it is the cost of being a welcome client.
+      campaign: job-assistant
+      divisions:
+        - IT
+      page-size: 500
+      max-pages: 20
+      timeout: PT60S
+
   llm:
     # Named model profiles. All three endpoints are OpenAI-compatible, so switching
     # provider is base-url + key only (decision 6).

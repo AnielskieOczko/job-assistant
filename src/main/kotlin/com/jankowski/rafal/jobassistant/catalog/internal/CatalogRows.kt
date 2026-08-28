@@ -28,6 +28,7 @@ internal data class UnmatchedTermRow(
     val term: String,
     val normalizedTerm: String,
     val occurrences: Int,
+    val marketOccurrences: Int = 0,
     val firstSeenAt: Instant,
     val lastSeenAt: Instant,
     val status: String,

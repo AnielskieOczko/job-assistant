@@ -183,7 +183,11 @@ PR, so any higher number deadlocks a single-committer repo), no force-push, no a
 
 ## Boot 4 gotchas that will bite
 
-- Jackson is **3.x** — imports are `tools.jackson.*`, not `com.fasterxml.jackson.*`
+- Jackson is **3.x** — imports are `tools.jackson.*`, not `com.fasterxml.jackson.*`. Its
+  *annotations* are the exception: `@JsonIgnoreProperties` and friends still come from
+  `com.fasterxml.jackson.annotation`, because Jackson 3 depends on the 2.x `jackson-annotations`
+  artifact unchanged. Both package roots are on the classpath and both are correct, for different
+  things.
 - The web starter is `spring-boot-starter-webmvc`
 - Testcontainers is **2.x**: `org.testcontainers.postgresql.PostgreSQLContainer`, non-generic, and
   artifacts are prefixed (`testcontainers-postgresql`)
@@ -202,13 +206,14 @@ Feature slices under the base package, each a Spring Modulith module. Anything i
 | `analysis` | Async analysis job, extraction, deterministic diff, narrative, learning plan |
 | `document` | CV and cover letter generation, templates, PDF rendering, invariant enforcement |
 | `llm` | Model profiles, `ChatModel` factory, AI services, call audit, parse-repair |
+| `market` | Ingested board offers as a market corpus, the solid.jobs client, the scheduled poll |
 
 `catalog` is depended on by nearly everything; it has no dependencies of its own.
 
 `frontend/` sits outside the Modulith world entirely. `SpaWebConfiguration` lives in the **base
 package**, next to `JobAssistantApplication`, because `ApplicationModules.of(...)` treats every
-direct sub-package as a module — a `…jobassistant.web` package would be detected as a seventh
-module and stand alongside `analysis` and `document`.
+direct sub-package as a module — a `…jobassistant.web` package would be detected as a module in its
+own right and stand alongside `analysis` and `document`.
 
 ## Skill resolution
 
@@ -247,6 +252,36 @@ candidate has a skill.
   scored a *perfect* fabrication rate in the eval tier for the same reason, and `CvSelection`'s
   fallback to the whole profile — correct in itself, since an untailored CV beats none — is still
   silent about having happened.
+
+## Market ingestion
+
+`market` pulls job offers from [solid.jobs](https://solid.jobs/api-ofert-pracy) into a corpus that
+exists to be counted, not applied to. **No model is involved anywhere in it**: the source states
+salary, skills, experience level and validity as structured data, so there is nothing to extract and
+nothing to hallucinate. The reasoning is in `docs/research/13-offer-market-dashboard.md`; the source
+survey that picked solid.jobs is in `docs/research/10-offer-ingestion-sources.md`.
+
+**A `market_offer` is not a `JobOffer` and must not become one.** A `JobOffer` is something the
+candidate might apply to: it carries an `application` lifecycle row, a profile revision, analyses and
+generated documents. A market offer is a row in a sample — there are thousands, and folding them
+together would put thousands of `SAVED` applications in the offer list and silently change what
+`AggregateGapReport.analysedOffers` counts. Saving one for real is an explicit copy.
+
+`market` depends on `catalog` only. It must **not** depend on `analysis`: the market-side measure is
+plain `SkillCoverage` over an offer's listed skills, deliberately a different number from
+`matchScore`, because solid.jobs's only importance signal is a `NiceToHave` value on the skill *level*
+field and it appears on 3.4% of mentions. Reusing `matchScore` would mean two numbers with one name.
+
+Skill names resolve through `SkillCatalog.resolveAll`; **unresolved is the normal case**, not an
+error — 900 distinct names per 500 offers against a 210-entry catalog, many of them Polish soft
+skills. They go to `unmatched_term` under `market_occurrences`, a **separate counter** from
+`occurrences`, because the queue is ranked by occurrences and one poll would otherwise bury every
+term that came from an offer the candidate actually read.
+
+The poll is daily and gated by `job-assistant.market.enabled`, which controls the *schedule* only —
+`POST /api/market/ingest` works either way. Every integration test gets a `ScriptedSolidJobsClient`
+through `@IntegrationTest`, on the same principle as `ScriptedChatModel`: no test may reach a third
+party, whether or not the network is up.
 
 ## Model configuration
 
@@ -367,8 +402,22 @@ violates the not-null constraint. Set the value in Kotlin instead:
 val createdAt: Instant = Instant.now()   // not Instant? = null
 ```
 
-Composite-key join tables (`skill_relation`, `experience_bullet_skill`) are handled either as an
-owned `@MappedCollection` inside an aggregate or with `JdbcClient` directly — not as repositories.
+Composite-key join tables (`skill_relation`, `experience_bullet_skill`, `market_offer_skill`) are
+handled either as an owned `@MappedCollection` inside an aggregate or with `JdbcClient` directly —
+not as repositories.
+
+**`JdbcClient` is raw JDBC and does not carry Spring Data's converters.** Three things Spring Data
+JDBC does silently have to be done by hand there, and all three fail at runtime rather than at
+compile time:
+
+- An `Instant` cannot be bound — pgjdbc asks for an explicit SQL type. Pass
+  `instant.atOffset(ZoneOffset.UTC)`.
+- `jsonb` and `text[]` need a cast in the SQL (`cast(:payload as jsonb)`,
+  `array(select jsonb_array_elements_text(cast(:locations as jsonb)))`). `PGobject` is not an
+  option: the Postgres driver is `runtime` scope and is deliberately absent from the compile
+  classpath.
+- A nullable `bigint` read back as `rs.getLong(...)` is `0`, not null. Use
+  `rs.getLong(c).takeUnless { rs.wasNull() }`.
 
 ## Generating a document
 

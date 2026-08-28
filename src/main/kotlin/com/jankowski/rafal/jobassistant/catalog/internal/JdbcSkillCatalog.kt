@@ -97,6 +97,29 @@ internal class JdbcSkillCatalog(
         ).param("term", trimmed).param("normalized", normalized).update()
     }
 
+    @Transactional
+    override fun recordUnmatchedFromMarket(terms: Collection<String>) {
+        // Distinct on the normalised key, not the raw one: "Power Apps" and "power apps" are the
+        // same queue entry, and counting both would inflate the market column with spellings.
+        val byNormalized = terms.asSequence()
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .associateBy { SkillNormalizer.normalize(it) }
+            .filterKeys { it.isNotEmpty() }
+
+        byNormalized.forEach { (normalized, term) ->
+            jdbc.sql(
+                """
+                insert into unmatched_term (term, normalized_term, occurrences, market_occurrences)
+                values (:term, :normalized, 0, 1)
+                on conflict (normalized_term) do update
+                    set market_occurrences = unmatched_term.market_occurrences + 1,
+                        last_seen_at = now()
+                """
+            ).param("term", term).param("normalized", normalized).update()
+        }
+    }
+
     override fun pendingUnmatchedTerms(limit: Int): List<UnmatchedTerm> =
         unmatched.findPending(limit).map { it.toDomain() }
 
@@ -212,6 +235,7 @@ private fun UnmatchedTermRow.toDomain() = UnmatchedTerm(
     id = requireNotNull(id) { "persisted term without id" },
     term = term,
     occurrences = occurrences,
+    marketOccurrences = marketOccurrences,
     firstSeenAt = firstSeenAt,
     lastSeenAt = lastSeenAt,
     status = UnmatchedTermStatus.valueOf(status),
