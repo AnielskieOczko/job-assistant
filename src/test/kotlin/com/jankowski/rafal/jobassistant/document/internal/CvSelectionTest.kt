@@ -3,6 +3,7 @@ package com.jankowski.rafal.jobassistant.document.internal
 import com.jankowski.rafal.jobassistant.catalog.CanonicalSkill
 import com.jankowski.rafal.jobassistant.catalog.SkillCatalog
 import com.jankowski.rafal.jobassistant.catalog.SkillCategory
+import com.jankowski.rafal.jobassistant.catalog.SkillSuggestion
 import com.jankowski.rafal.jobassistant.catalog.SkillCoverage
 import com.jankowski.rafal.jobassistant.catalog.UnmatchedTerm
 import com.jankowski.rafal.jobassistant.profile.CandidateProfile
@@ -36,6 +37,8 @@ class CvSelectionTest {
         override fun findAll() = all
         override fun resolve(term: String) = all.firstOrNull { it.name.equals(term, ignoreCase = true) }
         override fun resolveAll(terms: Collection<String>) = terms.associateWith { resolve(it) }
+        override fun suggest(term: String, limit: Int): List<SkillSuggestion> = unused()
+        override fun suggestAll(terms: Collection<String>, limit: Int): Map<String, List<SkillSuggestion>> = unused()
         override fun coverageFor(heldSkillIds: Set<Long>): SkillCoverage = unused()
         override fun recordUnmatched(term: String) = unused()
         override fun recordUnmatchedFromMarket(mentions: Map<String, Int>) = unused()

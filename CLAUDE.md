@@ -253,6 +253,16 @@ covers it. The rule is provably unchanged on ASCII input, which is why the seed'
 Terms the extractor can't place go to `unmatched_term` for human review. **Do not let code create
 canonical skills automatically** — the review queue is the point.
 
+`SkillCatalog.suggest` / `suggestAll` answer *"what might this be"* and are the one place the
+catalog does anything other than a lookup. **Suggestions are candidates for a human and are never
+consulted by `resolve`**: `SkillSimilarity` is a pure trigram Dice score over *normalised keys*,
+with a containment signal pinned to exactly the threshold so containment earns a hearing and never a
+verdict. Scoring the same keys `SkillNormalizer` produces is why `pg_trgm` was rejected — it
+tokenises raw text with its own rules, which would give the application two notions of "nearly the
+same string", one deciding suggestions and another deciding resolution. Terms under four characters
+get no suggestions at all, because `AI` and `Go` match half the catalog. The UI's chips fill the
+skill picker and never submit.
+
 `SkillCoverage` expands the held skill set once through the relation graph and is the sole source
 of a verdict: held **or** IMPLIES-reachable is `MET`, RELATED-reachable is `PARTIAL`, anything else
 is `MISSING`. It carries provenance (`impliedBy` / `relatedBy`), not just a status, so the report

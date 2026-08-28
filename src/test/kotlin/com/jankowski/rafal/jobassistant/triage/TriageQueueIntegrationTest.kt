@@ -186,6 +186,43 @@ class TriageQueueIntegrationTest {
         assertThat(queue.entries.single { it.term == term }.inScopeDemand).isEqualTo(2)
     }
 
+    @Test
+    fun `a queued near-miss arrives with its suggestion attached`() {
+        queueTerm("Kubernets", SkillNormalizer.normalize("Kubernets"), own = 3)
+
+        val queue = triage.queue(minOccurrences = 1, ranking = TriageRanking.SCOPE, limit = 100)
+
+        val entry = queue.entries.single { it.term == "Kubernets" }
+        assertThat(entry.suggestions.map { it.skillName }).contains("Kubernetes")
+    }
+
+    /**
+     * A suggestion is a candidate, never a decision. Nothing about producing one may change what
+     * the term resolves to, or the review queue would have stopped being the only way in.
+     */
+    @Test
+    fun `showing a suggestion does not resolve or dequeue the term`() {
+        queueTerm("Kubernets", SkillNormalizer.normalize("Kubernets"), own = 3)
+
+        triage.queue(minOccurrences = 1, ranking = TriageRanking.SCOPE, limit = 100)
+
+        assertThat(catalog.resolve("Kubernets")).isNull()
+        assertThat(triage.queue(minOccurrences = 1, limit = 100).entries.map { it.term })
+            .contains("Kubernets")
+    }
+
+    /** Scoring 1,500 terms to render 100 would throw away the work of the whole queue each request. */
+    @Test
+    fun `suggestions are computed only for the page returned`() {
+        repeat(4) { queueTerm("Kubernets $it", SkillNormalizer.normalize("Kubernets $it"), own = 3) }
+
+        val queue = triage.queue(minOccurrences = 1, ranking = TriageRanking.CORPUS, limit = 2)
+
+        assertThat(queue.entries).hasSize(2)
+        assertThat(queue.matching).isEqualTo(4)
+        assertThat(queue.entries).allSatisfy { assertThat(it.suggestions).isNotEmpty }
+    }
+
     /** A number called "in-scope demand" is unreadable without saying what the scope was. */
     @Test
     fun `the queue states the scope it ranked by`() {

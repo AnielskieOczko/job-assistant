@@ -5,6 +5,7 @@ import com.jankowski.rafal.jobassistant.catalog.SkillCatalog
 import com.jankowski.rafal.jobassistant.catalog.SkillCategory
 import com.jankowski.rafal.jobassistant.catalog.SkillCoverage
 import com.jankowski.rafal.jobassistant.catalog.SkillNormalizer
+import com.jankowski.rafal.jobassistant.catalog.SkillSuggestion
 import com.jankowski.rafal.jobassistant.catalog.UnmatchedTerm
 import com.jankowski.rafal.jobassistant.catalog.UnmatchedTermStatus
 import org.springframework.dao.DataIntegrityViolationException
@@ -130,6 +131,56 @@ internal class JdbcSkillCatalog(
             ).param("term", term).param("normalized", normalized).param("count", count).update()
         }
     }
+
+    override fun suggest(term: String, limit: Int): List<SkillSuggestion> =
+        suggestAll(listOf(term), limit)[term] ?: emptyList()
+
+    override fun suggestAll(terms: Collection<String>, limit: Int): Map<String, List<SkillSuggestion>> {
+        if (terms.isEmpty()) return emptyMap()
+
+        // Loaded once for the whole batch. The queue asks for a hundred terms at a time, and doing
+        // this per term would be a hundred full reads of the catalog to answer one page.
+        val skillsById = skills.findAllOrderByName().associateBy { requireNotNull(it.id) }
+        val candidates = candidateIndex(skillsById)
+
+        return terms.associateWith { term ->
+            SkillSimilarity.rank(SkillNormalizer.normalize(term), candidates, limit)
+                .mapNotNull { match ->
+                    val skill = skillsById[match.skillId] ?: return@mapNotNull null
+                    SkillSuggestion(
+                        skillId = match.skillId,
+                        skillName = skill.name,
+                        category = SkillCategory.valueOf(skill.category),
+                        matchedAlias = match.spelling,
+                        // Rounded for the wire only, after ranking: a chip label reading
+                        // 0.6666666666666666 helps nobody, and rounding earlier would create ties
+                        // the ordering would then have to break arbitrarily.
+                        score = round(match.score),
+                    )
+                }
+        }
+    }
+
+    /**
+     * Every spelling the catalog knows, canonical names and aliases alike.
+     *
+     * Names are included explicitly rather than trusted to be present as aliases. They almost always
+     * are - `createSkill` registers one - but a name missing from `skill_alias` would silently make
+     * a skill unsuggestable, and the failure would look like the scoring being wrong.
+     */
+    private fun candidateIndex(
+        skillsById: Map<Long, CanonicalSkillRow>,
+    ): List<SkillSimilarity.Candidate> {
+        val fromNames = skillsById.map { (id, row) ->
+            SkillSimilarity.Candidate(id, row.name, SkillNormalizer.normalize(row.name))
+        }
+        val fromAliases = aliases.findAll().map { row ->
+            SkillSimilarity.Candidate(row.canonicalSkillId, row.alias, row.normalizedAlias)
+        }
+        return fromNames + fromAliases
+    }
+
+    private fun round(score: Double) = Math.round(score * 1000.0) / 1000.0
 
     override fun pendingUnmatchedTerms(limit: Int): List<UnmatchedTerm> =
         unmatched.findPending(limit).map { it.toDomain() }

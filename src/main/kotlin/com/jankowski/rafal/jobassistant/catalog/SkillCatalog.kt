@@ -21,6 +21,29 @@ interface SkillCatalog {
     /** Batch form of [resolve]; keys are the original terms, values null where unresolved. */
     fun resolveAll(terms: Collection<String>): Map<String, CanonicalSkill?>
 
+    /**
+     * Catalog entries [term] might mean, best first.
+     *
+     * **Candidates for a human, never consulted by [resolve].** This is the one method on this
+     * interface that answers "what might this be" rather than "what is this", and the separation is
+     * deliberate: the docstring above says resolution is a lookup rather than a judgement, and that
+     * stays true because nothing downstream of a suggestion happens without someone clicking
+     * approve. Deterministic string similarity, not a model - `triage` owns the model half, so the
+     * module everything depends on keeps depending on nothing.
+     *
+     * Empty for terms shorter than four characters, where every candidate matches equally.
+     */
+    fun suggest(term: String, limit: Int = 3): List<SkillSuggestion>
+
+    /**
+     * Batch form of [suggest]; keys are the original terms.
+     *
+     * Preferred wherever more than one term is being suggested for. The candidate index is the
+     * whole catalog, so calling [suggest] in a loop rebuilds it once per term and reloads it from
+     * the database each time.
+     */
+    fun suggestAll(terms: Collection<String>, limit: Int = 3): Map<String, List<SkillSuggestion>>
+
     /** Expands held skills through IMPLIES/RELATED edges so the diff can be a pure lookup. */
     fun coverageFor(heldSkillIds: Set<Long>): SkillCoverage
 
