@@ -81,6 +81,12 @@ internal class AnalysisRunner(
             .create(OfferExtractor::class.java, LlmTask.EXTRACTION)
             .extract(OfferTextScrubber.scrub(offer.rawText), AnalysisPromptFormatter.catalogListing(skills))
 
+        // A model that answered with an empty object, or with something that had nothing to do with
+        // the prompt, produces exactly this. Stopping here rather than carrying on means the run
+        // ends as FAILED with a reason, instead of DONE with a gap report that asserts there are no
+        // gaps. See EmptyExtractionException.
+        if (extracted.requirementsOrEmpty().isEmpty()) throw EmptyExtractionException(offer.id)
+
         offers.describe(
             offerId = offer.id,
             title = extracted.title.ifBlank { null },
@@ -98,7 +104,7 @@ internal class AnalysisRunner(
         val score = RequirementMatcher.score(matched)
 
         val languageFindings = RequirementMatcher.matchLanguages(
-            required = extracted.languageRequirements.mapNotNull { it.toRequirement() },
+            required = extracted.languageRequirementsOrEmpty().mapNotNull { it.toRequirement() },
             heldLevel = profile::languageLevel,
         )
 
@@ -129,7 +135,7 @@ internal class AnalysisRunner(
      * rather than dropped, so the catalog grows from real offers.
      */
     private fun resolveRequirements(extracted: ExtractedOffer): List<ResolvedRequirement> =
-        extracted.requirements.map { requirement ->
+        extracted.requirementsOrEmpty().map { requirement ->
             val skill = requirement.catalogSkill.ifBlank { null }?.let { catalog.resolve(it) }
                 ?: catalog.resolve(requirement.rawText)
 

@@ -293,6 +293,39 @@ internal class AnalysisFlowIntegrationTest(
         assertTrue(prompt.contains("Senior Backend Engineer at Acme"), "the offer text itself must be sent")
     }
 
+    /**
+     * The gap report is the product, so an empty one is an assertion the application cannot back:
+     * it reads as "this offer asks for nothing" rather than "the model gave us nothing". Before
+     * this floor existed such a run reached DONE and showed the user a confident blank.
+     */
+    @Test
+    fun `an extraction that found nothing fails instead of reporting no gaps`() {
+        models[LlmTask.EXTRACTION].enqueue("""{"title":"","company":"","requirements":[]}""")
+
+        val report = runAnalysis()
+
+        assertEquals(AnalysisState.FAILED, report.state)
+        assertTrue(
+            assertNotNull(report.error).contains("returned no requirements"),
+            "the error must say what happened, not merely that something did",
+        )
+    }
+
+    /**
+     * The response shape that started all of this. LangChain4j builds a service return type
+     * reflectively and never calls the constructor, so an explicit null survives into a non-null
+     * List - the default value covers a missing key only.
+     */
+    @Test
+    fun `an explicit null requirement list is a failure, not a crash`() {
+        models[LlmTask.EXTRACTION].enqueue("""{"title":"Something","requirements":null}""")
+
+        val report = runAnalysis()
+
+        assertEquals(AnalysisState.FAILED, report.state)
+        assertTrue(assertNotNull(report.error).contains("returned no requirements"))
+    }
+
     @Test
     fun `a model failure ends in FAILED with the reason recorded`() {
         models[LlmTask.EXTRACTION].enqueueFailure(RuntimeException("provider exploded"))
