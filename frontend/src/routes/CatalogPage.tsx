@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, Inbox, Plus, X } from 'lucide-react'
+import { Check, Inbox, Plus, Sparkles, X } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   approveUnmatched, createSkill, deleteSkill, rejectUnmatched, updateSkill,
 } from '@/api/catalog'
-import { fetchTriageQueue } from '@/api/triage'
+import { fetchTriageQueue, suggestTriage } from '@/api/triage'
 import { keys } from '@/api/keys'
 import { SKILL_CATEGORIES, SKILL_CATEGORY_LABELS } from '@/api/types'
 import type { CanonicalSkill, SkillCategory, TriageRanking } from '@/api/types'
@@ -92,6 +92,29 @@ function ReviewQueue() {
     },
   })
 
+  /*
+    Explicit, never implicit. Producing model suggestions costs a call, so it happens when you press
+    a button — loading this page shows only what is already stored. The result reports counts rather
+    than a bare total, because "sent 12, stored 4, dropped 3 that named skills we do not have" is a
+    different event from "stored 4", and the dropped count is the first sign the model has started
+    naming things the catalog cannot back.
+  */
+  const suggest = useMutation({
+    mutationFn: () => suggestTriage(minOccurrences, ranking, 25),
+    onSuccess: (run) => {
+      if (run.termsSent === 0) {
+        toast.info('Every term on this page already has a suggestion')
+      } else {
+        const dropped = run.droppedUnresolvable + run.droppedUnrequested
+        toast.success(
+          `Suggested ${run.suggestionsStored} of ${run.termsSent} terms` +
+            (dropped > 0 ? ` — ${dropped} dropped as unusable` : ''),
+        )
+      }
+      queryClient.invalidateQueries({ queryKey: ['triage'] })
+    },
+  })
+
   const reject = useMutation({
     mutationFn: (termId: number) => rejectUnmatched(termId),
     onSuccess: () => {
@@ -138,6 +161,15 @@ function ReviewQueue() {
         </Select>
       </div>
 
+      <Button
+        size="sm"
+        variant="outline"
+        disabled={suggest.isPending}
+        onClick={() => suggest.mutate()}
+      >
+        <Sparkles /> {suggest.isPending ? 'Asking…' : 'Suggest with AI'}
+      </Button>
+
       {/*
         The denominator, always. With 1,500 queued terms and a 100-row page, a short list with no
         counts reads as a finished queue — the same failure as a rate printed without its
@@ -171,6 +203,7 @@ function ReviewQueue() {
     <>
       {approve.isError ? <ApiErrorAlert error={approve.error} /> : null}
       {reject.isError ? <ApiErrorAlert error={reject.error} /> : null}
+      {suggest.isError ? <ApiErrorAlert error={suggest.error} /> : null}
 
       {controls}
 
@@ -220,6 +253,24 @@ function ReviewQueue() {
                       that nothing enters the catalog without someone deciding. One extra click is
                       the whole safeguard.
                     */}
+                    {term.modelSuggestions.map((suggestion) => (
+                      <Button
+                        key={`m-${suggestion.skillId}`}
+                        size="sm"
+                        variant="outline"
+                        className="h-8 border-dashed font-normal"
+                        title={
+                          suggestion.rationale
+                            ? `${suggestion.rationale} — suggested by ${suggestion.modelProfile ?? 'a model'}; fills the picker, does not approve`
+                            : 'Model suggestion — fills the picker, does not approve'
+                        }
+                        onClick={() =>
+                          setSelection((s) => ({ ...s, [term.termId]: suggestion.skillId }))
+                        }
+                      >
+                        <Sparkles /> {suggestion.skillName}
+                      </Button>
+                    ))}
                     {term.suggestions.map((suggestion) => (
                       <Button
                         key={suggestion.skillId}

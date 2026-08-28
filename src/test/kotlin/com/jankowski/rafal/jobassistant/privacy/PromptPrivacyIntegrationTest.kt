@@ -18,6 +18,8 @@ import com.jankowski.rafal.jobassistant.profile.SkillImport
 import com.jankowski.rafal.jobassistant.profile.internal.ProfileManagementService
 import com.jankowski.rafal.jobassistant.support.IntegrationTest
 import com.jankowski.rafal.jobassistant.support.ScriptedModels
+import com.jankowski.rafal.jobassistant.triage.TriageRanking
+import com.jankowski.rafal.jobassistant.triage.internal.ModelTriageSuggestionService
 import dev.langchain4j.data.message.SystemMessage
 import dev.langchain4j.data.message.UserMessage
 import org.awaitility.Awaitility.await
@@ -46,6 +48,7 @@ internal class PromptPrivacyIntegrationTest(
     @Autowired private val management: ProfileManagementService,
     @Autowired private val models: ScriptedModels,
     @Autowired private val jdbc: JdbcClient,
+    @Autowired private val triageSuggestions: ModelTriageSuggestionService,
 ) {
 
     private var kotlinBulletId = 0L
@@ -133,6 +136,32 @@ internal class PromptPrivacyIntegrationTest(
         assertFalse(sent.contains(SENTINEL_EMAIL, ignoreCase = true), "the candidate's email reached a model")
         assertFalse(sent.contains("555987654"), "the candidate's phone reached a model")
         assertFalse(sent.contains("QQVHANDLE", ignoreCase = true), "a profile link reached a model")
+    }
+
+    /**
+     * Triage carries no profile data at all - the terms come from public job boards and the catalog
+     * is a public taxonomy - so this test is not expected to catch anything. It is here because the
+     * value of this suite is *enumerating every model-calling flow*: a flow nobody added an
+     * assertion for is a flow nobody checked, and the one that eventually interpolates a profile
+     * field will look exactly like this one did.
+     */
+    @Test
+    fun `no direct identifier reaches a model during triage suggestion`() {
+        jdbc.sql(
+            """
+            insert into unmatched_term (term, normalized_term, occurrences, market_occurrences)
+            values ('Triage Privacy Probe', 'triageprivacyprobe', 5, 0)
+            """
+        ).update()
+        models[LlmTask.TRIAGE].enqueue(
+            """{"suggestions":[{"term":"Triage Privacy Probe","catalogSkill":"Kotlin","rationale":"x"}]}"""
+        )
+
+        triageSuggestions.suggestFor(1, TriageRanking.CORPUS, 25)
+
+        val sent = everythingSentToModels()
+        assertTrue(sent.contains("Triage Privacy Probe"), "the flow did not actually run")
+        assertNoIdentifiersIn(sent)
     }
 
     @Test

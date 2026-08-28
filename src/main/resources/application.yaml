@@ -127,3 +127,6 @@ job-assistant:
       extraction: openrouter
       narrative: openrouter
       document: openrouter
+      # Added together with LlmTask.TRIAGE: a task pointing at no profile fails loudly at first
+      # use, so the enum and this map are never allowed to drift apart.
+      triage: openrouter

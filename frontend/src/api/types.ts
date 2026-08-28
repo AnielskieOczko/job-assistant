@@ -83,8 +83,37 @@ export interface TriageEntry {
   inScopeDemand: number
   firstSeenAt: string
   lastSeenAt: string
-  /** Best first, possibly empty. Clicking one fills the picker; it never submits. */
+  /** By string similarity, best first. Clicking one fills the picker; it never submits. */
   suggestions: SkillSuggestion[]
+  /**
+   * Proposed by a model, with its reasoning. Separate from `suggestions` because provenance is the
+   * point — one is arithmetic over spellings, the other is a model's reading.
+   */
+  modelSuggestions: ModelSuggestion[]
+}
+
+/**
+ * A model's proposed reading of a term.
+ *
+ * Carries a rationale instead of a score: a model has no calibrated confidence to report, and a
+ * number would invite trust it has not earned. A sentence you can check is the honest equivalent.
+ */
+export interface ModelSuggestion {
+  skillId: number
+  skillName: string
+  category: SkillCategory
+  rationale: string | null
+  modelProfile: string | null
+}
+
+/** What one `POST /api/triage/suggest` run did. Counts, never a bare rate. */
+export interface SuggestionRun {
+  termsConsidered: number
+  termsSent: number
+  suggestionsStored: number
+  /** Rows naming a skill the catalog could not resolve. Discarded, never queued. */
+  droppedUnresolvable: number
+  droppedUnrequested: number
 }
 
 export interface TriageQueue {

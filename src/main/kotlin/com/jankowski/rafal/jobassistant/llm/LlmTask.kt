@@ -14,4 +14,13 @@ enum class LlmTask {
 
     /** Selecting and rephrasing profile records for a CV or cover letter. */
     DOCUMENT,
+
+    /**
+     * Proposing which catalog entry a queued term might mean.
+     *
+     * Never authoritative: the model selects from a list it is given, everything it returns is
+     * re-resolved against the catalog and dropped if it does not exist, and a human still clicks
+     * approve. It carries no profile data at all - only public job-board vocabulary.
+     */
+    TRIAGE,
 }

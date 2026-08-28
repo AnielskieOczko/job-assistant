@@ -25,6 +25,8 @@ import com.jankowski.rafal.jobassistant.profile.ExperienceBullet
 import com.jankowski.rafal.jobassistant.profile.LanguageLevel
 import com.jankowski.rafal.jobassistant.profile.LanguageSkill
 import com.jankowski.rafal.jobassistant.profile.Proficiency
+import com.jankowski.rafal.jobassistant.triage.ModelSuggestion
+import com.jankowski.rafal.jobassistant.triage.SuggestionRun
 import com.jankowski.rafal.jobassistant.triage.TriageEntry
 import com.jankowski.rafal.jobassistant.triage.TriageQueue
 import com.jankowski.rafal.jobassistant.triage.TriageRanking
@@ -208,7 +210,7 @@ class ApiContractTest {
                     inScopeDemand = 7, firstSeenAt = Instant.EPOCH, lastSeenAt = Instant.EPOCH,
                 ),
                 "termId", "term", "occurrences", "marketOccurrences", "inScopeDemand",
-                "firstSeenAt", "lastSeenAt", "suggestions",
+                "firstSeenAt", "lastSeenAt", "suggestions", "modelSuggestions",
             )
         },
         {
@@ -224,6 +226,19 @@ class ApiContractTest {
                     ranking = TriageRanking.SCOPE, scopeSkills = listOf("Java"),
                 ),
                 "entries", "matching", "pending", "minOccurrences", "ranking", "scopeSkills",
+            )
+        },
+        {
+            assertKeys(
+                ModelSuggestion(1, "Kubernetes", SkillCategory.DEVOPS, "Means the same thing.", "openrouter"),
+                "skillId", "skillName", "category", "rationale", "modelProfile",
+            )
+        },
+        {
+            assertKeys(
+                SuggestionRun(termsConsidered = 25, termsSent = 12, suggestionsStored = 4),
+                "termsConsidered", "termsSent", "suggestionsStored", "droppedUnresolvable",
+                "droppedUnrequested",
             )
         },
     )
