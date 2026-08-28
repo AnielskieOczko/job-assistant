@@ -6,6 +6,12 @@ only — official docs, a board's own terms-of-service page, a direct fetch of t
 Where a claim could not be traced to a primary source it is marked **UNVERIFIED** and left that way
 rather than filled in with a plausible guess.
 
+> **Update, 2026-08-28.** The email-forward path this file left open was tested and ruled out
+> by [ticket 18](https://github.com/AnielskieOczko/job-assistant/issues/18): alert emails carry a
+> link, never the posting body. See `docs/research/18-alert-email-format.md`. The verdict below is
+> unaffected — **solid.jobs is the source** — and is now the *only* route to Polish-market volume
+> rather than one of two.
+
 ## Verdict
 
 Ingestion without HTML scraping is worth building, and a second, harder pass on six more sources (see

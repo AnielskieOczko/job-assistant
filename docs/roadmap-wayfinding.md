@@ -22,13 +22,17 @@ Run `/mattpocock-skills:wayfinder 9`. That loads the map, picks the first unbloc
 ticket, claims it, and resolves it. Resolve **one ticket per session**, except research tickets,
 which can be run in parallel because they only gather facts.
 
-**All three research tickets are now closed** and their findings are checked in under
-`docs/research/`; so are the CV prototype, the CI/CD grilling and the market-dashboard grilling.
-**One leaf remains: [18](https://github.com/AnielskieOczko/job-assistant/issues/18)**, and it is a
-manual task no agent can do — it needs a human to subscribe to a job alert and read the delivered
-email. The parallelisable AFK work is gone.
+**Every leaf is now closed.** The three research tickets, the CV prototype, both grillings and the
+alert-email task are all resolved, and their findings are checked in under `docs/research/` — except
+the CV prototype, which lives on branch `prototype/cv-layouts`.
 
-To pick a ticket yourself, pass it: `/mattpocock-skills:wayfinder 9 --ticket 18`.
+**[Rank and sequence the roadmap](https://github.com/AnielskieOczko/job-assistant/issues/15) is the
+only unblocked ticket, and it is the one this map exists to reach.** Resolving it rewrites
+`docs/roadmap.md` and ends the effort. Note that Rafal has already fixed its top item by decision
+rather than by ranking — see the entry for ticket 18 below — so that ticket's remaining job is the
+*rest* of the order, not the first item.
+
+To pick a ticket yourself, pass it: `/mattpocock-skills:wayfinder 9 --ticket 15`.
 
 To see what is takeable right now:
 
@@ -147,6 +151,17 @@ under **`docs/research/`**.
   strongest honest evidence, 404s unpredictably on repositories with equivalent manifests, so the
   reliable path is parsing `pom.xml` / `package.json` locally.
 
+- **[Do the Polish boards' alert emails carry the full offer text?](https://github.com/AnielskieOczko/job-assistant/issues/18)**
+  → `docs/research/18-alert-email-format.md`. **No — rule the email path out.** Checked manually by
+  Rafal on 2026-08-28: every alert email carries a link to the posting, never the posting body, with
+  no variation across the boards he subscribed to. The ticket had fixed the consequence in advance —
+  following that link to get the withheld text *is* scraping — so IMAP ingestion fails on the same
+  ground the map used to rule out HTML scraping, and is not a near miss to revisit. It costs little,
+  because ticket 10's second pass had already replaced the email path as the route to Polish volume.
+  **Rafal's direction on resolving it: solid.jobs is the single source to integrate, and the primary
+  corpus for the market dashboard.** That fixes the top of the ranking by decision rather than by
+  ranking, which ticket 15 should record rather than relitigate.
+
 - **[What should the offer market dashboard answer?](https://github.com/AnielskieOczko/job-assistant/issues/13)**
   → `docs/research/13-offer-market-dashboard.md`. It answers **what a skill gap is worth** — which
   missing skill most increases the number of offers you would clear, and what those offers pay.
@@ -207,14 +222,12 @@ under **`docs/research/`**.
 | [13](https://github.com/AnielskieOczko/job-assistant/issues/13) | What should the offer market dashboard answer? | grilling | **closed** |
 | [14](https://github.com/AnielskieOczko/job-assistant/issues/14) | What should a tailored CV look like? | prototype | **closed** |
 | [16](https://github.com/AnielskieOczko/job-assistant/issues/16) | What should CI/CD actually do, and does CD have a target? | grilling | **closed** |
-| [18](https://github.com/AnielskieOczko/job-assistant/issues/18) | Do the Polish boards' alert emails carry the full offer text? | task | open |
-| [15](https://github.com/AnielskieOczko/job-assistant/issues/15) | Rank and sequence the roadmap | grilling | blocked by 18 |
+| [18](https://github.com/AnielskieOczko/job-assistant/issues/18) | Do the Polish boards' alert emails carry the full offer text? | task | **closed** |
+| [15](https://github.com/AnielskieOczko/job-assistant/issues/15) | Rank and sequence the roadmap | grilling | **open, unblocked** |
 | [19](https://github.com/AnielskieOczko/job-assistant/issues/19) | How does a GitHub repository become a profile Project? | grilling | blocked by 15 |
 
-**Rank and sequence the roadmap** is deliberately last: ranking ingestion before the email path is
-settled would be ranking a guess. It is now gated only by
-[18](https://github.com/AnielskieOczko/job-assistant/issues/18), the sole remaining leaf, which needs
-a human to subscribe to a job alert and read the delivered email. No AFK work is left on this map.
+**Rank and sequence the roadmap** was deliberately last, so that nothing would be ranked on a guess.
+Every guess it was waiting on is now settled, and it is unblocked. Ticket 19 remains gated behind it.
 
 ## Not yet specified
 
