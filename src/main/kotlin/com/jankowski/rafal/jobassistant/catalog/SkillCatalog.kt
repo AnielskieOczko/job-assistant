@@ -43,7 +43,14 @@ interface SkillCatalog {
 
     fun pendingUnmatchedTerms(limit: Int = 100): List<UnmatchedTerm>
 
-    /** Approving a term adds it as an alias of [skillId], so it resolves from then on. */
+    /**
+     * Approving a term adds it as an alias of [skillId], so it resolves from then on.
+     *
+     * Refused when the term's normalised key is already an alias of a *different* skill: aliases
+     * are unique on that key, so the approval could not change what the term resolves to, and
+     * recording it anyway would drop the term out of the queue against a skill it never reaches.
+     * Approving a term that already aliases [skillId] is a no-op, so retries stay safe.
+     */
     fun approveUnmatchedTerm(termId: Long, skillId: Long): CanonicalSkill
 
     fun rejectUnmatchedTerm(termId: Long)

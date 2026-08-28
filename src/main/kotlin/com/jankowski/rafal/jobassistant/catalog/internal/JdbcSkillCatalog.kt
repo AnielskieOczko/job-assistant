@@ -133,7 +133,21 @@ internal class JdbcSkillCatalog(
 
         // Approving means "this phrasing means that skill", so it becomes a permanent alias and
         // every future extraction resolves it without another trip through the review queue.
-        if (aliases.findByNormalizedAlias(row.normalizedTerm) == null) {
+        //
+        // That promise cannot be kept if the key already belongs to a different skill. skill_alias
+        // is unique on normalized_alias, so the existing row keeps winning every resolve() and the
+        // approval would be a lie the queue then hides: the term leaves PENDING stamped against a
+        // skill it will never resolve to, and no later review can surface it again. Refuse, and
+        // name the owner so the reviewer can approve against it instead.
+        val existing = aliases.findByNormalizedAlias(row.normalizedTerm)
+        if (existing != null && existing.canonicalSkillId != skillId) {
+            val owner = findById(existing.canonicalSkillId)?.name ?: "another skill"
+            throw CatalogConflictException(
+                "\"${row.term}\" already resolves to \"$owner\", so it cannot also mean " +
+                    "\"${skill.name}\". Approve it against \"$owner\", or reject it."
+            )
+        }
+        if (existing == null) {
             aliases.save(
                 SkillAliasRow(
                     canonicalSkillId = skillId,
@@ -165,7 +179,7 @@ internal class JdbcSkillCatalog(
 
             val owner = this.aliases.findByNormalizedAlias(normalized)
             require(owner == null || owner.canonicalSkillId == skill.id) {
-                "alias '\$candidate' already resolves to a different skill"
+                "alias '$candidate' already resolves to a different skill"
             }
             if (owner == null) {
                 this.aliases.save(

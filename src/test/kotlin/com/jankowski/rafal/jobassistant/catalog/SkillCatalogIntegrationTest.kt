@@ -152,6 +152,52 @@ class SkillCatalogIntegrationTest(
         assertTrue(catalog.pendingUnmatchedTerms(500).none { it.id == queued.id })
     }
 
+    /**
+     * The queue is the only place a term can be reviewed, so an approval that cannot take effect
+     * must not consume it. Aliases are unique on the normalised key, so approving against a second
+     * skill silently left the term resolving to the first while marking it APPROVED against the
+     * second - a disagreement nothing downstream could ever surface again.
+     */
+    @Test
+    fun `approving a term whose key already aliases another skill is refused`() {
+        val stamp = System.nanoTime()
+        val term = "Groovy Lang $stamp"
+        val owner = catalog.createSkill("Owner Skill $stamp", SkillCategory.LANGUAGE, listOf(term))
+        val other = catalog.createSkill("Other Skill $stamp", SkillCategory.LANGUAGE)
+        // Queued before the alias existed, which is what a migration adding aliases leaves behind.
+        catalog.recordUnmatched(term)
+        val queued = catalog.pendingUnmatchedTerms(500).single { it.term == term }
+
+        val failure = assertFailsWith<CatalogConflictException> {
+            catalog.approveUnmatchedTerm(queued.id, other.id)
+        }
+
+        assertTrue(
+            failure.message!!.contains(owner.name),
+            "the message must name the owning skill, got: ${failure.message}",
+        )
+        assertEquals(owner.id, catalog.resolve(term)?.id, "resolution must be untouched")
+        assertTrue(
+            catalog.pendingUnmatchedTerms(500).any { it.id == queued.id },
+            "a refused approval must leave the term reviewable",
+        )
+    }
+
+    /** Same skill is not a conflict: the alias already says what the approval wants it to say. */
+    @Test
+    fun `approving a term against the skill it already aliases is idempotent`() {
+        val stamp = System.nanoTime()
+        val term = "Retry Probe $stamp"
+        val skill = catalog.createSkill("Retry Skill $stamp", SkillCategory.TOOL)
+        catalog.recordUnmatched(term)
+        val queued = catalog.pendingUnmatchedTerms(500).single { it.term == term }
+
+        catalog.approveUnmatchedTerm(queued.id, skill.id)
+        catalog.approveUnmatchedTerm(queued.id, skill.id)
+
+        assertEquals(skill.id, catalog.resolve(term)?.id)
+    }
+
     @Test
     fun `rejecting an unmatched term leaves the queue without adding an alias`() {
         val term = "Not A Skill ${System.nanoTime()}"
