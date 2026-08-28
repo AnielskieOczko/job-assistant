@@ -98,12 +98,51 @@ class MarketIngestionIntegrationTest {
         val queued = catalog.pendingUnmatchedTerms(limit = 500)
         assertThat(queued).isNotEmpty
         // Polish soft skills are in the fixture and are not in a 210-entry technology catalog.
-        assertThat(queued.map { it.term }).contains("Zarządzanie zespołem")
+        assertThat(queued.map { it.term }).contains(TEAM_MANAGEMENT)
         // The whole point of the second counter: market volume must not rank the queue.
         assertThat(queued).allSatisfy {
             assertThat(it.occurrences).isZero()
             assertThat(it.marketOccurrences).isGreaterThanOrEqualTo(1)
         }
+        // Exact, not a floor: every unresolved term in this fixture is asked for by exactly one of
+        // the four offers, so anything other than 1 means the counter is measuring something else.
+        assertThat(queued.single { it.term == TEAM_MANAGEMENT }.marketOccurrences).isEqualTo(1)
+    }
+
+    /**
+     * The counter's whole purpose is to say how much the market wants a term, so it has to move
+     * with the number of employers asking rather than the number of times we looked.
+     */
+    @Test
+    fun `the market counter counts offers asking, not polls run`() {
+        val page = fixturePage()
+        val asking = page.jobs.single { offer -> offer.skills.any { it.name == TEAM_MANAGEMENT } }
+        // A second employer asking for the same thing, which the fixture alone does not contain.
+        val twin = asking.copy(jobOfferKey = asking.jobOfferKey + "-twin")
+        client.enqueue(page.copy(jobs = page.jobs + twin))
+
+        market.ingest()
+
+        val queued = catalog.pendingUnmatchedTerms(500).single { it.term == TEAM_MANAGEMENT }
+        assertThat(queued.marketOccurrences).isEqualTo(2)
+    }
+
+    /**
+     * Offers are upserted by key, so a daily poll re-serves the same listings. Accumulating would
+     * multiply a term's demand by the number of polls and rank the queue by how long a term had
+     * been listed; recomputing from the corpus makes an unchanged re-poll a no-op.
+     */
+    @Test
+    fun `re-polling unchanged listings leaves the market counter where it is`() {
+        client.enqueue(fixturePage(), fixturePage())
+
+        market.ingest()
+        val afterFirst = catalog.pendingUnmatchedTerms(500).associate { it.term to it.marketOccurrences }
+        market.ingest()
+        val afterSecond = catalog.pendingUnmatchedTerms(500).associate { it.term to it.marketOccurrences }
+
+        assertThat(afterFirst).isNotEmpty
+        assertThat(afterSecond).isEqualTo(afterFirst)
     }
 
     @Test
@@ -165,5 +204,10 @@ class MarketIngestionIntegrationTest {
 
         assertThat(report.error).contains("connection reset")
         assertThat(report.offersSeen).isZero()
+    }
+
+    private companion object {
+        /** A Polish soft skill the fixture carries that a 210-entry technology catalog cannot place. */
+        const val TEAM_MANAGEMENT = "Zarządzanie zespołem"
     }
 }

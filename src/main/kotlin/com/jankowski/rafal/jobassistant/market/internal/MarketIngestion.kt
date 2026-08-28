@@ -83,9 +83,12 @@ internal class MarketIngestion(
                 }
             }
 
-            // Queued once per run rather than per mention, so the market counter measures how many
-            // runs saw a term rather than how many rows repeated it.
-            if (unresolvedTerms.isNotEmpty()) catalog.recordUnmatchedFromMarket(unresolvedTerms)
+            // Recomputed from the corpus rather than accumulated from this run. Offers are
+            // upserted by key, so a daily poll re-serves the same listings: incrementing would
+            // multiply a term's demand by the number of polls and rank the queue by how long a
+            // term had been listed. Recomputing makes an unchanged re-poll a no-op, and is the
+            // same computation V16 ran once over the rows already stored.
+            catalog.recordUnmatchedFromMarket(repository.unresolvedSkillMentions())
         } catch (e: Exception) {
             // A partial corpus is worth keeping -- everything upserted before the failure is
             // already committed and correct. The run is still reported as failed, because a report

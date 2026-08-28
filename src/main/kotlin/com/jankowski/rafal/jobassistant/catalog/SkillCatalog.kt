@@ -31,15 +31,20 @@ interface SkillCatalog {
     fun recordUnmatched(term: String)
 
     /**
-     * Records terms seen while ingesting the market corpus, incrementing a *separate* counter from
-     * [recordUnmatched].
+     * Records how often the ingested market corpus asks for each term the catalog cannot place,
+     * under a counter kept *separate* from [recordUnmatched].
      *
-     * A batch rather than a single term because volume is the point: one poll of a division yields
-     * hundreds of distinct names, many of them Polish soft skills the catalog will never carry.
-     * Duplicates within [terms] count once -- the caller is reporting which terms a run saw, not
-     * how often it saw them.
+     * [mentions] is the count over the **whole corpus**, not one poll's, and the stored value is
+     * **set** to it rather than incremented. Polls re-serve the same listings, so accumulating
+     * would multiply a term's demand by the number of times we happened to look, and the queue
+     * would rank by how long a term had been listed as much as by how many employers asked for it.
+     * Recomputing instead makes a re-poll a no-op, and makes this write the same computation the
+     * V16 backfill performs.
+     *
+     * Spellings collapse onto the normalised key and their counts are summed, so "Power Apps" and
+     * "power apps" are one queue entry asked for twice rather than two entries asked for once.
      */
-    fun recordUnmatchedFromMarket(terms: Collection<String>)
+    fun recordUnmatchedFromMarket(mentions: Map<String, Int>)
 
     fun pendingUnmatchedTerms(limit: Int = 100): List<UnmatchedTerm>
 

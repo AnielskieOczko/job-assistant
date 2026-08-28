@@ -119,6 +119,25 @@ internal class MarketOfferRepository(private val jdbc: JdbcClient) {
         }
     }
 
+    /**
+     * How many corpus offers ask for each skill name the catalog could not place.
+     *
+     * The primary key is (market_offer_id, skill_name), so one row is one offer asking for one
+     * term: counting rows counts employers rather than repetitions inside a single listing. Read
+     * over the whole corpus rather than one poll, because the counter it feeds is a standing
+     * measure of demand, not a record of what the last fetch happened to serve.
+     */
+    fun unresolvedSkillMentions(): Map<String, Int> = jdbc.sql(
+        """
+        select skill_name, count(*) as mentions
+        from market_offer_skill
+        where canonical_skill_id is null
+        group by skill_name
+        """
+    ).query { rs, _ -> rs.getString("skill_name") to rs.getInt("mentions") }
+        .list()
+        .toMap()
+
     fun summaries(): List<CorpusSummary> = jdbc.sql(
         """
         select source,

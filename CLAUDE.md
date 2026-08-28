@@ -287,6 +287,15 @@ skills. They go to `unmatched_term` under `market_occurrences`, a **separate cou
 `occurrences`, because the queue is ranked by occurrences and one poll would otherwise bury every
 term that came from an offer the candidate actually read.
 
+**`market_occurrences` is set from the corpus, never incremented.** After each poll `market` counts
+`market_offer_skill` rows with no `canonical_skill_id` — the table is keyed
+`(market_offer_id, skill_name)`, so one row is one employer asking — and hands the whole map to
+`SkillCatalog.recordUnmatchedFromMarket`, which writes it as the new value. Offers are upserted by
+key and the corpus is never pruned, so a daily poll re-serves the same listings: accumulating would
+multiply a term's demand by the number of times we happened to look and rank the queue by how long
+a term had been listed. Because the number is derived rather than accrued, an unchanged re-poll is
+a no-op and `V16` is literally the same computation run once over rows already stored.
+
 The poll is daily and gated by `job-assistant.market.enabled`, which controls the *schedule* only —
 `POST /api/market/ingest` works either way. Every integration test gets a `ScriptedSolidJobsClient`
 through `@IntegrationTest`, on the same principle as `ScriptedChatModel`: no test may reach a third

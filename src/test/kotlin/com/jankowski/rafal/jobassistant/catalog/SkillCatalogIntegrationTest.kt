@@ -139,6 +139,44 @@ class SkillCatalogIntegrationTest(
     }
 
     @Test
+    fun `market mentions collapse spellings onto one queue entry and sum`() {
+        val term = "Power Apps ${System.nanoTime()}"
+
+        catalog.recordUnmatchedFromMarket(mapOf(term to 3, term.lowercase() to 4))
+
+        val queued = catalog.pendingUnmatchedTerms(500).single { it.term.equals(term, ignoreCase = true) }
+        assertEquals(7, queued.marketOccurrences, "two spellings are one term asked for seven times")
+        assertEquals(0, queued.occurrences, "the market must not touch the candidate's own counter")
+    }
+
+    /**
+     * The counter is the corpus's own count, so re-polling unchanged listings must not move it.
+     * Accumulating would rank the queue by how often the poll ran rather than by how many
+     * employers asked, and the number would grow without bound.
+     */
+    @Test
+    fun `recording market mentions sets the counter rather than accumulating`() {
+        val term = "Recount Probe ${System.nanoTime()}"
+
+        catalog.recordUnmatchedFromMarket(mapOf(term to 12))
+        catalog.recordUnmatchedFromMarket(mapOf(term to 12))
+
+        val queued = catalog.pendingUnmatchedTerms(500).single { it.term == term }
+        assertEquals(12, queued.marketOccurrences)
+    }
+
+    /** A term the corpus stops asking for reports what the corpus now says, not its high-water mark. */
+    @Test
+    fun `a falling market count is written down as well as up`() {
+        val term = "Fading Probe ${System.nanoTime()}"
+
+        catalog.recordUnmatchedFromMarket(mapOf(term to 9))
+        catalog.recordUnmatchedFromMarket(mapOf(term to 2))
+
+        assertEquals(2, catalog.pendingUnmatchedTerms(500).single { it.term == term }.marketOccurrences)
+    }
+
+    @Test
     fun `approving an unmatched term makes it resolve from then on`() {
         val term = "Kotlin Lang ${System.nanoTime()}"
         val kotlin = assertNotNull(catalog.resolve("Kotlin"))

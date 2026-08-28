@@ -98,25 +98,36 @@ internal class JdbcSkillCatalog(
     }
 
     @Transactional
-    override fun recordUnmatchedFromMarket(terms: Collection<String>) {
-        // Distinct on the normalised key, not the raw one: "Power Apps" and "power apps" are the
-        // same queue entry, and counting both would inflate the market column with spellings.
-        val byNormalized = terms.asSequence()
-            .map { it.trim() }
-            .filter { it.isNotEmpty() }
-            .associateBy { SkillNormalizer.normalize(it) }
-            .filterKeys { it.isNotEmpty() }
+    override fun recordUnmatchedFromMarket(mentions: Map<String, Int>) {
+        // Grouped on the normalised key, not the raw one: "Power Apps" and "power apps" are the
+        // same queue entry, so their counts are summed rather than one spelling winning. The first
+        // spelling seen supplies the display term, exactly as it did before.
+        val byNormalized = LinkedHashMap<String, Pair<String, Int>>()
+        mentions.forEach { (rawTerm, count) ->
+            val term = rawTerm.trim()
+            if (term.isEmpty() || count <= 0) return@forEach
+            val normalized = SkillNormalizer.normalize(term)
+            if (normalized.isEmpty()) return@forEach
 
-        byNormalized.forEach { (normalized, term) ->
+            val running = byNormalized[normalized]
+            byNormalized[normalized] =
+                if (running == null) term to count else running.first to (running.second + count)
+        }
+
+        byNormalized.forEach { (normalized, entry) ->
+            val (term, count) = entry
+            // Set, never accumulate. The caller hands over the corpus's own count, so a re-poll of
+            // unchanged listings must leave the number where it is -- see recordUnmatchedFromMarket
+            // on SkillCatalog for why incrementing would rank the queue by how often we looked.
             jdbc.sql(
                 """
                 insert into unmatched_term (term, normalized_term, occurrences, market_occurrences)
-                values (:term, :normalized, 0, 1)
+                values (:term, :normalized, 0, :count)
                 on conflict (normalized_term) do update
-                    set market_occurrences = unmatched_term.market_occurrences + 1,
+                    set market_occurrences = :count,
                         last_seen_at = now()
                 """
-            ).param("term", term).param("normalized", normalized).update()
+            ).param("term", term).param("normalized", normalized).param("count", count).update()
         }
     }
 
