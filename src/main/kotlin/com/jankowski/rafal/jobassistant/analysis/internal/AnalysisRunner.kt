@@ -149,6 +149,7 @@ internal class AnalysisRunner(
                 skillName = skill?.name,
                 importance = parseImportance(requirement.importance),
                 rationale = requirement.rationale.ifBlank { null },
+                category = skill?.category,
             )
         }
 
@@ -162,14 +163,17 @@ internal class AnalysisRunner(
         return language.trim() to level
     }
 
+    /**
+     * The sentence handed to the narrator, computed from [RequirementMatcher.scoreable] rather than
+     * from a filter of its own. It used to reimplement the rule, which is exactly how an
+     * explanation ends up contradicting the number it explains.
+     */
     private fun explainScore(matched: List<MatchedRequirement>): String {
-        val scoreable = matched.filter {
-            it.importance == Importance.MUST_HAVE && it.status != RequirementStatus.UNRESOLVED
-        }
+        val scoreable = RequirementMatcher.scoreable(matched)
         if (scoreable.isEmpty()) return "no resolvable must-have requirements"
         val met = scoreable.count { it.status == RequirementStatus.MET }
         val partial = scoreable.count { it.status == RequirementStatus.PARTIAL }
-        return "($met met + 0.5 x $partial partial) / ${scoreable.size} must-haves"
+        return "($met met + 0.5 x $partial partial) / ${scoreable.size} technical must-haves"
     }
 
     @Transactional

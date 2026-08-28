@@ -1,5 +1,6 @@
 package com.jankowski.rafal.jobassistant.analysis.internal
 
+import com.jankowski.rafal.jobassistant.analysis.ScoringRule
 import org.springframework.data.annotation.Id
 import org.springframework.data.relational.core.mapping.Table
 import java.math.BigDecimal
@@ -20,6 +21,14 @@ internal data class AnalysisRow(
     val completedAt: Instant? = null,
     /** Profile revision this run was computed from - null for runs that predate the counter. */
     val profileRevision: Long? = null,
+    /**
+     * Which rule produced [matchScore].
+     *
+     * Defaulted to the *current* rule rather than V1: this default applies only when Kotlin
+     * constructs a new row, and a row loaded from the database carries whatever it was scored under,
+     * so re-saving an old analysis during a state transition cannot relabel it.
+     */
+    val scoringRule: String = ScoringRule.CURRENT.name,
 )
 
 /**

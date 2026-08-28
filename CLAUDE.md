@@ -288,6 +288,20 @@ narrate. **Only steps 1 and 3 call a model.** Step 2 is `RequirementMatcher`, pl
 `SkillCoverage`, so the verdict is reproducible and the model never gets a vote on whether the
 candidate has a skill.
 
+**Soft skills are reported, not scored.** `RequirementMatcher.scoreable` excludes `SOFT` from the
+denominator: a `Communication` must-have the profile lacks belongs in the gap report, but counting it
+makes `matchScore` answer a question no catalog lookup can answer. It stays in `requirements`, and
+`AnalysisReport.reportedNotScored` names what was left out.
+
+The trap this had to avoid: **`matchScore` is stored while `scoreExplanation` recomputes its
+denominator**, so changing the rule silently would make every existing report contradict itself.
+The rule is therefore *versioned*, not migrated — `analysis.scoring_rule` holds
+`V1_ALL_CATEGORIES` or `V2_SOFT_EXCLUDED`, old rows keep V1 and explain themselves in V1's terms,
+and the UI labels them. Historical scores are never recomputed: that would rewrite a number past
+decisions were made on, and could not rewrite `summary_md`, leaving prose narrating the old
+percentage. `AnalysisRow.scoringRule` defaults to `ScoringRule.CURRENT` because that default only
+applies to rows Kotlin constructs — a row loaded from the database keeps what it was scored under.
+
 - States: `PENDING → EXTRACTING → MATCHING → NARRATING → DONE`, or `FAILED` with an error message.
 - The pool is deliberately 2 threads / queue 20 — each job costs two model calls, so unbounded
   concurrency means unbounded spend.

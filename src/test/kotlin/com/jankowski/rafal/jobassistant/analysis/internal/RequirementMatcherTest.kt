@@ -2,6 +2,7 @@ package com.jankowski.rafal.jobassistant.analysis.internal
 
 import com.jankowski.rafal.jobassistant.analysis.Importance
 import com.jankowski.rafal.jobassistant.analysis.RequirementStatus
+import com.jankowski.rafal.jobassistant.catalog.SkillCategory
 import com.jankowski.rafal.jobassistant.catalog.SkillCoverage
 import com.jankowski.rafal.jobassistant.profile.LanguageLevel
 import org.junit.jupiter.api.Test
@@ -24,7 +25,8 @@ class RequirementMatcherTest {
         importance: Importance = Importance.MUST_HAVE,
         name: String = "skill-$skillId",
         rawText: String = "needs $name",
-    ) = ResolvedRequirement(rawText, skillId, skillId?.let { name }, importance, rationale = null)
+        category: SkillCategory? = SkillCategory.LANGUAGE,
+    ) = ResolvedRequirement(rawText, skillId, skillId?.let { name }, importance, null, category)
 
     private val coverage = SkillCoverage(
         held = setOf(kotlin),
@@ -183,5 +185,68 @@ class RequirementMatcherTest {
         val result = languages("Polish" to LanguageLevel.C2, held = mapOf("Polish" to LanguageLevel.NATIVE))
 
         assertEquals(RequirementStatus.MET, result.single().status)
+    }
+
+    // --------------------------------------------------- soft skills
+
+    private val communication = 5L
+
+    /**
+     * The point of the change: a soft must-have the profile does not hold must not drag down a
+     * number that claims to say how *technically* qualified someone is. No catalog lookup can tell
+     * you whether a person communicates well.
+     */
+    @Test
+    fun `a missing soft must-have does not move the score`() {
+        val technicalOnly = match(requirement(kotlin))
+        val withSoftGap = match(
+            requirement(kotlin),
+            requirement(communication, name = "Communication", category = SkillCategory.SOFT),
+        )
+
+        assertEquals(RequirementMatcher.score(technicalOnly), RequirementMatcher.score(withSoftGap))
+        assertEquals(1.0, RequirementMatcher.score(withSoftGap))
+    }
+
+    /** Excluded from the score, but never hidden: the offer really did ask for it. */
+    @Test
+    fun `a soft requirement is still reported with its real status`() {
+        val result = match(
+            requirement(communication, name = "Communication", category = SkillCategory.SOFT),
+        ).single()
+
+        assertEquals(RequirementStatus.MISSING, result.status)
+        assertEquals("Communication", result.skillName)
+        assertEquals(SkillCategory.SOFT, result.category)
+    }
+
+    /**
+     * An offer asking only for soft skills scores null rather than 0.0. Zero would read as "you
+     * match nothing", which is a claim about the candidate the data cannot support.
+     */
+    @Test
+    fun `an all-soft offer has no score rather than a zero`() {
+        val result = match(
+            requirement(communication, name = "Communication", category = SkillCategory.SOFT),
+        )
+
+        assertNull(RequirementMatcher.score(result))
+    }
+
+    /** The explanation and the score must be computed over the same list, or they disagree. */
+    @Test
+    fun `scoreable is the denominator the score actually uses`() {
+        val matched = match(
+            requirement(kotlin),
+            requirement(kubernetes),
+            requirement(communication, name = "Communication", category = SkillCategory.SOFT),
+            requirement(null, name = "Unplaceable"),
+            requirement(springBoot, importance = Importance.NICE_TO_HAVE),
+        )
+
+        val scoreable = RequirementMatcher.scoreable(matched)
+
+        assertEquals(listOf("skill-1", "skill-3"), scoreable.map { it.skillName })
+        assertEquals(0.5, RequirementMatcher.score(matched))
     }
 }

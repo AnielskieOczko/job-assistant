@@ -190,6 +190,12 @@ export interface RequirementFinding {
   /** Which profile record backs a MET/PARTIAL verdict. Null when nothing does. */
   evidence: string | null
   rationale: string | null
+  /**
+   * Catalog category, or null when the phrasing resolved to nothing.
+   *
+   * Under `V2_SOFT_EXCLUDED` a `SOFT` finding is reported but sits outside the score.
+   */
+  category: SkillCategory | null
 }
 
 export interface LanguageFinding {
@@ -228,13 +234,27 @@ export interface AnalysisReport {
    * `CandidateProfile.revision` the findings have been overtaken by a profile edit.
    */
   profileRevision: number | null
+  /**
+   * Which rule produced `matchScore`.
+   *
+   * Versioned rather than migrated: old analyses keep `V1_ALL_CATEGORIES` and explain themselves in
+   * those terms, because the score is stored while its explanation is recomputed. Do not apply the
+   * current rule to an old report.
+   */
+  scoringRule: ScoringRule
   /** Computed getters. The UI derives the must-have split itself; see `mustHaves()` below. */
   mustHaves?: RequirementFinding[]
   niceToHaves?: RequirementFinding[]
   missingMustHaves?: RequirementFinding[]
+  /** Requirements shown in the report but deliberately left out of the score. Empty under V1. */
+  reportedNotScored?: RequirementFinding[]
   /** How the score was arrived at, so the number is never a black box. Print it verbatim. */
   scoreExplanation?: string
 }
+
+/** How an analysis's score was computed. See `AnalysisReport.scoringRule`. */
+export const SCORING_RULES = ['V1_ALL_CATEGORIES', 'V2_SOFT_EXCLUDED'] as const
+export type ScoringRule = (typeof SCORING_RULES)[number]
 
 /** Response of `POST /api/offers/{id}/analyses`. Built as a raw map server-side. */
 export interface StartedAnalysis {
@@ -248,6 +268,8 @@ export interface AggregateGapEntry {
   demandCount: number
   gapCount: number
   mustHaveGapCount: number
+  /** Lets this view separate a soft-skill row from a scored technical gap. */
+  category: SkillCategory | null
   /** Computed getter: gapCount / demandCount. */
   gapRatio?: number
 }

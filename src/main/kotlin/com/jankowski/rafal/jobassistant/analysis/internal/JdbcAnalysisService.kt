@@ -5,11 +5,13 @@ import com.jankowski.rafal.jobassistant.analysis.AggregateGapReport
 import com.jankowski.rafal.jobassistant.analysis.AnalysisReport
 import com.jankowski.rafal.jobassistant.analysis.AnalysisService
 import com.jankowski.rafal.jobassistant.analysis.AnalysisState
+import com.jankowski.rafal.jobassistant.analysis.ScoringRule
 import com.jankowski.rafal.jobassistant.analysis.Importance
 import com.jankowski.rafal.jobassistant.analysis.LanguageFinding
 import com.jankowski.rafal.jobassistant.analysis.LearningPlanItem
 import com.jankowski.rafal.jobassistant.analysis.RequirementFinding
 import com.jankowski.rafal.jobassistant.analysis.RequirementStatus
+import com.jankowski.rafal.jobassistant.catalog.CanonicalSkill
 import com.jankowski.rafal.jobassistant.catalog.SkillCatalog
 import com.jankowski.rafal.jobassistant.offer.ApplicationStatus
 import com.jankowski.rafal.jobassistant.offer.OfferService
@@ -76,10 +78,10 @@ internal class JdbcAnalysisService(
 
     private fun AnalysisRow.toReport(): AnalysisReport {
         val analysisId = requireNotNull(id)
-        val skillNames = mutableMapOf<Long, String?>()
-        fun nameOf(skillId: Long?) = skillId?.let {
-            skillNames.getOrPut(it) { catalog.findById(it)?.name }
-        }
+        // Memoised whole rather than by name: the category is needed too, and a second lookup keyed
+        // the same way would double the queries to say something the first answer already knew.
+        val skills = mutableMapOf<Long, CanonicalSkill?>()
+        fun skillOf(skillId: Long?) = skillId?.let { skills.getOrPut(it) { catalog.findById(it) } }
 
         return AnalysisReport(
             id = analysisId,
@@ -94,11 +96,12 @@ internal class JdbcAnalysisService(
                     id = requireNotNull(it.id),
                     rawText = it.rawText,
                     skillId = it.canonicalSkillId,
-                    skillName = nameOf(it.canonicalSkillId),
+                    skillName = skillOf(it.canonicalSkillId)?.name,
                     importance = Importance.valueOf(it.importance),
                     status = RequirementStatus.valueOf(it.status),
                     evidence = it.evidence,
                     rationale = it.rationale,
+                    category = skillOf(it.canonicalSkillId)?.category,
                 )
             },
             languageRequirements = languageRequirements.findForAnalysis(analysisId).map {
@@ -122,6 +125,10 @@ internal class JdbcAnalysisService(
             createdAt = createdAt,
             completedAt = completedAt,
             profileRevision = profileRevision,
+            // Unknown values fall back to V1 rather than the current rule: a row we cannot read
+            // was certainly not scored by a rule added after it.
+            scoringRule = runCatching { ScoringRule.valueOf(scoringRule) }
+                .getOrDefault(ScoringRule.V1_ALL_CATEGORIES),
         )
     }
 
@@ -157,12 +164,14 @@ internal class JdbcAnalysisService(
             .param("profileId", resolved)
             .query { rs, _ ->
                 val skillId = rs.getLong("skill_id")
+                val skill = catalog.findById(skillId)
                 AggregateGapEntry(
                     skillId = skillId,
-                    skillName = catalog.findById(skillId)?.name ?: "Unknown skill $skillId",
+                    skillName = skill?.name ?: "Unknown skill $skillId",
                     demandCount = rs.getInt("demand_count"),
                     gapCount = rs.getInt("gap_count"),
                     mustHaveGapCount = rs.getInt("must_have_gap_count"),
+                    category = skill?.category,
                 )
             }
             .list()

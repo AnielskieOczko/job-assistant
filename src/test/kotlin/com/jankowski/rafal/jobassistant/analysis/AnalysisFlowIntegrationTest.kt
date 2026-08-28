@@ -222,7 +222,22 @@ internal class AnalysisFlowIntegrationTest(
 
         // Kotlin MET, Spring Boot MET, Kubernetes MISSING -> 2/3. Quarkus is nice-to-have.
         assertEquals(0.6667, assertNotNull(report.matchScore), 0.0001)
-        assertEquals("(2 met + 0.5 x 0 partial) / 3 must-have requirements", report.scoreExplanation)
+        assertEquals("(2 met + 0.5 x 0 partial) / 3 technical must-have requirements", report.scoreExplanation)
+    }
+
+    /**
+     * A fresh run records the rule it was scored under. Without the stamp, a later rule change
+     * would silently reinterpret this score: the number is stored while its explanation is
+     * recomputed from the requirements.
+     */
+    @Test
+    fun `a new analysis is stamped with the current scoring rule`() {
+        scriptHappyPath()
+
+        val report = runAnalysis()
+
+        assertEquals(ScoringRule.CURRENT, report.scoringRule)
+        assertEquals(ScoringRule.V2_SOFT_EXCLUDED, report.scoringRule)
     }
 
     @Test

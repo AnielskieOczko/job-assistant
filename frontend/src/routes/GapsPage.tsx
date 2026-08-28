@@ -1,7 +1,9 @@
+import { Fragment } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { TrendingDown } from 'lucide-react'
 import { getAggregateGaps } from '@/api/analyses'
 import { keys } from '@/api/keys'
+import type { AggregateGapEntry } from '@/api/types'
 import { ApiErrorAlert } from '@/components/ApiErrorAlert'
 import { EmptyState } from '@/components/EmptyState'
 import { PageHeader } from '@/components/PageHeader'
@@ -32,7 +34,17 @@ export function GapsPage() {
   if (gaps.isError) return <ApiErrorAlert error={gaps.error} />
   if (!gaps.data) return <Skeleton className="h-64 w-full" />
 
-  const rows = [...gaps.data.entries].sort((a, b) => b.mustHaveGapCount - a.mustHaveGapCount)
+  /*
+    Soft skills are reported but not scored, so they must not sit in the same ranked list as
+    technical gaps — a "Communication" row above Kubernetes would suggest studying something no
+    course fixes, and the match score already excludes it. Same table, separated and labelled,
+    rather than hidden: the offers really did ask for these.
+  */
+  const byMustHaveGap = (a: AggregateGapEntry, b: AggregateGapEntry) =>
+    b.mustHaveGapCount - a.mustHaveGapCount
+  const technical = gaps.data.entries.filter((e) => e.category !== 'SOFT').sort(byMustHaveGap)
+  const soft = gaps.data.entries.filter((e) => e.category === 'SOFT').sort(byMustHaveGap)
+  const rows = [...technical, ...soft]
 
   return (
     <>
@@ -62,12 +74,22 @@ export function GapsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.map((entry) => {
+              {rows.map((entry, index) => {
                 const ratio = entry.gapRatio ?? (
                   entry.demandCount === 0 ? 0 : entry.gapCount / entry.demandCount
                 )
+                const startsSoftSection = entry.category === 'SOFT' && index === technical.length
                 return (
-                  <TableRow key={entry.skillId}>
+                  <Fragment key={entry.skillId}>
+                    {startsSoftSection ? (
+                      <TableRow className="hover:bg-transparent">
+                        <TableCell colSpan={5} className="pt-6 text-xs text-muted-foreground">
+                          Soft skills — asked for by these offers, but left out of the match score.
+                          No catalog lookup can tell you whether you communicate well.
+                        </TableCell>
+                      </TableRow>
+                    ) : null}
+                  <TableRow>
                     <TableCell className="font-medium">{entry.skillName}</TableCell>
                     <TableCell className="text-right text-muted-foreground">
                       {entry.demandCount}
@@ -92,6 +114,7 @@ export function GapsPage() {
                       </div>
                     </TableCell>
                   </TableRow>
+                  </Fragment>
                 )
               })}
             </TableBody>
