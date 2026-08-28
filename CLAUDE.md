@@ -219,7 +219,16 @@ own right and stand alongside `analysis` and `document`.
 
 Everything downstream refers to `canonical_skill.id`, never free text. `SkillNormalizer` collapses
 spellings onto a lookup key (`React.js`, `react js`, `REACTJS` → `reactjs`), expanding `+` and `#`
-first so `C`, `C++` and `C#` stay distinct. The seed migration precomputes the same values;
+first so `C`, `C++` and `C#` stay distinct.
+
+**Accented letters are folded onto their base letter, not deleted**, so a Polish alias can key the
+same as its unaccented spelling — offers come from a Polish board, so this is the difference between
+`Współpraca` resolving and never matching anything. The final step is still an ASCII allowlist, so
+folding has to happen first. **`ł` is the trap**: `ą ć ę ń ó ś ź ż` all decompose under NFD and
+survive the filter as their base letter, but `ł` (U+0142) has no decomposition at all, so NFD alone
+looks correct and silently deletes it. `SkillNormalizer.NON_DECOMPOSING` is the explicit table that
+covers it. The rule is provably unchanged on ASCII input, which is why the seed's 362 hand-written
+`normalized_alias` values and the drift test that guards them needed no edit. The seed migration precomputes the same values;
 `SkillCatalogIntegrationTest` fails if the two ever drift.
 
 Terms the extractor can't place go to `unmatched_term` for human review. **Do not let code create
