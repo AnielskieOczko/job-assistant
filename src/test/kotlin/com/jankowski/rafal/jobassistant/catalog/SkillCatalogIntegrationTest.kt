@@ -138,6 +138,72 @@ class SkillCatalogIntegrationTest(
         assertEquals(2, recorded.occurrences)
     }
 
+    /**
+     * The ten Polish terms measured in the corpus, each resolving to an English canonical name.
+     *
+     * This is what V15's fold was for: before it, "Dokładność" keyed as `dokadno` and
+     * "Praca zespołowa" as `pracazespoowa`, because l-stroke has no NFD decomposition and the ASCII
+     * filter deleted it outright.
+     */
+    @Test
+    fun `the measured Polish terms resolve to English catalog entries`() {
+        val expected = mapOf(
+            "Komunikacja" to "Communication",
+            "Analiza wymagań" to "Requirements Analysis",
+            "Zarządzanie projektem" to "Project Management",
+            "Myślenie analityczne" to "Problem Solving",
+            "Analiza danych" to "Data Analysis",
+            "Zarządzanie interesariuszami" to "Stakeholder Management",
+            "Rozwiązywanie problemów" to "Problem Solving",
+            "Dokładność" to "Attention to Detail",
+            "Praca zespołowa" to "Teamwork",
+            "Przywództwo" to "Leadership",
+        )
+
+        expected.forEach { (term, skill) ->
+            assertEquals(skill, catalog.resolve(term)?.name, "'$term' should resolve to $skill")
+        }
+    }
+
+    /** An alias is language-agnostic, so the unaccented spelling has to key the same way. */
+    @Test
+    fun `an unaccented spelling of a Polish alias resolves too`() {
+        assertEquals(catalog.resolve("Dokładność")?.id, catalog.resolve("Dokladnosc")?.id)
+        assertEquals(catalog.resolve("Praca zespołowa")?.id, catalog.resolve("Praca zespolowa")?.id)
+    }
+
+    /**
+     * Left in the queue on purpose. These are collapses rather than translations - team management
+     * is not quite Leadership and autonomy is not quite Ownership - so a migration author guessing
+     * is a worse decision surface than a reviewer with a suggestion in front of them.
+     */
+    @Test
+    fun `terms that are collapses rather than translations are not seeded`() {
+        assertNull(catalog.resolve("Zarządzanie zespołem"))
+        assertNull(catalog.resolve("Samodzielność"))
+    }
+
+    @Test
+    fun `the broadened catalog covers the corpus vocabulary that had nowhere to go`() {
+        listOf(
+            "Test automation", "Manual testing", "Test cases", "API testing",
+            "Requirements Analysis", "Project management", "BPMN", "UML", "ERP",
+        ).forEach { assertNotNull(catalog.resolve(it), "'$it' should now resolve") }
+    }
+
+    /**
+     * The testing and analysis vocabulary is PRACTICE, not TESTING, because CvInvariant scans
+     * TESTING and a tailored CV describing honest work as "wrote test cases" must not be rejected
+     * as a fabricated claim. Named products stay TOOL, where a false claim should be caught.
+     */
+    @Test
+    fun `activity vocabulary is not put in a category CvInvariant scans`() {
+        listOf("Test Cases", "Manual Testing", "Test Automation", "Bug Reporting").forEach {
+            assertEquals(SkillCategory.PRACTICE, catalog.resolve(it)?.category, "'$it' category")
+        }
+        assertEquals(SkillCategory.TOOL, catalog.resolve("TestRail")?.category)
+    }
+
     @Test
     fun `a misspelling suggests the skill it nearly is`() {
         val suggestions = catalog.suggest("Kubernets")
