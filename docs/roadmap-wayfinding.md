@@ -23,11 +23,12 @@ ticket, claims it, and resolves it. Resolve **one ticket per session**, except r
 which can be run in parallel because they only gather facts.
 
 **All three research tickets are now closed** and their findings are checked in under
-`docs/research/`; so are the CV prototype and the CI/CD grilling. The two remaining leaves are HITL
-— one grilling and one manual task — so a session needs Rafal in the loop for each. An agent that
-answers its own grilling questions has broken the method, and the parallelisable work is gone.
+`docs/research/`; so are the CV prototype, the CI/CD grilling and the market-dashboard grilling.
+**One leaf remains: [18](https://github.com/AnielskieOczko/job-assistant/issues/18)**, and it is a
+manual task no agent can do — it needs a human to subscribe to a job alert and read the delivered
+email. The parallelisable AFK work is gone.
 
-To pick a ticket yourself, pass it: `/mattpocock-skills:wayfinder 9 --ticket 13`.
+To pick a ticket yourself, pass it: `/mattpocock-skills:wayfinder 9 --ticket 18`.
 
 To see what is takeable right now:
 
@@ -146,6 +147,27 @@ under **`docs/research/`**.
   strongest honest evidence, 404s unpredictably on repositories with equivalent manifests, so the
   reliable path is parsing `pom.xml` / `package.json` locally.
 
+- **[What should the offer market dashboard answer?](https://github.com/AnielskieOczko/job-assistant/issues/13)**
+  → `docs/research/13-offer-market-dashboard.md`. It answers **what a skill gap is worth** — which
+  missing skill most increases the number of offers you would clear, and what those offers pay.
+  Ticket 10 overtook the ticket's own premise: salary is not scarce prose to be extracted, it arrives
+  normalised on 500 of 500 solid.jobs offers, so the two hardest sub-questions are answered by the
+  source rather than by a model. **The finding ticket 15 must carry: market intelligence is
+  downstream of automated ingestion, not a peer of it** — the market half cannot be built honestly on
+  the few dozen offers Rafal pasted, because a statistic over those describes his taste. Ingested
+  offers go in their own `market_offer` corpus, not into `job_offer`, whose `application` lifecycle
+  row would multiply by 1,491. **The market measure is deliberately not `matchScore`**: solid.jobs
+  carries no must-have/nice-to-have distinction, so `RequirementMatcher.score()` would return `null`
+  on every offer; the market side computes plain `SkillCoverage` coverage under a different name, and
+  the new module therefore depends on `catalog` and `profile` only, never on `analysis`. Required
+  skill *level* — which Rafal asked for by name — stays descriptive and out of the deterministic
+  diff, because `Proficiency` is already stored and already ignored, and switching it on would change
+  what every historical `matchScore` means. A third honesty rule falls out of it, the mirror of
+  ticket 32's: **a claim about the market carries its denominator, its coverage and its window, or it
+  does not render** — n ≥ 30 offers, 80% field coverage, 5 offers before a per-skill premium. And
+  `dataviz` overturned the assumed shape: 30–200 meaningful skills is a **table**, not charts, so the
+  page is a hero figure, a KPI row, exactly one emphasis bar chart, and the priced-gap table.
+
 - **[What should a tailored CV look like?](https://github.com/AnielskieOczko/job-assistant/issues/14)**
   → prototypes on branch `prototype/cv-layouts`, under `docs/prototypes/cv/`. **Register** wins:
   single column, skills sorted into `SkillCategory` instead of one undifferentiated chip run, dates
@@ -182,21 +204,17 @@ under **`docs/research/`**.
 | [10](https://github.com/AnielskieOczko/job-assistant/issues/10) | Which job-offer sources can we ingest without scraping? | research | **closed** |
 | [11](https://github.com/AnielskieOczko/job-assistant/issues/11) | What does a model call actually cost, and can we know it per call? | research | **closed** |
 | [12](https://github.com/AnielskieOczko/job-assistant/issues/12) | What can GitHub tell us about a repository? | research | **closed** |
-| [13](https://github.com/AnielskieOczko/job-assistant/issues/13) | What should the offer market dashboard answer? | grilling | open |
+| [13](https://github.com/AnielskieOczko/job-assistant/issues/13) | What should the offer market dashboard answer? | grilling | **closed** |
 | [14](https://github.com/AnielskieOczko/job-assistant/issues/14) | What should a tailored CV look like? | prototype | **closed** |
 | [16](https://github.com/AnielskieOczko/job-assistant/issues/16) | What should CI/CD actually do, and does CD have a target? | grilling | **closed** |
 | [18](https://github.com/AnielskieOczko/job-assistant/issues/18) | Do the Polish boards' alert emails carry the full offer text? | task | open |
-| [15](https://github.com/AnielskieOczko/job-assistant/issues/15) | Rank and sequence the roadmap | grilling | blocked by 13, 18 |
+| [15](https://github.com/AnielskieOczko/job-assistant/issues/15) | Rank and sequence the roadmap | grilling | blocked by 18 |
 | [19](https://github.com/AnielskieOczko/job-assistant/issues/19) | How does a GitHub repository become a profile Project? | grilling | blocked by 15 |
 
-The two open leaf tickets are independent and can run in either order. **Rank and sequence the
-roadmap** is deliberately last: ranking the dashboard before its scope is fixed, or ingestion before
-the email path is settled, would be ranking a guess.
-
-Both remaining leaves are **HITL** — one grilling and one manual task. A session cannot resolve
-either alone, because an agent that answers its own grilling questions has broken the method, and
-[18](https://github.com/AnielskieOczko/job-assistant/issues/18) needs a human to subscribe to a job
-alert and read the delivered email. The parallelisable AFK work is done.
+**Rank and sequence the roadmap** is deliberately last: ranking ingestion before the email path is
+settled would be ranking a guess. It is now gated only by
+[18](https://github.com/AnielskieOczko/job-assistant/issues/18), the sole remaining leaf, which needs
+a human to subscribe to a job alert and read the delivered email. No AFK work is left on this map.
 
 ## Not yet specified
 
