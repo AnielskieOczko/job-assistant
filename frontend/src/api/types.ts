@@ -43,7 +43,10 @@ export type UnmatchedTermStatus = (typeof UNMATCHED_TERM_STATUSES)[number]
 export interface UnmatchedTerm {
   id: number
   term: string
+  /** Times seen in offers you analysed. This is what the review queue is ranked by. */
   occurrences: number
+  /** Times seen in the ingested market corpus, counted separately so volume cannot outrank (1). */
+  marketOccurrences: number
   firstSeenAt: string
   lastSeenAt: string
   status: UnmatchedTermStatus

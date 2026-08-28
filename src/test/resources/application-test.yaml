@@ -1,5 +1,9 @@
 # Datasource is supplied by the Testcontainers @ServiceConnection, not configured here.
 job-assistant:
+  market:
+    # No scheduled poll under test. The client is stubbed too (StubMarketConfiguration), so this is
+    # belt and braces rather than the guarantee: nothing in the suite may reach a third party.
+    enabled: false
   llm:
     profiles:
       stub:

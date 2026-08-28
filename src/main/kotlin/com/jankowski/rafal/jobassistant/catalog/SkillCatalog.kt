@@ -30,6 +30,17 @@ interface SkillCatalog {
      */
     fun recordUnmatched(term: String)
 
+    /**
+     * Records terms seen while ingesting the market corpus, incrementing a *separate* counter from
+     * [recordUnmatched].
+     *
+     * A batch rather than a single term because volume is the point: one poll of a division yields
+     * hundreds of distinct names, many of them Polish soft skills the catalog will never carry.
+     * Duplicates within [terms] count once -- the caller is reporting which terms a run saw, not
+     * how often it saw them.
+     */
+    fun recordUnmatchedFromMarket(terms: Collection<String>)
+
     fun pendingUnmatchedTerms(limit: Int = 100): List<UnmatchedTerm>
 
     /** Approving a term adds it as an alias of [skillId], so it resolves from then on. */

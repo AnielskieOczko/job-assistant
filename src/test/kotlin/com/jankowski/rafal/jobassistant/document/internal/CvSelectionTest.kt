@@ -38,6 +38,7 @@ class CvSelectionTest {
         override fun resolveAll(terms: Collection<String>) = terms.associateWith { resolve(it) }
         override fun coverageFor(heldSkillIds: Set<Long>): SkillCoverage = unused()
         override fun recordUnmatched(term: String) = unused()
+        override fun recordUnmatchedFromMarket(terms: Collection<String>) = unused()
         override fun pendingUnmatchedTerms(limit: Int): List<UnmatchedTerm> = unused()
         override fun approveUnmatchedTerm(termId: Long, skillId: Long): CanonicalSkill = unused()
         override fun rejectUnmatchedTerm(termId: Long) = unused()

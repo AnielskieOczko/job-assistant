@@ -1,0 +1,260 @@
+{
+  "jobs": [
+    {
+      "jobOfferKey": "60c004b0-38d1-4646-8b3f-e074b3336df6",
+      "title": "Data Engineer",
+      "division": "IT",
+      "category": "DataScience",
+      "subCategory": "DataScience",
+      "company": "Be in IT",
+      "companyLogoUrl": "https://cdn.solid.jobs/companies/logos/cc31225f695e82049ca7d79a0f95ada11b12a1c5378bce63e65a83cf04ec8c58.png",
+      "salary": {
+        "from": 23500.0,
+        "to": 28600.0,
+        "currency": "PLN",
+        "period": "Month",
+        "employmentType": "B2B"
+      },
+      "contractTime": "full_time",
+      "locations": [
+        "Wrocław"
+      ],
+      "benefits": [
+        "Pakiet medyczny",
+        "Pakiet sportowy"
+      ],
+      "isRemote": false,
+      "isHybrid": false,
+      "url": "https://solid.jobs/o/nd5wkip6/job-assistant",
+      "experienceLevel": "Senior",
+      "skills": [
+        {
+          "level": "Advanced",
+          "name": "Python"
+        },
+        {
+          "level": "Advanced",
+          "name": "Spark"
+        },
+        {
+          "level": "Advanced",
+          "name": "Databricks"
+        },
+        {
+          "level": "Advanced",
+          "name": "SQL"
+        },
+        {
+          "level": "NiceToHave",
+          "name": "Azure"
+        }
+      ],
+      "languages": [
+        {
+          "level": "Expert",
+          "name": "Polski"
+        },
+        {
+          "level": "Advanced",
+          "name": "Angielski"
+        }
+      ],
+      "description": "<div class=\"well job - description\"><p><strong>Czym będziesz się zajmować?</strong><br><br><ul><li><span style=\"background-color: rgb(255, 255, 255); color: inherit;\">Długofalowa współpraca z międzynarodową, topową firmą consultingową, świadcząca usługi IT dla dużych i średnich firm z różnorodnych sektorów. Współpraca w ramach strategicznej inicjatywy Data &amp; AI, wspierającej wiodącą organizacj",
+      "validFrom": "2026-08-27T12:39:50.9192975+02:00",
+      "validTo": "2026-09-27T12:39:50.9192975+02:00",
+      "updatedAt": "2026-08-27T12:38:14.6652019+02:00"
+    },
+    {
+      "jobOfferKey": "976c7525-d546-46e0-822e-2e080f774df1",
+      "title": "Senior Engineering Manager",
+      "division": "IT",
+      "category": "ItManager",
+      "subCategory": "OtherItManager",
+      "company": "Remitly Polska",
+      "companyLogoUrl": "https://cdn.solid.jobs/companies/logos/746ddede5ded28ee828d254ce6699cf88f2414d106920a13d513473f3117c329.png",
+      "salary": {
+        "from": 34000.0,
+        "to": 38500.0,
+        "currency": "PLN",
+        "period": "Month",
+        "employmentType": "UoP"
+      },
+      "contractTime": "full_time",
+      "locations": [
+        "Kraków"
+      ],
+      "benefits": [
+        "Pakiet medyczny",
+        "Ubezpieczenie"
+      ],
+      "isRemote": false,
+      "isHybrid": false,
+      "url": "https://solid.jobs/o/wqd3zb2f/job-assistant",
+      "experienceLevel": "Senior",
+      "skills": [
+        {
+          "level": "Expert",
+          "name": "Zarządzanie zespołem"
+        },
+        {
+          "level": "Advanced",
+          "name": "Java"
+        },
+        {
+          "level": "Advanced",
+          "name": "AWS"
+        },
+        {
+          "level": "Advanced",
+          "name": "Distributed systems"
+        },
+        {
+          "level": "Advanced",
+          "name": "Mentoring"
+        },
+        {
+          "level": "Advanced",
+          "name": "Zarządzanie interesariuszami"
+        },
+        {
+          "level": "Advanced",
+          "name": "Zarządzanie projektem"
+        },
+        {
+          "level": "Basic",
+          "name": "Kotlin"
+        },
+        {
+          "level": "Basic",
+          "name": "Golang"
+        },
+        {
+          "level": "Basic",
+          "name": "Rekrutacja"
+        }
+      ],
+      "languages": [
+        {
+          "level": "Expert",
+          "name": "Polski"
+        },
+        {
+          "level": "Advanced",
+          "name": "Angielski"
+        }
+      ],
+      "description": "<div class=\"well job - description\"><p><strong>Czym będziesz się zajmować?</strong><br><br><ul><li>Own all aspects of people management for a team of 6-12 engineers - hiring, team structure, performance management, and career development up to senior and staff levels</li><li>Set and drive multi-quarter technical and delivery strategy in partnership with product and platform leadership</li><li>Lead",
+      "validFrom": "2026-08-28T09:22:56.9762714+02:00",
+      "validTo": "2026-09-28T09:22:56.9762714+02:00",
+      "updatedAt": "2026-08-27T16:39:07.835201+02:00"
+    },
+    {
+      "jobOfferKey": "08f824da-0cb2-4a3c-9edb-c1b0bdab68b7",
+      "title": "Java Developer (Angular)",
+      "division": "IT",
+      "category": "Developer",
+      "subCategory": "Java",
+      "company": "ITFS",
+      "companyLogoUrl": "https://cdn.solid.jobs/companies/logos/341ccccdb6ad4b22a597191f5ccb5d6c.png",
+      "salary": {
+        "from": 23500.0,
+        "to": 26900.0,
+        "currency": "PLN",
+        "period": "Month",
+        "employmentType": "B2B"
+      },
+      "contractTime": "full_time",
+      "locations": [
+        "Warszawa"
+      ],
+      "benefits": [
+        "Pakiet medyczny",
+        "Pakiet sportowy"
+      ],
+      "isRemote": true,
+      "isHybrid": false,
+      "url": "https://solid.jobs/o/n72k07it/job-assistant",
+      "experienceLevel": "Regular",
+      "skills": [],
+      "languages": [
+        {
+          "level": "Expert",
+          "name": "Polski"
+        },
+        {
+          "level": "Advanced",
+          "name": "Angielski"
+        }
+      ],
+      "description": "<div class=\"well job - description\"><p><strong>Czym będziesz się zajmować?</strong><br><br><span><span style=\"background-color: rgb(255, 255, 255); color: rgb(84, 89, 94);\">Charakterystyka oferty:</span></span><ul><li><strong style=\"background-color: rgb(255, 255, 255); color: rgb(84, 89, 94);\">Miejsce pracy: </strong><span style=\"background-color: rgb(255, 255, 255); color: rgb(84, 89, 94);\">hybr",
+      "validFrom": "2026-08-27T12:39:54.7469851+02:00",
+      "validTo": "2026-09-27T12:39:54.7469851+02:00",
+      "updatedAt": "2026-08-27T12:26:25.0199006+02:00"
+    },
+    {
+      "jobOfferKey": "2db6933c-a51b-4a78-bed4-1aab94de84a8",
+      "title": "Cloud Security Architect",
+      "division": "IT",
+      "category": "Security",
+      "subCategory": "Security",
+      "company": "apreel",
+      "companyLogoUrl": "https://cdn.solid.jobs/companies/logos/dbba2b77d89141ad9a6079daff76a25d",
+      "salary": {
+        "from": 25200.0,
+        "to": 37800.0,
+        "currency": "PLN",
+        "period": "Month",
+        "employmentType": "B2B"
+      },
+      "contractTime": "full_time",
+      "locations": [
+        "Warszawa"
+      ],
+      "benefits": [],
+      "isRemote": true,
+      "isHybrid": false,
+      "url": "https://solid.jobs/o/wlan0wc7/job-assistant",
+      "experienceLevel": "Regular",
+      "skills": [
+        {
+          "level": "Advanced",
+          "name": "Azure"
+        },
+        {
+          "level": "Advanced",
+          "name": "Cybersecurity"
+        },
+        {
+          "level": "Advanced",
+          "name": "Cloud"
+        },
+        {
+          "level": "Advanced",
+          "name": "Security"
+        },
+        {
+          "level": "Advanced",
+          "name": "Cloud security"
+        }
+      ],
+      "languages": [
+        {
+          "level": "Expert",
+          "name": "Polski"
+        },
+        {
+          "level": "Advanced",
+          "name": "Angielski"
+        }
+      ],
+      "description": "<div class=\"well job - description\"><p><strong>Czym będziesz się zajmować?</strong><br><br><span>Zakres obowiązków:</span><ul><li>Projektowanie i wdrażanie bezpiecznych wzorców architektury, definiowanie standardów bezpieczeństwa dla środowisk chmurowych oraz hybrydowych</li><li>Ocena i analiza zagrożeń technicznych aspektów implementacji rozwiązań chmurowych tj. Azure, Third-party SaaS</li><li>An",
+      "validFrom": "2026-08-28T09:28:45.2929012+02:00",
+      "validTo": "2026-09-28T09:28:45.2929012+02:00",
+      "updatedAt": "2026-08-28T09:28:38.1850788+02:00"
+    }
+  ],
+  "pageIndex": 0,
+  "pageSize": 4,
+  "totalCount": 4,
+  "totalPages": 1
+}
