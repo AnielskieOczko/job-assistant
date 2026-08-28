@@ -1,5 +1,6 @@
 package com.jankowski.rafal.jobassistant.triage
 
+import com.jankowski.rafal.jobassistant.catalog.SkillSuggestion
 import java.time.Instant
 
 /**
@@ -21,6 +22,14 @@ data class TriageEntry(
     val inScopeDemand: Int,
     val firstSeenAt: Instant,
     val lastSeenAt: Instant,
+    /**
+     * Catalog entries this term might mean, best first, or empty when nothing scored well enough.
+     *
+     * Computed on read rather than stored, because it is a pure function of the term and the
+     * catalog: storing it would mean a suggestion that survives the skill it points at being
+     * renamed. Deliberately not a decision - the reviewer still picks and still clicks approve.
+     */
+    val suggestions: List<SkillSuggestion> = emptyList(),
 )
 
 /**

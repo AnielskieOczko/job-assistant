@@ -57,6 +57,21 @@ export interface UnmatchedTerm {
 export const TRIAGE_RANKINGS = ['SCOPE', 'CORPUS'] as const
 export type TriageRanking = (typeof TRIAGE_RANKINGS)[number]
 
+/**
+ * A catalog entry a queued term might mean.
+ *
+ * A candidate for you, never an answer: nothing resolves until you pick one and click Approve.
+ */
+export interface SkillSuggestion {
+  skillId: number
+  skillName: string
+  category: SkillCategory
+  /** The catalog spelling that matched — often an alias, which is the explanation for the chip. */
+  matchedAlias: string
+  /** 0-1, ordering only. Not a probability, and not confidence. */
+  score: number
+}
+
 export interface TriageEntry {
   termId: number
   term: string
@@ -68,6 +83,8 @@ export interface TriageEntry {
   inScopeDemand: number
   firstSeenAt: string
   lastSeenAt: string
+  /** Best first, possibly empty. Clicking one fills the picker; it never submits. */
+  suggestions: SkillSuggestion[]
 }
 
 export interface TriageQueue {

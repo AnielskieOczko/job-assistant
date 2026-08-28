@@ -50,8 +50,13 @@ internal class TriageQueueService(
         // cut the singleton tail.
         val matching = entries.filter { it.occurrences + it.marketOccurrences >= minOccurrences }
 
+        // Suggested only for the page actually returned. Scoring all 1,500 queued terms to show a
+        // hundred would be the work of the whole queue thrown away every request.
+        val page = matching.sortedWith(comparatorFor(ranking)).take(limit)
+        val suggestions = catalog.suggestAll(page.map { it.term })
+
         return TriageQueue(
-            entries = matching.sortedWith(comparatorFor(ranking)).take(limit),
+            entries = page.map { it.copy(suggestions = suggestions[it.term] ?: emptyList()) },
             matching = matching.size,
             pending = entries.size,
             minOccurrences = minOccurrences,

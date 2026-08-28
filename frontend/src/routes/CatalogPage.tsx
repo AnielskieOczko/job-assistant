@@ -214,6 +214,30 @@ function ReviewQueue() {
                       onChange={(skillId) => setSelection((s) => ({ ...s, [term.termId]: skillId }))}
                       className="w-44"
                     />
+                    {/*
+                      Chips fill the picker and stop there — they never approve. A suggestion is
+                      string similarity, not a judgement, and the review queue exists precisely so
+                      that nothing enters the catalog without someone deciding. One extra click is
+                      the whole safeguard.
+                    */}
+                    {term.suggestions.map((suggestion) => (
+                      <Button
+                        key={suggestion.skillId}
+                        size="sm"
+                        variant="secondary"
+                        className="h-8 font-normal"
+                        title={
+                          suggestion.matchedAlias === suggestion.skillName
+                            ? 'Suggestion — fills the picker, does not approve'
+                            : `Matched on “${suggestion.matchedAlias}” — fills the picker, does not approve`
+                        }
+                        onClick={() =>
+                          setSelection((s) => ({ ...s, [term.termId]: suggestion.skillId }))
+                        }
+                      >
+                        {suggestion.skillName}
+                      </Button>
+                    ))}
                     <Button
                       size="sm"
                       disabled={selection[term.termId] === undefined || approve.isPending}

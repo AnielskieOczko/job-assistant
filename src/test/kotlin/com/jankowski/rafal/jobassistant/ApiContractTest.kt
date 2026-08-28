@@ -10,6 +10,7 @@ import com.jankowski.rafal.jobassistant.analysis.RequirementFinding
 import com.jankowski.rafal.jobassistant.analysis.RequirementStatus
 import com.jankowski.rafal.jobassistant.catalog.CanonicalSkill
 import com.jankowski.rafal.jobassistant.catalog.SkillCategory
+import com.jankowski.rafal.jobassistant.catalog.SkillSuggestion
 import com.jankowski.rafal.jobassistant.catalog.UnmatchedTerm
 import com.jankowski.rafal.jobassistant.catalog.UnmatchedTermStatus
 import com.jankowski.rafal.jobassistant.document.DocumentType
@@ -206,7 +207,13 @@ class ApiContractTest {
                     inScopeDemand = 7, firstSeenAt = Instant.EPOCH, lastSeenAt = Instant.EPOCH,
                 ),
                 "termId", "term", "occurrences", "marketOccurrences", "inScopeDemand",
-                "firstSeenAt", "lastSeenAt",
+                "firstSeenAt", "lastSeenAt", "suggestions",
+            )
+        },
+        {
+            assertKeys(
+                SkillSuggestion(1, "Kubernetes", SkillCategory.DEVOPS, "k8s", 0.82),
+                "skillId", "skillName", "category", "matchedAlias", "score",
             )
         },
         {

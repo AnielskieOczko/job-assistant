@@ -139,6 +139,44 @@ class SkillCatalogIntegrationTest(
     }
 
     @Test
+    fun `a misspelling suggests the skill it nearly is`() {
+        val suggestions = catalog.suggest("Kubernets")
+
+        assertEquals("Kubernetes", suggestions.first().skillName)
+        assertTrue(suggestions.first().score >= 0.55)
+    }
+
+    /**
+     * Suggestions are a shortlist for a person, so they must be a shortlist: three chips a reviewer
+     * scans, not a ranked dump of everything that shares a trigram.
+     */
+    @Test
+    fun `suggestions are capped and every one names a real catalog skill`() {
+        val suggestions = catalog.suggest("Spring Framework Boot")
+
+        assertTrue(suggestions.size <= 3, "got ${suggestions.size}")
+        suggestions.forEach { assertNotNull(catalog.findById(it.skillId), "suggested a skill that is not in the catalog") }
+    }
+
+    /** The guarantee that makes suggestions safe to show: they cannot become resolution. */
+    @Test
+    fun `a suggested term still does not resolve`() {
+        val term = "Kubernets"
+
+        assertTrue(catalog.suggest(term).isNotEmpty())
+        assertNull(catalog.resolve(term), "a suggestion must never become a resolution")
+    }
+
+    @Test
+    fun `the batch form agrees with the single form`() {
+        val terms = listOf("Kubernets", "Postgres SQL", "AI")
+
+        val batch = catalog.suggestAll(terms)
+
+        terms.forEach { assertEquals(catalog.suggest(it), batch[it], "disagreed on '$it'") }
+    }
+
+    @Test
     fun `market mentions collapse spellings onto one queue entry and sum`() {
         val term = "Power Apps ${System.nanoTime()}"
 
