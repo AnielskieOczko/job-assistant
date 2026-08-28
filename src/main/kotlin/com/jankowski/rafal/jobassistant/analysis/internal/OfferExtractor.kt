@@ -45,3 +45,19 @@ internal data class ExtractedLanguageRequirement(
     val language: String = "",
     val level: String = "",
 )
+
+/**
+ * Reads a model-supplied collection as the claim it is rather than the guarantee its type implies.
+ *
+ * LangChain4j builds a service return type reflectively, without the Jackson Kotlin module and
+ * without calling the constructor, so the intrinsic null checks never run: a model emitting
+ * `"requirements": null` produces a null here despite the non-null type. The default value covers
+ * a *missing* key only. See CLAUDE.md, "Writing an AI service".
+ */
+@Suppress("USELESS_ELVIS")
+internal fun ExtractedOffer.requirementsOrEmpty(): List<ExtractedRequirement> =
+    requirements ?: emptyList()
+
+@Suppress("USELESS_ELVIS")
+internal fun ExtractedOffer.languageRequirementsOrEmpty(): List<ExtractedLanguageRequirement> =
+    languageRequirements ?: emptyList()

@@ -237,6 +237,16 @@ candidate has a skill.
   concurrency means unbounded spend.
 - A job orphaned by a restart is marked `FAILED` at startup (`failOrphanedAnalyses`) rather than
   left for a client to poll forever. Keep that property if you touch the lifecycle.
+- **An extraction that found no requirements is a failure, not a result.** The gap report is the
+  product, so an empty one does not read as "something went wrong" — it reads as *"this offer asks
+  for nothing"* or *"you match everything"*, and neither is a claim the application can back.
+  Asserting an *absence* of gaps is the same unfounded assertion as inventing experience, just from
+  the other side. `EmptyExtractionException` turns it into a `FAILED` run carrying a reason.
+
+  Watch for this shape generally: **an empty denominator reading as success.** Zero claimed bullets
+  scored a *perfect* fabrication rate in the eval tier for the same reason, and `CvSelection`'s
+  fallback to the whole profile — correct in itself, since an untailored CV beats none — is still
+  silent about having happened.
 
 ## Model configuration
 
