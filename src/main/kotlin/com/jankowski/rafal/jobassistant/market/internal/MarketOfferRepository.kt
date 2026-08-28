@@ -138,6 +138,40 @@ internal class MarketOfferRepository(private val jdbc: JdbcClient) {
         .list()
         .toMap()
 
+    /**
+     * The same count as [unresolvedSkillMentions], restricted to offers that also ask for one of
+     * [scopeSkillIds].
+     *
+     * The subquery picks the offers first and the outer query counts every unresolved term on them,
+     * so a term is credited for appearing *alongside* a scope skill rather than for being one. That
+     * is the whole point: it is how "Test automation" sinks below terms that show up on the offers
+     * this candidate would actually read.
+     *
+     * Callers must not pass an empty list -- `in ()` is not valid SQL, and an empty scope means no
+     * measure rather than the whole corpus.
+     */
+    fun unresolvedSkillMentionsInOffersWith(scopeSkillIds: Collection<Long>): Map<String, Int> {
+        require(scopeSkillIds.isNotEmpty()) { "an in-scope query needs at least one scope skill" }
+
+        return jdbc.sql(
+            """
+            select skill_name, count(*) as mentions
+            from market_offer_skill
+            where canonical_skill_id is null
+              and market_offer_id in (
+                  select distinct market_offer_id
+                  from market_offer_skill
+                  where canonical_skill_id in (:scopeSkillIds)
+              )
+            group by skill_name
+            """
+        )
+            .param("scopeSkillIds", scopeSkillIds)
+            .query { rs, _ -> rs.getString("skill_name") to rs.getInt("mentions") }
+            .list()
+            .toMap()
+    }
+
     fun summaries(): List<CorpusSummary> = jdbc.sql(
         """
         select source,

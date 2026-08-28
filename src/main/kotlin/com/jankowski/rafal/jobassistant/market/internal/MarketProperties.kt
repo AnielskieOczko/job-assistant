@@ -15,6 +15,26 @@ data class MarketProperties(
     /** Cron for the scheduled poll. Daily is ample: the whole IT division is three requests. */
     val cron: String = "0 20 4 * * *",
     val solidJobs: SolidJobsProperties = SolidJobsProperties(),
+    val scope: MarketScopeProperties = MarketScopeProperties(),
+)
+
+/**
+ * Which slice of the corpus counts as "this job hunt".
+ *
+ * The whole IT division is ingested, and it is thick with QA, BA and PM roles whose vocabulary a
+ * backend candidate will never review. Scope names the skills that mark an offer as one worth
+ * learning from, so demand can be measured inside it rather than across a market this candidate is
+ * not in.
+ *
+ * Configured once here rather than per feature: the review queue ranks by it now and the market
+ * dashboard will report against it later, and two notions of "relevant" would be two numbers with
+ * one name -- the trap this module already avoided by not reusing `matchScore`.
+ *
+ * Canonical catalog names, not aliases and not free text. A name the catalog cannot resolve is
+ * logged and ignored rather than silently narrowing the scope to nothing.
+ */
+data class MarketScopeProperties(
+    val skills: List<String> = listOf("Java", "Kotlin", "Spring", "Spring Boot"),
 )
 
 data class SolidJobsProperties(

@@ -25,4 +25,13 @@ internal interface UnmatchedTermRepository : CrudRepository<UnmatchedTermRow, Lo
         """
     )
     fun findPending(limit: Int): List<UnmatchedTermRow>
+
+    @Query(
+        """
+        select * from unmatched_term
+        where status = 'PENDING'
+        order by occurrences desc, last_seen_at desc
+        """
+    )
+    fun findAllPending(): List<UnmatchedTermRow>
 }

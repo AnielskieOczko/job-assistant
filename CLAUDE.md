@@ -207,8 +207,27 @@ Feature slices under the base package, each a Spring Modulith module. Anything i
 | `document` | CV and cover letter generation, templates, PDF rendering, invariant enforcement |
 | `llm` | Model profiles, `ChatModel` factory, AI services, call audit, parse-repair |
 | `market` | Ingested board offers as a market corpus, the solid.jobs client, the scheduled poll |
+| `triage` | The ranked, filtered review queue: joins `catalog`'s queue to `market`'s demand |
 
-`catalog` is depended on by nearly everything; it has no dependencies of its own.
+`catalog` is depended on by nearly everything; it has no dependencies of its own — and keeping it
+that way is why `triage` exists.
+
+**`triage` is a join, not a feature slice.** Ranking the review queue needs `unmatched_term` (owned
+by `catalog`) *and* in-scope demand from `market_offer_skill` (owned by `market`). A `catalog →
+market` edge would put an HTTP client and a scheduler into every module's transitive closure, so the
+join lives in a module that may depend on both. `market` exposes `MarketDemand` for it — separate
+from `MarketOfferService` because pulling offers in and answering questions about offers already
+held are different jobs. **`triage` reads and never writes**: approve and reject stay on
+`/api/catalog/unmatched/{id}`, because `unmatched_term` exists so that only a human decision can
+grow the catalog and a second write path is a second place to forget it. When model-assisted
+suggestions land, `triage` gains `llm` and `catalog` still depends on nothing.
+`docs/adr/0003-triage-outside-the-catalog.md` records the reasoning.
+
+Two rules the queue itself enforces, both instances of *never report a number without its
+denominator*: the frequency filter applies to the **sum** of `occurrences` and `market_occurrences`
+(every corpus term has `occurrences = 0`, so filtering the candidate's counter alone would hide the
+whole market behind a control meant to cut the singleton tail), and the response carries `matching`
+and `pending` alongside `entries`, so a 100-row page out of 1,540 cannot read as a finished queue.
 
 `frontend/` sits outside the Modulith world entirely. `SpaWebConfiguration` lives in the **base
 package**, next to `JobAssistantApplication`, because `ApplicationModules.of(...)` treats every

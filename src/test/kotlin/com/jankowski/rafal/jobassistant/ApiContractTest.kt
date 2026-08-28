@@ -24,6 +24,9 @@ import com.jankowski.rafal.jobassistant.profile.ExperienceBullet
 import com.jankowski.rafal.jobassistant.profile.LanguageLevel
 import com.jankowski.rafal.jobassistant.profile.LanguageSkill
 import com.jankowski.rafal.jobassistant.profile.Proficiency
+import com.jankowski.rafal.jobassistant.triage.TriageEntry
+import com.jankowski.rafal.jobassistant.triage.TriageQueue
+import com.jankowski.rafal.jobassistant.triage.TriageRanking
 import com.jankowski.rafal.jobassistant.profile.ProfileDetails
 import com.jankowski.rafal.jobassistant.profile.ProfileLink
 import com.jankowski.rafal.jobassistant.profile.ProfileSkill
@@ -193,6 +196,29 @@ class ApiContractTest {
             { assertKeys(ProfileSummary(1, "Java developer", true), "id", "name", "isDefault") },
         )
     }
+
+    @Test
+    fun `triage wire formats`() = assertAll(
+        {
+            assertKeys(
+                TriageEntry(
+                    termId = 1, term = "Test automation", occurrences = 2, marketOccurrences = 91,
+                    inScopeDemand = 7, firstSeenAt = Instant.EPOCH, lastSeenAt = Instant.EPOCH,
+                ),
+                "termId", "term", "occurrences", "marketOccurrences", "inScopeDemand",
+                "firstSeenAt", "lastSeenAt",
+            )
+        },
+        {
+            assertKeys(
+                TriageQueue(
+                    entries = emptyList(), matching = 412, pending = 1540, minOccurrences = 3,
+                    ranking = TriageRanking.SCOPE, scopeSkills = listOf("Java"),
+                ),
+                "entries", "matching", "pending", "minOccurrences", "ranking", "scopeSkills",
+            )
+        },
+    )
 
     @Test
     fun `catalog document and llm wire formats`() = assertAll(

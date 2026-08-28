@@ -40,6 +40,7 @@ class CvSelectionTest {
         override fun recordUnmatched(term: String) = unused()
         override fun recordUnmatchedFromMarket(mentions: Map<String, Int>) = unused()
         override fun pendingUnmatchedTerms(limit: Int): List<UnmatchedTerm> = unused()
+        override fun allPendingUnmatchedTerms(): List<UnmatchedTerm> = unused()
         override fun approveUnmatchedTerm(termId: Long, skillId: Long): CanonicalSkill = unused()
         override fun rejectUnmatchedTerm(termId: Long) = unused()
         override fun createSkill(name: String, category: SkillCategory, aliases: Collection<String>): CanonicalSkill = unused()

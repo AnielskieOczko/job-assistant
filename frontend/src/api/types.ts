@@ -53,6 +53,35 @@ export interface UnmatchedTerm {
   resolvedSkillId: number | null
 }
 
+/** Which signal breaks the tie once your own count has had its say. */
+export const TRIAGE_RANKINGS = ['SCOPE', 'CORPUS'] as const
+export type TriageRanking = (typeof TRIAGE_RANKINGS)[number]
+
+export interface TriageEntry {
+  termId: number
+  term: string
+  /** Times seen in offers you analysed. Outranks both market numbers under either ranking. */
+  occurrences: number
+  /** Times seen anywhere in the ingested corpus, QA and BA roles included. */
+  marketOccurrences: number
+  /** Times seen on a corpus offer that also asks for a scope skill. */
+  inScopeDemand: number
+  firstSeenAt: string
+  lastSeenAt: string
+}
+
+export interface TriageQueue {
+  entries: TriageEntry[]
+  /** Pending terms passing the threshold. The denominator for "showing X of Y". */
+  matching: number
+  /** Every pending term, filter or no filter. */
+  pending: number
+  minOccurrences: number
+  ranking: TriageRanking
+  /** What the in-scope numbers were measured against. Render it, or the column is unreadable. */
+  scopeSkills: string[]
+}
+
 export interface CreateSkillRequest {
   name: string
   category: SkillCategory

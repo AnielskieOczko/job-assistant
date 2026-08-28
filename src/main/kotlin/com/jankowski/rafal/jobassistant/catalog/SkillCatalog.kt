@@ -49,6 +49,18 @@ interface SkillCatalog {
     fun pendingUnmatchedTerms(limit: Int = 100): List<UnmatchedTerm>
 
     /**
+     * Every pending term, unlimited.
+     *
+     * For callers that rank or count across the whole queue rather than showing its head. A limit
+     * would make the count a floor rather than a total, and a queue that reports "showing 100 of
+     * 100" while holding 1,500 rows reads as finished when it is not -- the same failure shape as
+     * an empty denominator reading as success. The queue is human-scale by construction: it exists
+     * to be emptied by a person, so if it were ever too large to hold in memory the problem would
+     * be the queue, not the query.
+     */
+    fun allPendingUnmatchedTerms(): List<UnmatchedTerm>
+
+    /**
      * Approving a term adds it as an alias of [skillId], so it resolves from then on.
      *
      * Refused when the term's normalised key is already an alias of a *different* skill: aliases

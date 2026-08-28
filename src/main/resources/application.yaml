@@ -44,6 +44,17 @@ job-assistant:
     # Daily. The whole IT division is three requests against a published 300/minute limit, and the
     # source caches hourly, so polling harder would buy nothing and spend someone else's capacity.
     cron: "0 20 4 * * *"
+    # Which slice of the corpus counts as "this job hunt". The whole IT division is ingested and is
+    # thick with QA, BA and PM roles, so demand is measured among offers that also ask for one of
+    # these rather than across a market this candidate is not applying to.
+    #
+    # Canonical catalog names. One that does not resolve is logged and ignored, never guessed at.
+    scope:
+      skills:
+        - Java
+        - Kotlin
+        - Spring
+        - Spring Boot
     solid-jobs:
       base-url: https://solid.jobs
       # The API is keyless; its docs ask callers to identify themselves with a campaign parameter
