@@ -32,6 +32,15 @@ internal object SkillSimilarity {
 
     private const val TRIGRAM = 3
 
+    /**
+     * Containment requires the shorter name to cover at least 1/this of the longer one.
+     *
+     * 2 means half. Chosen against the measured cases rather than by taste: it keeps
+     * "springboot" in "springbootframework" (10 of 19) and drops "cloud" in "springcloud" (5 of 11)
+     * and "googlecloudplatform" (5 of 19).
+     */
+    private const val MIN_COVERED_FRACTION_DENOMINATOR = 2
+
     /** One catalog spelling to score against: a canonical name, or any alias of one. */
     data class Candidate(val skillId: Long, val spelling: String, val key: String)
 
@@ -102,11 +111,22 @@ internal object SkillSimilarity {
      * Scored at exactly [THRESHOLD] - enough to earn a place on the list, never enough to outrank a
      * genuine similarity. "test" is inside "testautomation" without being what the reviewer meant,
      * so containment gets a hearing rather than a verdict.
+     *
+     * Containment alone is weak evidence, and weaker the more of the longer name it fails to
+     * account for: "cloud" is inside "googlecloudplatform" and inside "springcloud", but Google
+     * Cloud Platform is not Cloud and neither is Spring Cloud - the material *around* the match is
+     * doing the naming. Measured on the real queue, that one term drew three chips scored
+     * identically at the threshold and none of them right, which is how a suggestion list teaches a
+     * reviewer to stop reading it. So the shorter name must account for at least half of the longer
+     * one, which keeps "springboot" inside "springbootframework" and drops the rest.
      */
     private fun containment(a: String, b: String): Double {
         val shorter = if (a.length <= b.length) a else b
         val longer = if (a.length <= b.length) b else a
-        return if (shorter.length >= MIN_QUERY_LENGTH && longer.contains(shorter)) THRESHOLD else 0.0
+
+        val substantial = shorter.length >= MIN_QUERY_LENGTH &&
+            shorter.length * MIN_COVERED_FRACTION_DENOMINATOR >= longer.length
+        return if (substantial && longer.contains(shorter)) THRESHOLD else 0.0
     }
 
     private fun trigrams(key: String): Set<String> =
