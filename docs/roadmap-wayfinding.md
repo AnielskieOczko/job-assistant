@@ -235,13 +235,13 @@ decided by conversation and now lives in issue 50, so ticket 19 owns only the Gi
 
 Filed as plain `enhancement` issues on 2026-08-29, by decision rather than by ranking. They are not
 tickets of this map and do not gate it, but **Rank and sequence the roadmap must place them in the
-order** — a ranked roadmap that omits three decided features is not a roadmap.
+order** — a ranked roadmap that omits four decided features is not a roadmap.
 
-All three extend the profile, and all three take the same answer to the question the map had been
-circling: **`profile_skill` remains the single allowlist behind `CvInvariant`.** Neither a project
-nor a credential may widen `heldSkillIds`; a skill is claimed by declaring it in `skills[]` with a
-proficiency, and the new sections reference what is already declared. That keeps every one of them
-on the safe side of the first rule without touching the fabrication guard.
+All four extend the profile, and the first three take the same answer to the question the map had
+been circling: **`profile_skill` remains the single allowlist behind `CvInvariant`.** Neither a
+project nor a credential may widen `heldSkillIds`; a skill is claimed by declaring it in `skills[]`
+with a proficiency, and the new sections reference what is already declared. That keeps every one of
+them on the safe side of the first rule without touching the fabrication guard.
 
 - **[49](https://github.com/AnielskieOczko/job-assistant/issues/49) — courses, bootcamps and
   certifications.** A `credential` aggregate rather than a `kind` discriminator on `education`: the
@@ -254,6 +254,12 @@ on the safe side of the first rule without touching the fabrication guard.
   prose field per profile, read by the narrative, cover-letter and tailoring prompts and by nothing
   else. **It never moves `matchScore`** — an aspiration is not a capability, the same reasoning that
   cut `SOFT` skills from the scoring denominator.
+- **[52](https://github.com/AnielskieOczko/job-assistant/issues/52) — the CV consent clause.** The
+  RODO/GDPR paragraph a Polish CV ends with, stored per profile **per language** because output
+  language is already parameterised. It is the mirror image of the other three: rather than guarding
+  what a model may *claim*, it guards what a model may *touch* — a paraphrased consent statement
+  consents to something else, so the clause never enters a prompt and is added by the renderer, the
+  pattern the name and the portrait already follow.
 
 ## Not yet specified
 
