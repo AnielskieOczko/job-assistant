@@ -224,10 +224,36 @@ under **`docs/research/`**.
 | [16](https://github.com/AnielskieOczko/job-assistant/issues/16) | What should CI/CD actually do, and does CD have a target? | grilling | **closed** |
 | [18](https://github.com/AnielskieOczko/job-assistant/issues/18) | Do the Polish boards' alert emails carry the full offer text? | task | **closed** |
 | [15](https://github.com/AnielskieOczko/job-assistant/issues/15) | Rank and sequence the roadmap | grilling | **open, unblocked** |
-| [19](https://github.com/AnielskieOczko/job-assistant/issues/19) | How does a GitHub repository become a profile Project? | grilling | blocked by 15 |
+| [19](https://github.com/AnielskieOczko/job-assistant/issues/19) | How does a GitHub repository become a profile Project? (narrowed to the *import* half) | grilling | blocked by 15 |
 
 **Rank and sequence the roadmap** was deliberately last, so that nothing would be ranked on a guess.
-Every guess it was waiting on is now settled, and it is unblocked. Ticket 19 remains gated behind it.
+Every guess it was waiting on is now settled, and it is unblocked. Ticket 19 remains gated behind it,
+and was **narrowed on 2026-08-29**: the domain half of its question — what a `Project` is — was
+decided by conversation and now lives in issue 50, so ticket 19 owns only the GitHub-import half.
+
+## Features decided outside this map
+
+Filed as plain `enhancement` issues on 2026-08-29, by decision rather than by ranking. They are not
+tickets of this map and do not gate it, but **Rank and sequence the roadmap must place them in the
+order** — a ranked roadmap that omits three decided features is not a roadmap.
+
+All three extend the profile, and all three take the same answer to the question the map had been
+circling: **`profile_skill` remains the single allowlist behind `CvInvariant`.** Neither a project
+nor a credential may widen `heldSkillIds`; a skill is claimed by declaring it in `skills[]` with a
+proficiency, and the new sections reference what is already declared. That keeps every one of them
+on the safe side of the first rule without touching the fabrication guard.
+
+- **[49](https://github.com/AnielskieOczko/job-assistant/issues/49) — courses, bootcamps and
+  certifications.** A `credential` aggregate rather than a `kind` discriminator on `education`: the
+  fields genuinely diverge, and a credential grants no skills.
+- **[50](https://github.com/AnielskieOczko/job-assistant/issues/50) — side projects.** `Project` as
+  its own aggregate, carrying `experience_bullet` rows under a different owner so bullets inherit the
+  id-selection guard. Note the privacy trap: **a GitHub URL is a direct identifier**, so it never
+  enters a prompt and `ProfileIdentityInspector` must learn about project URLs.
+- **[51](https://github.com/AnielskieOczko/job-assistant/issues/51) — a stated career goal.** One
+  prose field per profile, read by the narrative, cover-letter and tailoring prompts and by nothing
+  else. **It never moves `matchScore`** — an aspiration is not a capability, the same reasoning that
+  cut `SOFT` skills from the scoring denominator.
 
 ## Not yet specified
 
@@ -236,12 +262,10 @@ run, because until then it is not known which items earn detailed shaping.
 
 - **Shaping tickets for the top ~4 ranked items.** The destination requires them; the ranking names
   them. This one patch becomes roughly four tickets.
-- **Whether a credential is a distinct thing from an education record.** Bootcamps, MOOC
-  certificates, vendor certifications and conference talks all fit `EducationImport`
-  (institution / degree / fieldOfStudy) badly. The sharp version is whether a credential *grants
-  catalog skills* — if it does it feeds `heldSkillIds` and therefore the fabrication guard, making it
-  a domain decision rather than a form field. Ticket 19 asks the same question of an imported
-  repository, so the two may share one answer.
+- ~~**Whether a credential is a distinct thing from an education record.**~~ **Settled on
+  2026-08-29** and specified as [issue 49](https://github.com/AnielskieOczko/job-assistant/issues/49)
+  — see *Features decided outside this map* below. A credential is its own aggregate and grants no
+  catalog skills.
 - **What outcome calibration can honestly claim at small n.** Correlating `matchScore` against real
   application outcomes is the best value-per-effort idea on the list precisely because the data
   already exists and nothing reads it — but at a few dozen applications any correlation is noise.
