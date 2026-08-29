@@ -572,6 +572,203 @@ export interface LlmCallDetail {
   responseText: string | null
 }
 
+/* -------------------------------------------------------------------- market */
+
+/**
+ * Levels as solid.jobs states them. `NICE_TO_HAVE` is the odd one out: the source carries its only
+ * importance signal on this field rather than a separate one, and it is rare — 409 of 9,318
+ * mentions — which is why the market measure does not weight by it.
+ */
+export const MARKET_SKILL_LEVELS = ['BASIC', 'ADVANCED', 'EXPERT', 'NICE_TO_HAVE', 'UNKNOWN'] as const
+export type MarketSkillLevel = (typeof MARKET_SKILL_LEVELS)[number]
+
+/** Held or IMPLIES-reachable is MET, RELATED-reachable is PARTIAL, anything else MISSING. */
+export const COVERAGE_STATUSES = ['MET', 'PARTIAL', 'MISSING'] as const
+export type CoverageStatus = (typeof COVERAGE_STATUSES)[number]
+
+export const DEMAND_RANKINGS = ['UNMET', 'TOTAL'] as const
+export type DemandRanking = (typeof DEMAND_RANKINGS)[number]
+
+/**
+ * The population every other number on the dashboard is measured over.
+ *
+ * Render it above the statistics, not beneath them. A median with no source, window or size is
+ * indistinguishable from an accident, and this object is the whole of that context.
+ */
+export interface MarketScopeReport {
+  /** Boards the corpus came from. Label charts with these, never with "the market". */
+  sources: string[]
+  /** Configured scope skills the catalog resolved. What "in scope" actually meant. */
+  scopeSkills: string[]
+  /** Configured names the catalog could not resolve, and therefore silently ignored. Show them. */
+  unresolvedScopeSkills: string[]
+  offersInScope: number
+  /** In-scope offers whose stated validity has passed. Excluded from every statistic. */
+  expiredInScope: number
+  corpusOffers: number
+  firstSeenAt: string | null
+  lastSeenAt: string | null
+  skillMentions: number
+  /** Mentions the catalog could not place. The ceiling on how complete any ranking can claim to be. */
+  unresolvedMentions: number
+  /** Computed server-side: whether the scope is large enough to show a salary figure at all. */
+  meetsSalaryFloor: boolean
+}
+
+/**
+ * One comparable slice of salaries — never pooled across contract types.
+ *
+ * 21,800 B2B and 21,800 UoP are different money. Quartiles are discrete percentiles, so every
+ * figure here is one an employer actually stated rather than an interpolation between two.
+ */
+export interface SalaryGroup {
+  employmentType: string | null
+  currency: string | null
+  period: string | null
+  offers: number
+  medianFrom: string | null
+  medianTo: string | null
+  p25From: string | null
+  p75To: string | null
+  /** False means render the count and the words, not a greyed-out tile that reads as loading. */
+  meetsSampleFloor: boolean
+}
+
+export interface SalaryReport {
+  groups: SalaryGroup[]
+  offersInScope: number
+  offersWithSalary: number
+  coverage: number
+  meetsCoverageFloor: boolean
+}
+
+/** The band for one demand row, over the employment type it names. */
+export interface SalaryBand {
+  offers: number
+  medianFrom: string | null
+  medianTo: string | null
+  currency: string | null
+  period: string | null
+  employmentType: string | null
+}
+
+export interface DemandEntry {
+  skillId: number
+  skillName: string
+  category: SkillCategory
+  /** In-scope offers asking for it at any level. */
+  offers: number
+  /** Of those, offers asking for it as something other than nice-to-have. */
+  requiredOffers: number
+  status: CoverageStatus
+  /** The held skill accounting for a MET or PARTIAL — "you have Quarkus", not an amber dot. */
+  coveredBySkillId: number | null
+  coveredBySkillName: string | null
+  levelMix: Partial<Record<MarketSkillLevel, number>>
+  /** Null below the five-offer floor. Null is "too few offers", never "pays nothing". */
+  salary: SalaryBand | null
+}
+
+export interface DemandReport {
+  entries: DemandEntry[]
+  /** Embedded so no caller can render a ranking without its denominators. */
+  scope: MarketScopeReport
+  skillsInScope: number
+  /** Skills the profile does not cover at all. The size of the actual gap. */
+  unmetSkillsInScope: number
+  ranking: DemandRanking
+  limit: number
+}
+
+export interface MarketSalary {
+  from: string | null
+  to: string | null
+  currency: string | null
+  period: string | null
+  employmentType: string | null
+}
+
+export interface MarketOfferSummary {
+  id: number
+  source: string
+  title: string
+  company: string | null
+  url: string | null
+  experienceLevel: string | null
+  isRemote: boolean
+  isHybrid: boolean
+  locations: string[]
+  salary: MarketSalary | null
+  validTo: string | null
+  lastSeenAt: string
+  skillsResolved: number
+  skillsCovered: number
+  /**
+   * Listed skills the catalog could not place — neither covered nor missing, but unknown.
+   *
+   * Always render it next to the covered count. "6 of 6" beside three unresolved terms is not a
+   * covered offer: measured on the corpus, nine of ten apparently-covered offers were that way
+   * only because these had been dropped.
+   */
+  skillsUnresolved: number
+}
+
+export interface MarketOfferPage {
+  entries: MarketOfferSummary[]
+  /** Offers matching the same filter, so a page can never read as the whole corpus. */
+  total: number
+  limit: number
+  offset: number
+}
+
+/**
+ * What one ingestion run did.
+ *
+ * Counts, never a bare rate. `skillResolutionRate` is deliberately null below a minimum sample —
+ * 1 of 1 resolved is indistinguishable from 90 of 90 — so render the counts and let the rate be
+ * absent rather than substituting a 1.0 that means nothing.
+ */
+export interface IngestionReport {
+  source: string
+  startedAt: string
+  finishedAt: string
+  pagesFetched: number
+  offersSeen: number
+  offersInserted: number
+  offersUpdated: number
+  skillMentions: number
+  skillsResolved: number
+  distinctUnresolvedTerms: number
+  error: string | null
+  skillsUnresolved: number
+  /** Null below the sample floor, not zero. */
+  skillResolutionRate: number | null
+}
+
+/**
+ * Whether the corpus refreshes itself, and when it next will.
+ *
+ * A corpus polled nightly and a corpus that only moves when someone presses a button produce
+ * identical numbers, but one of them goes stale unwatched. The dashboard says which it is showing.
+ */
+export interface IngestionSchedule {
+  scheduled: boolean
+  /** The scheduler's cron, verbatim. Null exactly when `scheduled` is false. */
+  cron: string | null
+  /** Derived from the cron on read, so it cannot drift from what the scheduler will do. */
+  nextPollAt: string | null
+  lastPolledAt: string | null
+}
+
+/** What the corpus holds per source. Bounds the window any statistic may claim. */
+export interface CorpusSummary {
+  source: string
+  offers: number
+  currentlyValid: number
+  firstSeenAt: string | null
+  lastSeenAt: string | null
+}
+
 /* ------------------------------------------------------------------ helpers */
 
 export const mustHaves = (r: AnalysisReport): RequirementFinding[] =>

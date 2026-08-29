@@ -3,6 +3,7 @@ import {
   BookOpen,
   FileStack,
   Layers,
+  Radar,
   ScrollText,
   TrendingDown,
   UserRound,
@@ -14,6 +15,7 @@ const NAV = [
   { to: '/offers', label: 'Offers', icon: FileStack },
   { to: '/profile', label: 'Profile', icon: UserRound },
   { to: '/gaps', label: 'Gaps', icon: TrendingDown },
+  { to: '/market', label: 'Market', icon: Radar },
   { to: '/catalog', label: 'Catalog', icon: Layers },
   { to: '/llm', label: 'Model calls', icon: ScrollText },
 ]

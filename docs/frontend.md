@@ -55,8 +55,67 @@ Playwright, which downloads Chromium on first use.
 | `/offers/:id/documents` | Generate CV / cover letter, preview, PDF |
 | `/profile` | View and import the *selected* profile's document |
 | `/gaps` | Cross-offer aggregate gap report |
+| `/market` | The ingested corpus: scope, salary bands, demand table, offers behind it |
 | `/catalog` | Unmatched-term review queue and skill browser |
 | `/llm`, `/llm/:id` | Model call audit — prompt, raw response, tokens, latency |
+
+## The market dashboard
+
+`/market` (`src/routes/market/`) renders the read side of the `market` module. It is the one screen
+whose layout is an argument rather than a preference, and the order is load-bearing: the **scope
+line** first, then a single **hero figure**, then the **KPI row**, then exactly **one chart**, then
+the **demand table** as the primary surface. A reader who meets a median before they meet its
+population has already been misled.
+
+Three rules it enforces, all of them the same rule:
+
+- **Every figure carries its denominator.** `StatTile` requires a caption for this reason — a median
+  over eleven offers and a median over four hundred render identically without one.
+- **A statistic below its honesty floor renders as words, not as absence.** Under 30 offers in a
+  salary group and the tile says "20 offers · too few for a median — the floor is 30"; under 5
+  offers behind a per-skill band and the cell says so. Never a greyed-out tile, which reads as
+  *still loading* rather than *too few to say*. The floors themselves live on `MarketInsights` in
+  Kotlin, so "did this clear the bar" is computed once rather than reimplemented in TypeScript
+  where nothing tests it.
+- **The unplaced share is stated above everything else.** Roughly a third of what in-scope offers
+  ask for is vocabulary the catalog cannot place, which is the ceiling on how complete any ranking
+  below can claim to be. `ScopeLine` links it to `/catalog`, where those terms are already queued.
+
+The hero states an **observation** — "48 of 192 in-scope offers ask for CI/CD and you do not have
+it" — never a counterfactual like "48 offers you would win". Issue #47 decision 1 records the
+measurement that kept the counterfactual out of v1.
+
+The chart is **emphasis, not categorical**: one hue, gaps in the accent and covered skills in gray,
+because every bar is the same measure and per-skill hues would encode identity the row label
+already carries. There is no legend box — a single series needs none — and status travels as a
+labelled badge with an icon in the tooltip and in the table, so identity is never colour alone.
+
+Two orderings are in play in the demand table and the screen says which is which: the **ranking**
+runs server-side over every in-scope skill and decides which rows are on the page, while a **column
+sort** only reorders the page already fetched. Sorting by offer count under the unmet ranking shows
+the most-asked *of the unmet ones*, not the most-asked overall.
+
+`GET /api/market/scope` and `/salary` compare nothing against the profile, so their query keys carry
+no profile id; `/demand` and `/offers` do, and theirs do.
+
+`IngestionControls` is the one thing on the screen — in the whole application — that reaches
+solid.jobs, so it is a **button and never a page load**: a dashboard that silently polled a third
+party on every visit would spend someone else's rate limit to redraw a number that had not moved. It
+reads `GET /api/market/ingestion` for the schedule and says which of two states the corpus is in,
+because numbers from a corpus polled nightly and numbers from one nobody has touched since March are
+indistinguishable on the page. When the schedule is on it gives the next run *and* the cron verbatim
+— the time is what a reader wants, the cron is what the scheduler actually runs, and printing only
+the interpretation would put a claim on the page that nothing on the page could be checked against.
+When it is off it says so and dates the last run, because then staleness is the whole message.
+
+A finished poll reports counts rather than a bare total (`1,493 offers seen, 0 new · 4,160 of 9,318
+mentions resolved (45%) · 900 terms for review`) — a re-poll of an unchanged board legitimately
+inserts nothing, and "1,493 offers" alone cannot be told apart from a first ingest. **A failed run
+still answers 200** carrying its `error`, because the poll is a batch rather than a request a status
+code can describe; reading only the HTTP status would report a failure as a success. Success
+invalidates the whole `market` prefix plus the unmatched-term queue and `triage`, since ingestion
+writes unplaced terms under `market_occurrences` and the triage ranking is ordered by in-scope
+demand.
 
 ## Polling
 

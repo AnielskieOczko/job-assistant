@@ -1,6 +1,10 @@
+import type { ComponentType } from 'react'
+import { CircleCheck, CircleDashed, CircleX } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import type { ApplicationStatus, Importance, RequirementStatus } from '@/api/types'
+import type {
+  ApplicationStatus, CoverageStatus, Importance, RequirementStatus,
+} from '@/api/types'
 
 const REQUIREMENT_STYLES: Record<RequirementStatus, string> = {
   MET: 'border-emerald-600/30 bg-emerald-500/12 text-emerald-700 dark:text-emerald-300',
@@ -62,5 +66,51 @@ export function ApplicationStatusBadge({ status }: { status: ApplicationStatus }
     <Badge variant="outline" className={cn(APPLICATION_STYLES[status], 'font-medium')}>
       {APPLICATION_LABELS[status]}
     </Badge>
+  )
+}
+
+/*
+  Coverage carries an icon as well as a label because the market dashboard puts it in a dense
+  table beside numbers, where a reader scans colour first. The reserved status palette is the same
+  one `RequirementStatusBadge` uses — MET/PARTIAL/MISSING mean the same thing on both screens, and
+  giving the market its own colours would imply they did not.
+*/
+const COVERAGE_STYLES: Record<CoverageStatus, string> = {
+  MET: 'border-emerald-600/30 bg-emerald-500/12 text-emerald-700 dark:text-emerald-300',
+  PARTIAL: 'border-amber-600/30 bg-amber-500/12 text-amber-700 dark:text-amber-300',
+  MISSING: 'border-red-600/30 bg-red-500/12 text-red-700 dark:text-red-300',
+}
+
+const COVERAGE_ICONS: Record<CoverageStatus, ComponentType<{ className?: string }>> = {
+  MET: CircleCheck,
+  PARTIAL: CircleDashed,
+  MISSING: CircleX,
+}
+
+const COVERAGE_LABELS: Record<CoverageStatus, string> = {
+  MET: 'Met',
+  PARTIAL: 'Partial',
+  MISSING: 'Missing',
+}
+
+export function CoverageStatusBadge({
+  status,
+  coveredBy,
+}: {
+  status: CoverageStatus
+  /** The held skill that earned a MET or PARTIAL, so the verdict explains itself. */
+  coveredBy?: string | null
+}) {
+  const Icon = COVERAGE_ICONS[status]
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <Badge variant="outline" className={cn(COVERAGE_STYLES[status], 'font-medium')}>
+        <Icon className="size-3" />
+        {COVERAGE_LABELS[status]}
+      </Badge>
+      {coveredBy ? (
+        <span className="text-xs text-muted-foreground">via {coveredBy}</span>
+      ) : null}
+    </span>
   )
 }
