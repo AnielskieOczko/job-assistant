@@ -244,8 +244,10 @@ with a proficiency, and the new sections reference what is already declared. Tha
 them on the safe side of the first rule without touching the fabrication guard.
 
 - **[49](https://github.com/AnielskieOczko/job-assistant/issues/49) — courses, bootcamps and
-  certifications.** A `credential` aggregate rather than a `kind` discriminator on `education`: the
-  fields genuinely diverge, and a credential grants no skills.
+  certifications.** **Shipped 2026-08-29** in
+  [PR #55](https://github.com/AnielskieOczko/job-assistant/pull/55): a `credential` aggregate rather
+  than a `kind` discriminator on `education` — the fields genuinely diverge, and a credential grants
+  no skills.
 - **[50](https://github.com/AnielskieOczko/job-assistant/issues/50) — side projects.** `Project` as
   its own aggregate, carrying `experience_bullet` rows under a different owner so bullets inherit the
   id-selection guard. Note the privacy trap: **a GitHub URL is a direct identifier**, so it never
