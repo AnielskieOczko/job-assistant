@@ -137,7 +137,9 @@ export async function requestOrNull<T>(path: string, init?: RequestInit): Promis
 
 export const json = (body: unknown): RequestInit => ({ body: JSON.stringify(body) })
 
-export const query = (params: Record<string, string | number | undefined | null>): string => {
+export const query = (
+  params: Record<string, string | number | boolean | undefined | null>,
+): string => {
   const search = new URLSearchParams()
   for (const [key, value] of Object.entries(params)) {
     if (value !== undefined && value !== null) search.set(key, String(value))

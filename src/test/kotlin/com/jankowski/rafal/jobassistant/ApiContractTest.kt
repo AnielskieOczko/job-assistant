@@ -9,6 +9,7 @@ import com.jankowski.rafal.jobassistant.analysis.LearningPlanItem
 import com.jankowski.rafal.jobassistant.analysis.RequirementFinding
 import com.jankowski.rafal.jobassistant.analysis.RequirementStatus
 import com.jankowski.rafal.jobassistant.catalog.CanonicalSkill
+import com.jankowski.rafal.jobassistant.catalog.CoverageStatus
 import com.jankowski.rafal.jobassistant.catalog.SkillCategory
 import com.jankowski.rafal.jobassistant.catalog.SkillSuggestion
 import com.jankowski.rafal.jobassistant.catalog.UnmatchedTerm
@@ -16,6 +17,19 @@ import com.jankowski.rafal.jobassistant.catalog.UnmatchedTermStatus
 import com.jankowski.rafal.jobassistant.document.DocumentType
 import com.jankowski.rafal.jobassistant.document.GeneratedDocument
 import com.jankowski.rafal.jobassistant.llm.LlmCall
+import com.jankowski.rafal.jobassistant.market.CorpusSummary
+import com.jankowski.rafal.jobassistant.market.IngestionReport
+import com.jankowski.rafal.jobassistant.market.IngestionSchedule
+import com.jankowski.rafal.jobassistant.market.DemandEntry
+import com.jankowski.rafal.jobassistant.market.DemandRanking
+import com.jankowski.rafal.jobassistant.market.DemandReport
+import com.jankowski.rafal.jobassistant.market.MarketOfferPage
+import com.jankowski.rafal.jobassistant.market.MarketOfferSummary
+import com.jankowski.rafal.jobassistant.market.MarketSalary
+import com.jankowski.rafal.jobassistant.market.MarketScopeReport
+import com.jankowski.rafal.jobassistant.market.SalaryBand
+import com.jankowski.rafal.jobassistant.market.SalaryGroup
+import com.jankowski.rafal.jobassistant.market.SalaryReport
 import com.jankowski.rafal.jobassistant.offer.Application
 import com.jankowski.rafal.jobassistant.offer.ApplicationStatus
 import com.jankowski.rafal.jobassistant.offer.JobOffer
@@ -37,6 +51,7 @@ import com.jankowski.rafal.jobassistant.profile.WorkExperience
 import com.jankowski.rafal.jobassistant.profile.internal.ProfileSummary
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertAll
+import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
 import kotlin.test.assertEquals
@@ -271,4 +286,128 @@ class ApiContractTest {
             )
         },
     )
+
+    @Test
+    fun `market dashboard wire formats`() {
+        val scope = MarketScopeReport(
+            sources = listOf("solid.jobs"), scopeSkills = listOf("Java"), unresolvedScopeSkills = emptyList(),
+            offersInScope = 205, expiredInScope = 9, corpusOffers = 1493,
+            firstSeenAt = Instant.EPOCH, lastSeenAt = Instant.EPOCH,
+            skillMentions = 1689, unresolvedMentions = 498,
+        )
+
+        assertAll(
+            {
+                assertKeys(
+                    scope,
+                    "sources", "scopeSkills", "unresolvedScopeSkills", "offersInScope", "expiredInScope",
+                    "corpusOffers", "firstSeenAt", "lastSeenAt", "skillMentions", "unresolvedMentions",
+                    // Computed: the honesty floors live in Kotlin so the UI renders a decision
+                    // rather than re-deriving one nothing tests.
+                    "meetsSalaryFloor",
+                )
+            },
+            {
+                assertKeys(
+                    SalaryGroup(
+                        employmentType = "B2B", currency = "PLN", period = "Month", offers = 183,
+                        medianFrom = BigDecimal.ONE, medianTo = BigDecimal.ONE,
+                        p25From = BigDecimal.ONE, p75To = BigDecimal.ONE,
+                    ),
+                    "employmentType", "currency", "period", "offers", "medianFrom", "medianTo",
+                    "p25From", "p75To", "meetsSampleFloor",
+                )
+            },
+            {
+                assertKeys(
+                    SalaryReport(groups = emptyList(), offersInScope = 205, offersWithSalary = 205),
+                    "groups", "offersInScope", "offersWithSalary", "coverage", "meetsCoverageFloor",
+                )
+            },
+            {
+                assertKeys(
+                    DemandEntry(
+                        skillId = 1, skillName = "Kubernetes", category = SkillCategory.DEVOPS,
+                        offers = 31, requiredOffers = 29, status = CoverageStatus.MISSING,
+                    ),
+                    "skillId", "skillName", "category", "offers", "requiredOffers", "status",
+                    "coveredBySkillId", "coveredBySkillName", "levelMix", "salary",
+                )
+            },
+            {
+                assertKeys(
+                    SalaryBand(
+                        offers = 31, medianFrom = BigDecimal.ONE, medianTo = BigDecimal.ONE,
+                        currency = "PLN", period = "Month", employmentType = "B2B",
+                    ),
+                    "offers", "medianFrom", "medianTo", "currency", "period", "employmentType",
+                )
+            },
+            {
+                assertKeys(
+                    DemandReport(
+                        entries = emptyList(), scope = scope, skillsInScope = 340,
+                        unmetSkillsInScope = 280, ranking = DemandRanking.UNMET, limit = 100,
+                    ),
+                    "entries", "scope", "skillsInScope", "unmetSkillsInScope", "ranking", "limit",
+                )
+            },
+            {
+                assertKeys(
+                    MarketSalary(BigDecimal.ONE, BigDecimal.ONE, "PLN", "Month", "B2B"),
+                    "from", "to", "currency", "period", "employmentType",
+                )
+            },
+            {
+                assertKeys(
+                    MarketOfferSummary(
+                        id = 1, source = "solid.jobs", title = "Backend Engineer", company = null,
+                        url = null, experienceLevel = "Senior", isRemote = true, isHybrid = false,
+                        locations = listOf("Kraków"), salary = null, validTo = null,
+                        lastSeenAt = Instant.EPOCH, skillsResolved = 6, skillsCovered = 4,
+                        skillsUnresolved = 3,
+                    ),
+                    "id", "source", "title", "company", "url", "experienceLevel", "isRemote",
+                    "isHybrid", "locations", "salary", "validTo", "lastSeenAt", "skillsResolved",
+                    "skillsCovered", "skillsUnresolved",
+                )
+            },
+            {
+                assertKeys(
+                    MarketOfferPage(entries = emptyList(), total = 205, limit = 100, offset = 0),
+                    "entries", "total", "limit", "offset",
+                )
+            },
+            {
+                assertKeys(
+                    CorpusSummary("solid.jobs", 1493, 1449, Instant.EPOCH, Instant.EPOCH),
+                    "source", "offers", "currentlyValid", "firstSeenAt", "lastSeenAt",
+                )
+            },
+            {
+                // The computed properties are part of the wire shape: the UI reports the counts and
+                // the rate together, and skillResolutionRate is deliberately null below its sample
+                // floor rather than a misleading 1.0.
+                assertKeys(
+                    IngestionReport(
+                        source = "solid.jobs", startedAt = Instant.EPOCH, finishedAt = Instant.EPOCH,
+                        pagesFetched = 3, offersSeen = 1493, offersInserted = 0, offersUpdated = 1493,
+                        skillMentions = 9318, skillsResolved = 4160, distinctUnresolvedTerms = 900,
+                    ),
+                    "source", "startedAt", "finishedAt", "pagesFetched", "offersSeen",
+                    "offersInserted", "offersUpdated", "skillMentions", "skillsResolved",
+                    "distinctUnresolvedTerms", "error", "skillsUnresolved", "skillResolutionRate",
+                )
+            },
+            {
+                assertKeys(
+                    IngestionSchedule(
+                        scheduled = true, cron = "0 20 4 * * *", nextPollAt = Instant.EPOCH,
+                        lastPolledAt = Instant.EPOCH,
+                    ),
+                    "scheduled", "cron", "nextPollAt", "lastPolledAt",
+                )
+            },
+        )
+    }
 }

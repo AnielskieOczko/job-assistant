@@ -370,7 +370,10 @@ a term had been listed. Because the number is derived rather than accrued, an un
 a no-op and `V16` is literally the same computation run once over rows already stored.
 
 The poll is daily and gated by `job-assistant.market.enabled`, which controls the *schedule* only —
-`POST /api/market/ingest` works either way. Every integration test gets a `ScriptedSolidJobsClient`
+`POST /api/market/ingest` works either way. `GET /api/market/ingestion` reports that gate and the
+next run the cron implies, so the dashboard can say whether the corpus refreshes itself or only
+moves when someone presses the button: the two produce identical numbers and one of them is going
+stale unwatched. Every integration test gets a `ScriptedSolidJobsClient`
 through `@IntegrationTest`, on the same principle as `ScriptedChatModel`: no test may reach a third
 party, whether or not the network is up.
 

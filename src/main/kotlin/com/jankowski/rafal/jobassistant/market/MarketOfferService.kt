@@ -22,6 +22,29 @@ interface MarketOfferService {
 }
 
 /**
+ * Whether anything polls this corpus without being asked, and when it next will.
+ *
+ * Read by the dashboard so that "how did this data get here" is answered on the page rather than in
+ * `application.yaml`. The distinction matters more than it looks: a corpus that refreshes itself
+ * every night and a corpus that only ever changes when someone presses a button produce identical
+ * numbers, but one of them is going stale while nobody is watching. A reader cannot tell which they
+ * are looking at without being told.
+ *
+ * [nextPollAt] is computed from [cron] rather than stored, so it cannot drift from what the
+ * scheduler will actually do, and it is null exactly when [scheduled] is false -- a next-run time
+ * for a poll that will never run is worse than no time at all.
+ */
+data class IngestionSchedule(
+    /** Whether the scheduled poll is switched on. A manual ingest works either way. */
+    val scheduled: Boolean,
+    /** The cron the scheduler runs, verbatim. Ground truth, next to the interpreted [nextPollAt]. */
+    val cron: String?,
+    val nextPollAt: Instant?,
+    /** When the corpus last saw anything, scheduled or manual. Null on an empty corpus. */
+    val lastPolledAt: Instant?,
+)
+
+/**
  * What one ingestion run did.
  *
  * Counts, not just rates. A resolution *rate* with a denominator of three says nothing, and the
