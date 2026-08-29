@@ -54,6 +54,13 @@ internal data class CvSelection(
                     period = DocumentViews.period(it.startedOn, it.endedOn),
                 )
             },
+            credentials = profile.credentials.map {
+                CvCredentialView(
+                    title = it.title,
+                    issuer = it.issuer,
+                    period = DocumentViews.credentialPeriod(it.issuedOn, it.expiresOn),
+                )
+            },
             languages = profile.languages.map { "${it.language} (${it.level})" },
         )
     }

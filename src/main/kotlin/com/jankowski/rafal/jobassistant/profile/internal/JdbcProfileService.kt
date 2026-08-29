@@ -2,6 +2,8 @@ package com.jankowski.rafal.jobassistant.profile.internal
 
 import com.jankowski.rafal.jobassistant.catalog.SkillCatalog
 import com.jankowski.rafal.jobassistant.profile.CandidateProfile
+import com.jankowski.rafal.jobassistant.profile.Credential
+import com.jankowski.rafal.jobassistant.profile.CredentialKind
 import com.jankowski.rafal.jobassistant.profile.Education
 import com.jankowski.rafal.jobassistant.profile.ExperienceBullet
 import com.jankowski.rafal.jobassistant.profile.LanguageLevel
@@ -27,6 +29,7 @@ internal class JdbcProfileService(
     private val experiences: WorkExperienceRepository,
     private val bullets: ExperienceBulletRepository,
     private val education: EducationRepository,
+    private val credentials: CredentialRepository,
     private val languages: LanguageSkillRepository,
     private val jdbc: JdbcClient,
 ) : ProfileService {
@@ -45,6 +48,7 @@ internal class JdbcProfileService(
                 row.toDomain(bulletsByExperience[row.id].orEmpty().map { it.toDomain() })
             },
             education = education.findAllOrdered(profileId).map { it.toDomain() },
+            credentials = credentials.findAllOrdered(profileId).map { it.toDomain() },
             languages = languages.findAllOrdered(profileId).map { it.toDomain() },
             revision = readRevision(profileId),
         )
@@ -157,6 +161,21 @@ internal class JdbcProfileService(
                 )
             }
         )
+        credentials.saveAll(
+            import.credentials.mapIndexed { i, c ->
+                CredentialRow(
+                    profileId = profileId,
+                    title = c.title,
+                    issuer = c.issuer,
+                    kind = c.kind.name,
+                    url = c.url,
+                    credentialId = c.credentialId,
+                    issuedOn = c.issuedOn,
+                    expiresOn = c.expiresOn,
+                    displayOrder = i,
+                )
+            }
+        )
         languages.saveAll(
             import.languages.mapIndexed { i, it ->
                 LanguageSkillRow(profileId = profileId, language = it.language, level = it.level.name, displayOrder = i)
@@ -265,6 +284,7 @@ internal class JdbcProfileService(
         skills.deleteByProfileId(profileId)
         links.deleteByProfileId(profileId)
         education.deleteByProfileId(profileId)
+        credentials.deleteByProfileId(profileId)
         languages.deleteByProfileId(profileId)
     }
 }
@@ -296,6 +316,9 @@ internal fun ExperienceBulletRow.toDomain() = ExperienceBullet(
 
 internal fun EducationRow.toDomain() =
     Education(id!!, institution, degree, fieldOfStudy, startedOn, endedOn)
+
+internal fun CredentialRow.toDomain() =
+    Credential(id!!, title, issuer, CredentialKind.valueOf(kind), url, credentialId, issuedOn, expiresOn)
 
 internal fun LanguageSkillRow.toDomain() =
     LanguageSkill(id!!, language, LanguageLevel.valueOf(level))

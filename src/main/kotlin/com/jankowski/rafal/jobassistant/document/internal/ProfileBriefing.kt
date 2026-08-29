@@ -31,6 +31,15 @@ internal object ProfileBriefing {
         }
         appendLine()
 
+        if (profile.credentials.isNotEmpty()) {
+            appendLine("Credentials:")
+            profile.credentials.forEach { credential ->
+                val year = credential.issuedOn?.year?.let { " ($it)" } ?: ""
+                appendLine("- ${credential.title} — ${credential.issuer}$year")
+            }
+            appendLine()
+        }
+
         appendLine("Experience:")
         profile.experiences.forEach { experience ->
             val period = DocumentViews.period(experience.startedOn, experience.endedOn)

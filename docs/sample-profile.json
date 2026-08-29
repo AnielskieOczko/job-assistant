@@ -63,6 +63,26 @@
       "endedOn": "2018-06-30"
     }
   ],
+  "credentials": [
+    {
+      "title": "AWS Certified Solutions Architect – Associate",
+      "issuer": "Amazon Web Services",
+      "kind": "CERTIFICATION",
+      "url": "https://www.credly.com/badges/example",
+      "credentialId": "AWS-ASA-123456",
+      "issuedOn": "2024-05-01",
+      "expiresOn": "2027-05-01"
+    },
+    {
+      "title": "The Complete Java Masterclass",
+      "issuer": "Udemy",
+      "kind": "COURSE",
+      "url": "https://www.udemy.com/course/example",
+      "credentialId": null,
+      "issuedOn": "2020-02-15",
+      "expiresOn": null
+    }
+  ],
   "languages": [
     { "language": "Polish", "level": "NATIVE" },
     { "language": "English", "level": "C1" }

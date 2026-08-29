@@ -46,6 +46,20 @@ export function formatPeriod(startedOn: string | null, endedOn: string | null): 
   return `${month(startedOn)} — ${endedOn ? month(endedOn) : 'Present'}`
 }
 
+/**
+ * `issuedOn` + `expiresOn` for a credential. Unlike `formatPeriod`, a missing `expiresOn` is not
+ * rendered as "Present" - most credentials never expire, so silence reads truer than borrowing the
+ * employment-history idiom.
+ */
+export function formatCredentialPeriod(issuedOn: string | null, expiresOn: string | null): string {
+  const month = (iso: string) =>
+    new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short' })
+  if (!issuedOn && !expiresOn) return ''
+  if (!expiresOn) return `Issued ${month(issuedOn!)}`
+  if (!issuedOn) return `Expires ${month(expiresOn)}`
+  return `Issued ${month(issuedOn)} · Expires ${month(expiresOn)}`
+}
+
 export function formatDuration(ms: number | null): string {
   if (ms === null) return '—'
   return ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`

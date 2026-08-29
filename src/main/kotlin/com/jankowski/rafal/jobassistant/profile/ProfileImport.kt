@@ -14,6 +14,7 @@ data class ProfileImport(
     val skills: List<SkillImport> = emptyList(),
     val experiences: List<ExperienceImport> = emptyList(),
     val education: List<EducationImport> = emptyList(),
+    val credentials: List<CredentialImport> = emptyList(),
     val languages: List<LanguageImport> = emptyList(),
 )
 
@@ -44,6 +45,16 @@ data class EducationImport(
     val fieldOfStudy: String? = null,
     val startedOn: LocalDate? = null,
     val endedOn: LocalDate? = null,
+)
+
+data class CredentialImport(
+    val title: String,
+    val issuer: String,
+    val kind: CredentialKind,
+    val url: String? = null,
+    val credentialId: String? = null,
+    val issuedOn: LocalDate? = null,
+    val expiresOn: LocalDate? = null,
 )
 
 data class LanguageImport(val language: String, val level: LanguageLevel)

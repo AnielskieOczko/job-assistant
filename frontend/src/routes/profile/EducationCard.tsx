@@ -109,6 +109,11 @@ function EducationDialog({
     setFieldOfStudy(source?.fieldOfStudy ?? '')
     setStartedOn(source?.startedOn ?? '')
     setEndedOn(source?.endedOn ?? '')
+  } else if (entry === null && seeded !== null) {
+    // Forces a reseed on the next open, even if it reuses the same key (another "new", or the
+    // same row edited twice) - otherwise the dialog would reopen showing whatever was left in
+    // these fields from the last time it was open, discarded or not.
+    setSeeded(null)
   }
 
   const create = useProfileEdit(

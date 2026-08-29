@@ -14,6 +14,7 @@ internal data class CvView(
     val skills: List<String>,
     val experiences: List<CvRoleView>,
     val education: List<CvEducationView>,
+    val credentials: List<CvCredentialView>,
     val languages: List<String>,
 )
 
@@ -25,6 +26,8 @@ internal data class CvRoleView(
 )
 
 internal data class CvEducationView(val summary: String, val period: String)
+
+internal data class CvCredentialView(val title: String, val issuer: String, val period: String)
 
 internal data class CoverLetterView(
     val fullName: String,
@@ -52,4 +55,15 @@ internal object DocumentViews {
 
     fun educationSummary(institution: String, degree: String, fieldOfStudy: String?): String =
         listOfNotNull(degree, fieldOfStudy).joinToString(" in ") + ", " + institution
+
+    /**
+     * Unlike [period], a missing expiry is never rendered as "present" - most credentials never
+     * expire, and borrowing the employment-history idiom here would misrepresent that.
+     */
+    fun credentialPeriod(issuedOn: LocalDate?, expiresOn: LocalDate?): String = when {
+        issuedOn == null && expiresOn == null -> ""
+        expiresOn == null -> "Issued ${issuedOn!!.format(MONTH_YEAR)}"
+        issuedOn == null -> "Expires ${expiresOn.format(MONTH_YEAR)}"
+        else -> "Issued ${issuedOn.format(MONTH_YEAR)} · Expires ${expiresOn.format(MONTH_YEAR)}"
+    }
 }

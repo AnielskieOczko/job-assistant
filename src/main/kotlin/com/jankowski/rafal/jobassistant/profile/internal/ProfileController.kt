@@ -151,6 +151,28 @@ internal class ProfileController(
     fun deleteEducation(@PathVariable profileId: Long, @PathVariable id: Long) =
         writes.deleteEducation(profileId, id)
 
+    // ------------------------------------------------------------ credentials
+
+    @PostMapping("/credentials")
+    @ResponseStatus(HttpStatus.CREATED)
+    fun addCredential(@PathVariable profileId: Long, @Valid @RequestBody request: CredentialRequest) =
+        writes.addCredential(profileId, request)
+
+    @PutMapping("/credentials/order")
+    fun reorderCredentials(@PathVariable profileId: Long, @Valid @RequestBody request: ReorderRequest) =
+        writes.reorderCredentials(profileId, request.ids)
+
+    @PutMapping("/credentials/{id}")
+    fun updateCredential(
+        @PathVariable profileId: Long,
+        @PathVariable id: Long,
+        @Valid @RequestBody request: CredentialRequest,
+    ) = writes.updateCredential(profileId, id, request)
+
+    @DeleteMapping("/credentials/{id}")
+    fun deleteCredential(@PathVariable profileId: Long, @PathVariable id: Long) =
+        writes.deleteCredential(profileId, id)
+
     // -------------------------------------------------------------- languages
 
     @PostMapping("/languages")

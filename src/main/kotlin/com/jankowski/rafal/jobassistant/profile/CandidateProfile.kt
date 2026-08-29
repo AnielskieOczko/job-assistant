@@ -13,6 +13,7 @@ data class CandidateProfile(
     val skills: List<ProfileSkill>,
     val experiences: List<WorkExperience>,
     val education: List<Education>,
+    val credentials: List<Credential>,
     val languages: List<LanguageSkill>,
     /**
      * Write counter for the whole profile. Output derived from the profile records the value it was
@@ -79,6 +80,17 @@ data class Education(
     val fieldOfStudy: String? = null,
     val startedOn: LocalDate? = null,
     val endedOn: LocalDate? = null,
+)
+
+data class Credential(
+    val id: Long,
+    val title: String,
+    val issuer: String,
+    val kind: CredentialKind,
+    val url: String? = null,
+    val credentialId: String? = null,
+    val issuedOn: LocalDate? = null,
+    val expiresOn: LocalDate? = null,
 )
 
 data class LanguageSkill(val id: Long, val language: String, val level: LanguageLevel)
