@@ -237,6 +237,99 @@ internal class ProfileCrudIntegrationTest(
         assertTrue(profiles.require(profileId).heldSkillIds.contains(skillId("Kotlin")))
     }
 
+    // ---------------------------------------------------------------- projects
+
+    @Test
+    fun `a skill still cited by a project's own skill badge cannot be deleted`() {
+        val profile = seed()
+        val kotlin = profile.skills.single { it.skillId == skillId("Kotlin") }
+        writes.addProject(profileId, ProjectRequest(name = "Side project", skillIds = setOf(skillId("Kotlin"))))
+
+        val rejected = assertThrows<ProfileConflictException> { writes.deleteSkill(profileId, kotlin.id) }
+
+        assertContains(rejected.message!!, "Kotlin")
+        assertEquals(listOf("Side project"), rejected.blockingProjects.map { it.name })
+        // The refusal must not have half-applied.
+        assertTrue(profiles.require(profileId).heldSkillIds.contains(skillId("Kotlin")))
+    }
+
+    @Test
+    fun `a project bullet cannot cite a skill the profile does not declare`() {
+        seed()
+        val project = writes.addProject(profileId, ProjectRequest(name = "Side project")).projects.single()
+
+        val rejected = assertThrows<ProfileConflictException> {
+            writes.addProjectBullet(
+                profileId, project.id,
+                BulletRequest("Deployed with Kubernetes.", setOf(skillId("Kubernetes"))),
+            )
+        }
+
+        assertContains(rejected.message!!, "Kubernetes")
+        assertTrue(profiles.require(profileId).projects.single().bullets.isEmpty())
+    }
+
+    @Test
+    fun `a project skill badge cannot cite a skill the profile does not declare`() {
+        seed()
+
+        val rejected = assertThrows<ProfileConflictException> {
+            writes.addProject(profileId, ProjectRequest(name = "Side project", skillIds = setOf(skillId("Kubernetes"))))
+        }
+
+        assertContains(rejected.message!!, "Kubernetes")
+        assertTrue(profiles.require(profileId).projects.isEmpty())
+    }
+
+    @Test
+    fun `editing a project leaves its bullet ids alone`() {
+        seed()
+        val project = writes.addProject(
+            profileId,
+            ProjectRequest(name = "Side project", skillIds = setOf(skillId("Kotlin"))),
+        ).projects.single()
+        val bulletId = writes.addProjectBullet(
+            profileId, project.id,
+            BulletRequest("Built a CLI in Kotlin.", setOf(skillId("Kotlin"))),
+        ).projects.single().bullets.single().id
+
+        val after = writes.updateProject(
+            profileId,
+            project.id,
+            ProjectRequest(name = "Side project v2", skillIds = setOf(skillId("Kotlin"))),
+        ).projects.single()
+
+        assertEquals("Side project v2", after.name)
+        assertEquals(listOf(bulletId), after.bullets.map { it.id })
+    }
+
+    /** Proves the owner-exclusive bullet queries don't cross-leak between the two kinds of owner. */
+    @Test
+    fun `a project's bullets stay independent of an experience's bullets`() {
+        val experience = seed().experiences.single()
+        val project = writes.addProject(
+            profileId,
+            ProjectRequest(name = "Side project", skillIds = setOf(skillId("Kotlin"))),
+        ).projects.single()
+        val projectBulletId = writes.addProjectBullet(
+            profileId, project.id,
+            BulletRequest("Built a CLI in Kotlin.", setOf(skillId("Kotlin"))),
+        ).projects.single().bullets.single().id
+
+        val afterDeletingExperienceBullet = writes.deleteBullet(profileId, experience.bullets.first().id)
+        assertEquals(
+            listOf(projectBulletId),
+            afterDeletingExperienceBullet.projects.single().bullets.map { it.id },
+        )
+
+        val afterDeletingProjectBullet = writes.deleteBullet(profileId, projectBulletId)
+        assertEquals(
+            listOf(experience.bullets[1].id),
+            afterDeletingProjectBullet.experiences.single().bullets.map { it.id },
+        )
+        assertTrue(afterDeletingProjectBullet.projects.single().bullets.isEmpty())
+    }
+
     // -------------------------------------------------------------- bootstrap
 
     @Test

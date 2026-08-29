@@ -61,6 +61,17 @@ internal data class CvSelection(
                     period = DocumentViews.credentialPeriod(it.issuedOn, it.expiresOn),
                 )
             },
+            projects = profile.projects.map { project ->
+                CvProjectView(
+                    name = project.name,
+                    url = project.url,
+                    period = DocumentViews.period(project.startedOn, project.endedOn),
+                    bullets = project.bullets
+                        .filter { it.id in selected }
+                        .sortedBy { positionOf[it.id] }
+                        .map { rewrittenText[it.id] ?: it.text },
+                )
+            },
             languages = profile.languages.map { "${it.language} (${it.level})" },
         )
     }

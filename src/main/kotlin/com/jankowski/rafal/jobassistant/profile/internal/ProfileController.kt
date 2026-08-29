@@ -173,6 +173,43 @@ internal class ProfileController(
     fun deleteCredential(@PathVariable profileId: Long, @PathVariable id: Long) =
         writes.deleteCredential(profileId, id)
 
+    // --------------------------------------------------------------- projects
+
+    @PostMapping("/projects")
+    @ResponseStatus(HttpStatus.CREATED)
+    fun addProject(@PathVariable profileId: Long, @Valid @RequestBody request: ProjectRequest) =
+        writes.addProject(profileId, request)
+
+    @PutMapping("/projects/order")
+    fun reorderProjects(@PathVariable profileId: Long, @Valid @RequestBody request: ReorderRequest) =
+        writes.reorderProjects(profileId, request.ids)
+
+    @PutMapping("/projects/{id}")
+    fun updateProject(
+        @PathVariable profileId: Long,
+        @PathVariable id: Long,
+        @Valid @RequestBody request: ProjectRequest,
+    ) = writes.updateProject(profileId, id, request)
+
+    @DeleteMapping("/projects/{id}")
+    fun deleteProject(@PathVariable profileId: Long, @PathVariable id: Long) =
+        writes.deleteProject(profileId, id)
+
+    @PostMapping("/projects/{projectId}/bullets")
+    @ResponseStatus(HttpStatus.CREATED)
+    fun addProjectBullet(
+        @PathVariable profileId: Long,
+        @PathVariable projectId: Long,
+        @Valid @RequestBody request: BulletRequest,
+    ) = writes.addProjectBullet(profileId, projectId, request)
+
+    @PutMapping("/projects/{projectId}/bullets/order")
+    fun reorderProjectBullets(
+        @PathVariable profileId: Long,
+        @PathVariable projectId: Long,
+        @Valid @RequestBody request: ReorderRequest,
+    ) = writes.reorderProjectBullets(profileId, projectId, request.ids)
+
     // -------------------------------------------------------------- languages
 
     @PostMapping("/languages")
@@ -219,6 +256,7 @@ internal class ProfileController(
         val problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.message!!).apply {
             title = "Profile edit rejected"
             setProperty("blockingBullets", exception.blockingBullets)
+            setProperty("blockingProjects", exception.blockingProjects)
         }
         return ResponseEntity.status(HttpStatus.CONFLICT).body(problem)
     }

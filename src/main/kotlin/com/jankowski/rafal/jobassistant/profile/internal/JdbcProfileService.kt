@@ -16,6 +16,7 @@ import com.jankowski.rafal.jobassistant.profile.ProfileImportException
 import com.jankowski.rafal.jobassistant.profile.ProfileLink
 import com.jankowski.rafal.jobassistant.profile.ProfileService
 import com.jankowski.rafal.jobassistant.profile.ProfileSkill
+import com.jankowski.rafal.jobassistant.profile.Project
 import com.jankowski.rafal.jobassistant.profile.WorkExperience
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.stereotype.Service
@@ -30,6 +31,7 @@ internal class JdbcProfileService(
     private val bullets: ExperienceBulletRepository,
     private val education: EducationRepository,
     private val credentials: CredentialRepository,
+    private val projects: ProjectRepository,
     private val languages: LanguageSkillRepository,
     private val jdbc: JdbcClient,
 ) : ProfileService {
@@ -40,6 +42,7 @@ internal class JdbcProfileService(
         // Bullets no longer hang off the experience aggregate, so they are read once for the whole
         // profile and grouped here rather than queried per role.
         val bulletsByExperience = bullets.findAllOrderedForProfile(profileId).groupBy { it.workExperienceId }
+        val bulletsByProject = bullets.findAllOrderedForProjects(profileId).groupBy { it.projectId }
         return CandidateProfile(
             details = details,
             links = links.findAllOrdered(profileId).map { ProfileLink(it.id!!, it.label, it.url) },
@@ -49,6 +52,9 @@ internal class JdbcProfileService(
             },
             education = education.findAllOrdered(profileId).map { it.toDomain() },
             credentials = credentials.findAllOrdered(profileId).map { it.toDomain() },
+            projects = projects.findAllOrdered(profileId).map { row ->
+                row.toDomain(bulletsByProject[row.id].orEmpty().map { it.toDomain() })
+            },
             languages = languages.findAllOrdered(profileId).map { it.toDomain() },
             revision = readRevision(profileId),
         )
@@ -71,7 +77,12 @@ internal class JdbcProfileService(
      */
     @Transactional(readOnly = true)
     override fun identities(): List<ProfileIdentity> {
-        val urlsByProfile = jdbc.sql("select profile_id, url from profile_link")
+        // A project URL is a direct identifier exactly like a profile link - github.com/AnielskieOczko
+        // names the candidate as surely as an email does - so it feeds the same linkUrls list.
+        val urlsByProfile = jdbc.sql(
+            "select profile_id, url from profile_link " +
+                "union all select profile_id, url from project where url is not null"
+        )
             .query { rs, _ -> rs.getLong("profile_id") to rs.getString("url") }
             .list()
             .groupBy({ it.first }, { it.second })
@@ -139,6 +150,7 @@ internal class JdbcProfileService(
                 exp.bullets.mapIndexed { j, bullet ->
                     ExperienceBulletRow(
                         workExperienceId = saved.id!!,
+                        projectId = null,
                         text = bullet.text,
                         displayOrder = j,
                         skills = bullet.skills.mapTo(mutableSetOf()) {
@@ -176,6 +188,35 @@ internal class JdbcProfileService(
                 )
             }
         )
+        import.projects.forEachIndexed { i, proj ->
+            val saved = projects.save(
+                ProjectRow(
+                    profileId = profileId,
+                    name = proj.name,
+                    url = proj.url,
+                    description = proj.description,
+                    startedOn = proj.startedOn,
+                    endedOn = proj.endedOn,
+                    displayOrder = i,
+                    skills = proj.skills.mapTo(mutableSetOf()) {
+                        ProjectSkillRow(skillIdsByName.getValue(it.lowercase()))
+                    },
+                )
+            )
+            bullets.saveAll(
+                proj.bullets.mapIndexed { j, bullet ->
+                    ExperienceBulletRow(
+                        workExperienceId = null,
+                        projectId = saved.id!!,
+                        text = bullet.text,
+                        displayOrder = j,
+                        skills = bullet.skills.mapTo(mutableSetOf()) {
+                            ExperienceBulletSkillRow(skillIdsByName.getValue(it.lowercase()))
+                        },
+                    )
+                }
+            )
+        }
         languages.saveAll(
             import.languages.mapIndexed { i, it ->
                 LanguageSkillRow(profileId = profileId, language = it.language, level = it.level.name, displayOrder = i)
@@ -193,17 +234,20 @@ internal class JdbcProfileService(
      */
     private fun resolveSkillNames(import: ProfileImport): Map<String, Long> {
         val declared = import.skills.map { it.skill }
-        val onBullets = import.experiences.flatMap { it.bullets }.flatMap { it.skills }
-        val resolved = catalog.resolveAll((declared + onBullets).toSet())
+        val onExperienceBullets = import.experiences.flatMap { it.bullets }.flatMap { it.skills }
+        val onProjects = import.projects.flatMap { it.skills }
+        val onProjectBullets = import.projects.flatMap { it.bullets }.flatMap { it.skills }
+        val tagged = onExperienceBullets + onProjects + onProjectBullets
+        val resolved = catalog.resolveAll((declared + tagged).toSet())
 
         val unresolved = resolved.filterValues { it == null }.keys.sorted()
 
         val declaredIds = declared.mapNotNull { resolved[it]?.id }.toSet()
-        val taggedIds = onBullets.mapNotNull { resolved[it]?.id }.toSet()
+        val taggedIds = tagged.mapNotNull { resolved[it]?.id }.toSet()
         val undeclaredIds = ProfileInvariants.undeclaredTags(declaredIds, taggedIds)
         // Reported back as names: the document was written in names, so that is what the author
         // has to go and correct.
-        val undeclared = onBullets.distinct()
+        val undeclared = tagged.distinct()
             .filter { name -> resolved[name]?.id?.let { it in undeclaredIds } == true }
             .sorted()
 
@@ -279,12 +323,13 @@ internal class JdbcProfileService(
     }
 
     private fun deleteEverything(profileId: Long) {
-        // experience_bullet and experience_bullet_skill cascade from work_experience.
+        // experience_bullet and experience_bullet_skill cascade from work_experience or project.
         experiences.deleteByProfileId(profileId)
         skills.deleteByProfileId(profileId)
         links.deleteByProfileId(profileId)
         education.deleteByProfileId(profileId)
         credentials.deleteByProfileId(profileId)
+        projects.deleteByProfileId(profileId)
         languages.deleteByProfileId(profileId)
     }
 }
@@ -319,6 +364,17 @@ internal fun EducationRow.toDomain() =
 
 internal fun CredentialRow.toDomain() =
     Credential(id!!, title, issuer, CredentialKind.valueOf(kind), url, credentialId, issuedOn, expiresOn)
+
+internal fun ProjectRow.toDomain(bullets: List<ExperienceBullet>) = Project(
+    id = id!!,
+    name = name,
+    url = url,
+    description = description,
+    startedOn = startedOn,
+    endedOn = endedOn,
+    skillIds = skills.mapTo(mutableSetOf()) { it.canonicalSkillId },
+    bullets = bullets,
+)
 
 internal fun LanguageSkillRow.toDomain() =
     LanguageSkill(id!!, language, LanguageLevel.valueOf(level))

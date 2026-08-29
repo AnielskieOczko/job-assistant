@@ -34,6 +34,7 @@ export function ConfirmDelete({
 }) {
   const apiError = error instanceof ApiError ? error : null
   const blocking = apiError?.status === 409 ? apiError.blockingBullets : []
+  const blockingProjects = apiError?.status === 409 ? apiError.blockingProjects : []
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -54,6 +55,16 @@ export function ConfirmDelete({
                     <li key={bullet.id} className="flex gap-2 text-xs">
                       <Badge variant="outline" className="shrink-0">#{bullet.id}</Badge>
                       <span>{bullet.text}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              {blockingProjects.length > 0 ? (
+                <ul className="space-y-1">
+                  {blockingProjects.map((project) => (
+                    <li key={project.id} className="flex gap-2 text-xs">
+                      <Badge variant="outline" className="shrink-0">Project</Badge>
+                      <span>{project.name}</span>
                     </li>
                   ))}
                 </ul>

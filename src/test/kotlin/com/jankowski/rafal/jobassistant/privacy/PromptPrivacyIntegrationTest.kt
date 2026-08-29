@@ -14,6 +14,7 @@ import com.jankowski.rafal.jobassistant.profile.Proficiency
 import com.jankowski.rafal.jobassistant.profile.ProfileDetails
 import com.jankowski.rafal.jobassistant.profile.ProfileImport
 import com.jankowski.rafal.jobassistant.profile.ProfileService
+import com.jankowski.rafal.jobassistant.profile.ProjectImport
 import com.jankowski.rafal.jobassistant.profile.SkillImport
 import com.jankowski.rafal.jobassistant.profile.internal.ProfileManagementService
 import com.jankowski.rafal.jobassistant.support.IntegrationTest
@@ -88,6 +89,14 @@ internal class PromptPrivacyIntegrationTest(
                     )
                 ),
                 education = emptyList(),
+                projects = listOf(
+                    ProjectImport(
+                        name = "Side project",
+                        url = SENTINEL_PROJECT_URL,
+                        skills = listOf("Kotlin"),
+                        bullets = listOf(BulletImport("Built a CLI in Kotlin.", listOf("Kotlin"))),
+                    )
+                ),
                 languages = listOf(LanguageImport("English", LanguageLevel.C1)),
             )
         )
@@ -136,6 +145,7 @@ internal class PromptPrivacyIntegrationTest(
         assertFalse(sent.contains(SENTINEL_EMAIL, ignoreCase = true), "the candidate's email reached a model")
         assertFalse(sent.contains("555987654"), "the candidate's phone reached a model")
         assertFalse(sent.contains("QQVHANDLE", ignoreCase = true), "a profile link reached a model")
+        assertFalse(sent.contains("ZZQXPROJECT", ignoreCase = true), "a project url reached a model")
     }
 
     /**
@@ -261,5 +271,6 @@ internal class PromptPrivacyIntegrationTest(
         const val SENTINEL_EMAIL = "zzqxsentinel@example.invalid"
         const val SENTINEL_PHONE = "+48 555 987 654"
         const val SENTINEL_LINK = "https://github.com/QQVHANDLE"
+        const val SENTINEL_PROJECT_URL = "https://github.com/ZZQXPROJECT/side-project"
     }
 }

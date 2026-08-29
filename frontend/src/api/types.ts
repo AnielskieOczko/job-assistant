@@ -397,6 +397,22 @@ export interface Credential {
   expiresOn: string | null
 }
 
+/**
+ * Side-project evidence. `skillIds` is a project-level skill badge declared directly, distinct
+ * from the tags on the project's own `bullets` - the same distinction `project_skill` and
+ * `experience_bullet_skill` make in the database.
+ */
+export interface Project {
+  id: number
+  name: string
+  url: string | null
+  description: string | null
+  startedOn: string | null
+  endedOn: string | null
+  skillIds: number[]
+  bullets: ExperienceBullet[]
+}
+
 export interface LanguageSkill {
   id: number
   language: string
@@ -410,6 +426,7 @@ export interface CandidateProfile {
   experiences: WorkExperience[]
   education: Education[]
   credentials: Credential[]
+  projects: Project[]
   languages: LanguageSkill[]
   /**
    * Bumped by every write to the profile. Compare against an analysis's or a document's
@@ -467,6 +484,16 @@ export interface CredentialImport {
   expiresOn?: string | null
 }
 
+export interface ProjectImport {
+  name: string
+  url?: string | null
+  description?: string | null
+  startedOn?: string | null
+  endedOn?: string | null
+  skills: string[]
+  bullets: BulletImport[]
+}
+
 export interface LanguageImport { language: string; level: LanguageLevel }
 
 export interface ProfileImport {
@@ -476,6 +503,7 @@ export interface ProfileImport {
   experiences: ExperienceImport[]
   education: EducationImport[]
   credentials: CredentialImport[]
+  projects: ProjectImport[]
   languages: LanguageImport[]
 }
 
@@ -539,6 +567,15 @@ export interface CredentialRequest {
   credentialId?: string | null
   issuedOn?: string | null
   expiresOn?: string | null
+}
+
+export interface ProjectRequest {
+  name: string
+  url?: string | null
+  description?: string | null
+  startedOn?: string | null
+  endedOn?: string | null
+  skillIds: number[]
 }
 
 export interface LanguageRequest { language: string; level: LanguageLevel }

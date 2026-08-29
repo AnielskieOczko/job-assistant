@@ -14,6 +14,7 @@ data class CandidateProfile(
     val experiences: List<WorkExperience>,
     val education: List<Education>,
     val credentials: List<Credential>,
+    val projects: List<Project>,
     val languages: List<LanguageSkill>,
     /**
      * Write counter for the whole profile. Output derived from the profile records the value it was
@@ -25,7 +26,7 @@ data class CandidateProfile(
     /** Canonical skill ids the candidate actually holds - the allowlist for the CV invariant. */
     val heldSkillIds: Set<Long> = skills.mapTo(mutableSetOf()) { it.skillId }
 
-    val bullets: List<ExperienceBullet> = experiences.flatMap { it.bullets }
+    val bullets: List<ExperienceBullet> = experiences.flatMap { it.bullets } + projects.flatMap { it.bullets }
 
     fun languageLevel(language: String): LanguageLevel? =
         languages.firstOrNull { it.language.equals(language, ignoreCase = true) }?.level
@@ -91,6 +92,22 @@ data class Credential(
     val credentialId: String? = null,
     val issuedOn: LocalDate? = null,
     val expiresOn: LocalDate? = null,
+)
+
+/**
+ * Side-project evidence, distinct from [WorkExperience] because it carries none of employment's
+ * contractual fields. Its skill badges (declared, not derived) and its bullets both draw only from
+ * skills the profile already holds, on the same allowlist every other claim on a CV runs through.
+ */
+data class Project(
+    val id: Long,
+    val name: String,
+    val url: String? = null,
+    val description: String? = null,
+    val startedOn: LocalDate? = null,
+    val endedOn: LocalDate? = null,
+    val skillIds: Set<Long> = emptySet(),
+    val bullets: List<ExperienceBullet> = emptyList(),
 )
 
 data class LanguageSkill(val id: Long, val language: String, val level: LanguageLevel)

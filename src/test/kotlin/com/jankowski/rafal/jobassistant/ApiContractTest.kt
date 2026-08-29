@@ -49,6 +49,7 @@ import com.jankowski.rafal.jobassistant.triage.TriageRanking
 import com.jankowski.rafal.jobassistant.profile.ProfileDetails
 import com.jankowski.rafal.jobassistant.profile.ProfileLink
 import com.jankowski.rafal.jobassistant.profile.ProfileSkill
+import com.jankowski.rafal.jobassistant.profile.Project
 import com.jankowski.rafal.jobassistant.profile.WorkExperience
 import com.jankowski.rafal.jobassistant.profile.internal.ProfileSummary
 import org.junit.jupiter.api.Test
@@ -203,6 +204,12 @@ class ApiContractTest {
             },
             {
                 assertKeys(
+                    Project(1, "Side project", null, null, null, null, emptySet(), listOf(bullet)),
+                    "id", "name", "url", "description", "startedOn", "endedOn", "skillIds", "bullets",
+                )
+            },
+            {
+                assertKeys(
                     ProfileDetails(fullName = "Rafal"),
                     "fullName", "headline", "email", "phone", "location", "summary",
                 )
@@ -212,10 +219,11 @@ class ApiContractTest {
                     CandidateProfile(
                         details = ProfileDetails(fullName = "Rafal"), links = emptyList(),
                         skills = emptyList(), experiences = listOf(experience),
-                        education = emptyList(), credentials = emptyList(), languages = emptyList(),
+                        education = emptyList(), credentials = emptyList(), projects = emptyList(),
+                        languages = emptyList(),
                     ),
-                    "details", "links", "skills", "experiences", "education", "credentials", "languages",
-                    "revision",
+                    "details", "links", "skills", "experiences", "education", "credentials", "projects",
+                    "languages", "revision",
                     // Computed; `bullets` duplicates experiences[].bullets and the UI ignores it.
                     "heldSkillIds", "bullets",
                 )

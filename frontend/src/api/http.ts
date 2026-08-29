@@ -69,6 +69,16 @@ export class ApiError extends Error {
     )
   }
 
+  /** 409 from deleting a profile skill: the projects whose own skill badge still cites it. */
+  get blockingProjects(): { id: number; name: string }[] {
+    const value = this.problem?.['blockingProjects']
+    if (!Array.isArray(value)) return []
+    return value.filter(
+      (v): v is { id: number; name: string } =>
+        typeof v === 'object' && v !== null && typeof (v as { name?: unknown }).name === 'string',
+    )
+  }
+
   /** 400 from a per-entity edit: field name to message, for inline form errors. */
   get fieldErrors(): Record<string, string> {
     const value = this.problem?.['fieldErrors']

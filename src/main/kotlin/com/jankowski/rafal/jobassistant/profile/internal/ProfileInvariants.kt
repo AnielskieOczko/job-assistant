@@ -24,12 +24,19 @@ internal object ProfileInvariants {
 internal data class BlockingBullet(val id: Long, val text: String)
 
 /**
+ * A project standing in the way of deleting a skill because the project's own skill badge - not a
+ * bullet's tag - names it. Named so the caller can go and fix it.
+ */
+internal data class BlockingProject(val id: Long, val name: String)
+
+/**
  * A write that the profile's current contents refuse. Distinct from a malformed request: the body
  * is fine, it just cannot be reconciled with what is already stored.
  */
 internal class ProfileConflictException(
     message: String,
     val blockingBullets: List<BlockingBullet> = emptyList(),
+    val blockingProjects: List<BlockingProject> = emptyList(),
 ) : RuntimeException(message)
 
 /** A request naming an id the profile or the catalog does not have. */

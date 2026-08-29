@@ -51,6 +51,22 @@ internal object ProfileBriefing {
             appendLine()
         }
 
+        // A project's URL is never appended here - it never reaches a prompt, the same rule the
+        // candidate's name already follows. PromptPrivacyInvariant enforces that it stays out.
+        if (profile.projects.isNotEmpty()) {
+            appendLine("Projects:")
+            profile.projects.forEach { project ->
+                val skills = project.skillIds.mapNotNull { catalog.findById(it)?.name }
+                val skillsSuffix = if (skills.isNotEmpty()) " (uses: ${skills.joinToString()})" else ""
+                appendLine(project.name + skillsSuffix)
+                project.bullets.forEach { bullet ->
+                    val bulletSkills = bullet.skillIds.mapNotNull { catalog.findById(it)?.name }
+                    appendLine("  [id=${bullet.id}] ${bullet.text}  (evidences: ${bulletSkills.joinToString().ifBlank { "nothing specific" }})")
+                }
+                appendLine()
+            }
+        }
+
         if (profile.languages.isNotEmpty()) {
             appendLine("Languages: " + profile.languages.joinToString { "${it.language} (${it.level})" })
         }
