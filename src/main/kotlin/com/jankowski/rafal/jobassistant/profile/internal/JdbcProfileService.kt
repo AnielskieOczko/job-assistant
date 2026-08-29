@@ -268,7 +268,7 @@ internal class JdbcProfileService(
 
     private fun readDetails(profileId: Long): ProfileDetails? =
         jdbc.sql(
-            "select full_name, headline, email, phone, location, summary " +
+            "select full_name, headline, email, phone, location, summary, career_goal " +
                 "from profile_details where profile_id = :profileId"
         )
             .param("profileId", profileId)
@@ -280,6 +280,7 @@ internal class JdbcProfileService(
                     phone = rs.getString("phone"),
                     location = rs.getString("location"),
                     summary = rs.getString("summary"),
+                    careerGoal = rs.getString("career_goal"),
                 )
             }
             .optional()
@@ -288,15 +289,18 @@ internal class JdbcProfileService(
     private fun writeDetails(profileId: Long, details: ProfileDetails) {
         jdbc.sql(
             """
-            insert into profile_details (profile_id, full_name, headline, email, phone, location, summary)
-            values (:profileId, :fullName, :headline, :email, :phone, :location, :summary)
+            insert into profile_details
+                (profile_id, full_name, headline, email, phone, location, summary, career_goal)
+            values
+                (:profileId, :fullName, :headline, :email, :phone, :location, :summary, :careerGoal)
             on conflict (profile_id) do update set
-                full_name = excluded.full_name,
-                headline  = excluded.headline,
-                email     = excluded.email,
-                phone     = excluded.phone,
-                location  = excluded.location,
-                summary   = excluded.summary
+                full_name   = excluded.full_name,
+                headline    = excluded.headline,
+                email       = excluded.email,
+                phone       = excluded.phone,
+                location    = excluded.location,
+                summary     = excluded.summary,
+                career_goal = excluded.career_goal
             """
         )
             .param("profileId", profileId)
@@ -306,6 +310,7 @@ internal class JdbcProfileService(
             .param("phone", details.phone)
             .param("location", details.location)
             .param("summary", details.summary)
+            .param("careerGoal", details.careerGoal)
             .update()
     }
 

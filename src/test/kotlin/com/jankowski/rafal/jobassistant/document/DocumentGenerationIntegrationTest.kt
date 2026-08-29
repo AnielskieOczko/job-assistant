@@ -13,7 +13,9 @@ import com.jankowski.rafal.jobassistant.profile.ProfileDetails
 import com.jankowski.rafal.jobassistant.profile.ProfileImport
 import com.jankowski.rafal.jobassistant.profile.ProfileService
 import com.jankowski.rafal.jobassistant.profile.SkillImport
+import com.jankowski.rafal.jobassistant.profile.internal.DetailsRequest
 import com.jankowski.rafal.jobassistant.profile.internal.ProfileManagementService
+import com.jankowski.rafal.jobassistant.profile.internal.ProfileWriteService
 import com.jankowski.rafal.jobassistant.support.IntegrationTest
 import com.jankowski.rafal.jobassistant.support.ScriptedModels
 import org.awaitility.Awaitility.await
@@ -40,6 +42,7 @@ internal class DocumentGenerationIntegrationTest(
     @Autowired private val offers: OfferService,
     @Autowired private val profiles: ProfileService,
     @Autowired private val management: ProfileManagementService,
+    @Autowired private val writes: ProfileWriteService,
     @Autowired private val models: ScriptedModels,
     @Autowired private val jdbc: JdbcClient,
 ) {
@@ -290,6 +293,42 @@ internal class DocumentGenerationIntegrationTest(
         val prompt = models[LlmTask.DOCUMENT].requests.single().messages().joinToString { it.toString() }
         assertTrue(prompt.contains("[id=$kotlinBulletId]"))
         assertTrue(prompt.contains("Kubernetes [MISSING]"), "the tailor should see what the offer wants")
+    }
+
+    @Test
+    fun `the tailoring prompt includes the candidate's stated career goal`() {
+        writes.putDetails(
+            profileId,
+            DetailsRequest(
+                fullName = "Rafal Jankowski",
+                headline = "Backend Engineer",
+                careerGoal = "I'm moving from support engineering into backend development.",
+            ),
+        )
+        scriptCv(honestCv)
+
+        documents.generate(offerId, profileId, DocumentType.CV)
+
+        val prompt = models[LlmTask.DOCUMENT].requests.single().messages().joinToString { it.toString() }
+        assertTrue(prompt.contains("I'm moving from support engineering into backend development."))
+    }
+
+    /**
+     * The invariant has no notion of aspiration any more than it has of negation: naming a
+     * technology that only appears in the stated goal still fails the document, exactly as if the
+     * model had invented it from nowhere.
+     */
+    @Test
+    fun `a cover letter naming a technology only mentioned in the stated career goal is refused`() {
+        writes.putDetails(
+            profileId,
+            DetailsRequest(fullName = "Rafal Jankowski", careerGoal = "I want to grow into Kubernetes-based platform work."),
+        )
+        models[LlmTask.DOCUMENT].enqueue(
+            """{"paragraphs":["I'm working toward Kubernetes-based platform roles."]}"""
+        )
+
+        assertThrows<FabricatedClaimException> { documents.generate(offerId, profileId, DocumentType.COVER_LETTER) }
     }
 
     /** A letter selects nothing by id, so it has no drop count of its own to report. */

@@ -25,6 +25,7 @@ import org.springframework.jdbc.core.simple.JdbcClient
 import java.time.Duration
 import java.time.LocalDate
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -283,6 +284,113 @@ internal class AnalysisFlowIntegrationTest(
         val report = runAnalysis()
 
         assertEquals(ApplicationStatus.ANALYZED, assertNotNull(offers.applicationFor(report.offerId)).status)
+    }
+
+    /**
+     * `matchScore` is a deterministic diff over the catalog; a stated aspiration is not a
+     * capability and must not be able to move it, the same reason `SOFT` skills were excluded
+     * from the denominator.
+     */
+    @Test
+    fun `the score is unchanged by a career goal being set`() {
+        scriptHappyPath()
+        val baseline = runAnalysis()
+
+        profiles.replace(
+            profileId,
+            ProfileImport(
+                details = ProfileDetails(
+                    fullName = "Rafal Jankowski",
+                    headline = "Backend Engineer",
+                    careerGoal = "I'm moving from platform support into backend development with Kubernetes.",
+                ),
+                skills = listOf(
+                    SkillImport("Kotlin", Proficiency.EXPERT),
+                    SkillImport("Spring Boot", Proficiency.PROFICIENT),
+                    SkillImport("PostgreSQL", Proficiency.WORKING),
+                ),
+                experiences = listOf(
+                    ExperienceImport(
+                        company = "Acme",
+                        roleTitle = "Backend Engineer",
+                        startedOn = LocalDate.of(2021, 1, 1),
+                        bullets = listOf(
+                            BulletImport("Built payment services in Kotlin.", listOf("Kotlin")),
+                            BulletImport("Ran a Spring Boot platform.", listOf("Spring Boot")),
+                        ),
+                    )
+                ),
+                languages = listOf(
+                    LanguageImport("Polish", LanguageLevel.NATIVE),
+                    LanguageImport("English", LanguageLevel.C1),
+                ),
+            ),
+        )
+        scriptHappyPath()
+        val withGoal = runAnalysis()
+
+        assertEquals(baseline.matchScore, withGoal.matchScore)
+    }
+
+    @Test
+    fun `the narrator is shown the candidate's stated career goal`() {
+        profiles.replace(
+            profileId,
+            ProfileImport(
+                details = ProfileDetails(
+                    fullName = "Rafal Jankowski",
+                    headline = "Backend Engineer",
+                    careerGoal = "I'm moving from platform support into backend development.",
+                ),
+                skills = listOf(
+                    SkillImport("Kotlin", Proficiency.EXPERT),
+                    SkillImport("Spring Boot", Proficiency.PROFICIENT),
+                    SkillImport("PostgreSQL", Proficiency.WORKING),
+                ),
+                experiences = listOf(
+                    ExperienceImport(
+                        company = "Acme",
+                        roleTitle = "Backend Engineer",
+                        startedOn = LocalDate.of(2021, 1, 1),
+                        bullets = listOf(
+                            BulletImport("Built payment services in Kotlin.", listOf("Kotlin")),
+                            BulletImport("Ran a Spring Boot platform.", listOf("Spring Boot")),
+                        ),
+                    )
+                ),
+                languages = listOf(
+                    LanguageImport("Polish", LanguageLevel.NATIVE),
+                    LanguageImport("English", LanguageLevel.C1),
+                ),
+            ),
+        )
+        scriptHappyPath()
+
+        runAnalysis()
+
+        val prompt = models[LlmTask.NARRATIVE].requests.single().messages().joinToString { it.toString() }
+        assertTrue(prompt.contains("I'm moving from platform support into backend development."))
+    }
+
+    @Test
+    fun `the extractor is not shown the candidate's stated career goal`() {
+        profiles.replace(
+            profileId,
+            ProfileImport(
+                details = ProfileDetails(
+                    fullName = "Rafal Jankowski",
+                    headline = "Backend Engineer",
+                    careerGoal = "I want to grow into Frobnication Engine work.",
+                ),
+                skills = listOf(SkillImport("Kotlin", Proficiency.EXPERT)),
+            ),
+        )
+        scriptHappyPath()
+
+        runAnalysis()
+
+        val prompt = models[LlmTask.EXTRACTION].requests.single().messages().joinToString { it.toString() }
+        assertFalse(prompt.contains("Frobnication Engine work"))
     }
 
     @Test

@@ -345,6 +345,18 @@ internal class ProfileCrudIntegrationTest(
     }
 
     @Test
+    fun `a career goal round-trips and can be cleared`() {
+        val withGoal = writes.putDetails(
+            profileId,
+            DetailsRequest(fullName = "Rafal Jankowski", careerGoal = "I'm moving from QA into backend development."),
+        )
+        assertEquals("I'm moving from QA into backend development.", withGoal.details.careerGoal)
+
+        val cleared = writes.putDetails(profileId, DetailsRequest(fullName = "Rafal Jankowski", careerGoal = null))
+        assertNull(cleared.details.careerGoal)
+    }
+
+    @Test
     fun `entities added to a fresh profile land in insertion order`() {
         writes.putDetails(profileId, DetailsRequest(fullName = "Rafal Jankowski"))
         writes.addSkill(profileId, SkillRequest(skillId = skillId("Kotlin"), proficiency = Proficiency.EXPERT))

@@ -5,7 +5,8 @@
     "email": "alex.novak@example.com",
     "phone": null,
     "location": "Poland",
-    "summary": "Backend engineer focused on JVM services, Postgres and clean module boundaries."
+    "summary": "Backend engineer focused on JVM services, Postgres and clean module boundaries.",
+    "careerGoal": null
   },
   "links": [
     { "label": "GitHub", "url": "https://github.com/your-handle" },

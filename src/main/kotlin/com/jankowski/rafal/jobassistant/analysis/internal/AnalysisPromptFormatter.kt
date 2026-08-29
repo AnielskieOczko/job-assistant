@@ -46,4 +46,7 @@ internal object AnalysisPromptFormatter {
 
     fun score(value: Double?): String =
         value?.let { "%.0f%%".format(it * 100) } ?: "not scoreable"
+
+    /** An aspiration, not evidence - the narrator must not treat it as a claim of experience. */
+    fun careerGoal(value: String?): String = value?.trim()?.ifBlank { null } ?: "(not stated)"
 }

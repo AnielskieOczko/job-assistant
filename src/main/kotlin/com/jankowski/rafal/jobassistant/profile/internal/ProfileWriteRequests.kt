@@ -32,6 +32,7 @@ internal data class DetailsRequest(
     val phone: String? = null,
     val location: String? = null,
     val summary: String? = null,
+    val careerGoal: String? = null,
 )
 
 internal data class LinkRequest(
