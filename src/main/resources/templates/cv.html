@@ -88,6 +88,7 @@
         .role-title { font-weight: 620; }
         .role-company { color: var(--accent); }
         .role-period { color: var(--muted); font-size: 9pt; white-space: nowrap; }
+        .role a { display: inline-block; margin-top: 4px; color: var(--accent); font-size: 9pt; text-decoration: none; }
 
         ul { margin: 5px 0 0; padding-left: 16px; }
         li { margin-bottom: 3px; }
@@ -131,6 +132,20 @@
         <ul th:if="${!role.bullets.isEmpty()}">
             <li th:each="bullet : ${role.bullets}" th:text="${bullet}">bullet</li>
         </ul>
+    </div>
+</section>
+
+<section th:if="${!cv.projects.isEmpty()}">
+    <h2>Projects</h2>
+    <div class="role" th:each="project : ${cv.projects}">
+        <div class="role-head">
+            <span class="role-title" th:text="${project.name}">Project</span>
+            <span class="role-period" th:text="${project.period}">2023</span>
+        </div>
+        <ul th:if="${!project.bullets.isEmpty()}">
+            <li th:each="bullet : ${project.bullets}" th:text="${bullet}">bullet</li>
+        </ul>
+        <a th:if="${project.url}" th:href="${project.url}" th:text="${project.url}">link</a>
     </div>
 </section>
 

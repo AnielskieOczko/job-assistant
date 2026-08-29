@@ -9,6 +9,7 @@ import type {
   LanguageRequest,
   LinkRequest,
   ProfileImport,
+  ProjectRequest,
   SkillRequest,
   SkillUpdateRequest,
 } from './types'
@@ -94,6 +95,18 @@ export const deleteCredential = (profileId: number, id: number) =>
   remove(`/api/profiles/${profileId}/credentials/${id}`)
 export const reorderCredentials = (profileId: number, ids: number[]) =>
   put(`/api/profiles/${profileId}/credentials/order`, { ids })
+
+export const addProject = (profileId: number, body: ProjectRequest) => post(`/api/profiles/${profileId}/projects`, body)
+export const updateProject = (profileId: number, id: number, body: ProjectRequest) =>
+  put(`/api/profiles/${profileId}/projects/${id}`, body)
+export const deleteProject = (profileId: number, id: number) => remove(`/api/profiles/${profileId}/projects/${id}`)
+export const reorderProjects = (profileId: number, ids: number[]) =>
+  put(`/api/profiles/${profileId}/projects/order`, { ids })
+
+export const addProjectBullet = (profileId: number, projectId: number, body: BulletRequest) =>
+  post(`/api/profiles/${profileId}/projects/${projectId}/bullets`, body)
+export const reorderProjectBullets = (profileId: number, projectId: number, ids: number[]) =>
+  put(`/api/profiles/${profileId}/projects/${projectId}/bullets/order`, { ids })
 
 export const addLanguage = (profileId: number, body: LanguageRequest) =>
   post(`/api/profiles/${profileId}/languages`, body)

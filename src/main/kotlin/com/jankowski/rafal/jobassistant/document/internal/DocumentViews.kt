@@ -15,6 +15,7 @@ internal data class CvView(
     val experiences: List<CvRoleView>,
     val education: List<CvEducationView>,
     val credentials: List<CvCredentialView>,
+    val projects: List<CvProjectView>,
     val languages: List<String>,
 )
 
@@ -28,6 +29,13 @@ internal data class CvRoleView(
 internal data class CvEducationView(val summary: String, val period: String)
 
 internal data class CvCredentialView(val title: String, val issuer: String, val period: String)
+
+/**
+ * The URL is rendered here even though [com.jankowski.rafal.jobassistant.document.internal.ProfileBriefing]
+ * never sends it to a model - the same treatment the candidate's name and portrait already get. It
+ * reaches the finished document straight from the profile, never through a prompt.
+ */
+internal data class CvProjectView(val name: String, val url: String?, val period: String, val bullets: List<String>)
 
 internal data class CoverLetterView(
     val fullName: String,

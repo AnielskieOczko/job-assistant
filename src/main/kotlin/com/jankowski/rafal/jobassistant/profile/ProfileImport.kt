@@ -15,6 +15,7 @@ data class ProfileImport(
     val experiences: List<ExperienceImport> = emptyList(),
     val education: List<EducationImport> = emptyList(),
     val credentials: List<CredentialImport> = emptyList(),
+    val projects: List<ProjectImport> = emptyList(),
     val languages: List<LanguageImport> = emptyList(),
 )
 
@@ -55,6 +56,16 @@ data class CredentialImport(
     val credentialId: String? = null,
     val issuedOn: LocalDate? = null,
     val expiresOn: LocalDate? = null,
+)
+
+data class ProjectImport(
+    val name: String,
+    val url: String? = null,
+    val description: String? = null,
+    val startedOn: LocalDate? = null,
+    val endedOn: LocalDate? = null,
+    val skills: List<String> = emptyList(),
+    val bullets: List<BulletImport> = emptyList(),
 )
 
 data class LanguageImport(val language: String, val level: LanguageLevel)

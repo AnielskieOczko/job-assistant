@@ -62,13 +62,16 @@ internal data class WorkExperienceRow(
  * Skill tags stay an owned collection: `experience_bullet_skill` has a composite primary key and no
  * surrogate id, so rewriting the set churns nothing.
  *
- * Scoped to a profile transitively through `work_experience.profile_id` -- it needs no `profileId`
- * column of its own.
+ * Scoped to a profile transitively through `work_experience.profile_id` or `project.profile_id` --
+ * it needs no `profileId` column of its own. A bullet belongs to exactly one owner: `workExperienceId`
+ * and `projectId` are mutually exclusive, enforced by a database check constraint rather than trusted
+ * to application code.
  */
 @Table("experience_bullet")
 internal data class ExperienceBulletRow(
     @Id val id: Long? = null,
-    val workExperienceId: Long,
+    val workExperienceId: Long?,
+    val projectId: Long?,
     val text: String,
     val displayOrder: Int,
     @MappedCollection(idColumn = "experience_bullet_id")
@@ -103,6 +106,23 @@ internal data class CredentialRow(
     val expiresOn: LocalDate?,
     val displayOrder: Int,
 )
+
+@Table("project")
+internal data class ProjectRow(
+    @Id val id: Long? = null,
+    val profileId: Long,
+    val name: String,
+    val url: String?,
+    val description: String?,
+    val startedOn: LocalDate?,
+    val endedOn: LocalDate?,
+    val displayOrder: Int,
+    @MappedCollection(idColumn = "project_id")
+    val skills: Set<ProjectSkillRow> = emptySet(),
+)
+
+@Table("project_skill")
+internal data class ProjectSkillRow(val canonicalSkillId: Long)
 
 @Table("language_skill")
 internal data class LanguageSkillRow(

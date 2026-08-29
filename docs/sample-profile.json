@@ -83,6 +83,22 @@
       "expiresOn": null
     }
   ],
+  "projects": [
+    {
+      "name": "job-assistant",
+      "url": "https://github.com/your-handle/job-assistant",
+      "description": "A personal job-search assistant: paste an offer, get a deterministic skill-gap report and a tailored CV.",
+      "startedOn": "2026-06-01",
+      "endedOn": null,
+      "skills": ["Kotlin", "Spring Boot", "PostgreSQL"],
+      "bullets": [
+        {
+          "text": "Built a deterministic skill-gap diff over a curated catalog so a CV can never claim a technology absent from the profile.",
+          "skills": ["Kotlin", "PostgreSQL"]
+        }
+      ]
+    }
+  ],
   "languages": [
     { "language": "Polish", "level": "NATIVE" },
     { "language": "English", "level": "C1" }

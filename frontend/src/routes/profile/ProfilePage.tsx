@@ -15,6 +15,7 @@ import { EducationCard } from './EducationCard'
 import { ExperienceCard } from './ExperienceCard'
 import { ImportDialog } from './ImportDialog'
 import { LanguagesCard } from './LanguagesCard'
+import { ProjectCard } from './ProjectCard'
 import { SkillsCard } from './SkillsCard'
 import { StartProfileDialog } from './StartProfileDialog'
 
@@ -79,6 +80,7 @@ export function ProfilePage() {
           <DetailsCard profileId={profileId} profile={profile.data} />
           <SkillsCard profileId={profileId} profile={profile.data} />
           <ExperienceCard profileId={profileId} profile={profile.data} />
+          <ProjectCard profileId={profileId} profile={profile.data} />
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             <EducationCard profileId={profileId} profile={profile.data} />
             <CredentialsCard profileId={profileId} profile={profile.data} />

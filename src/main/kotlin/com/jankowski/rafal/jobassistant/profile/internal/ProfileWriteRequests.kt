@@ -89,6 +89,15 @@ internal data class CredentialRequest(
     val expiresOn: LocalDate? = null,
 )
 
+internal data class ProjectRequest(
+    @field:NotBlank val name: String = "",
+    val url: String? = null,
+    val description: String? = null,
+    val startedOn: LocalDate? = null,
+    val endedOn: LocalDate? = null,
+    val skillIds: Set<Long> = emptySet(),
+)
+
 internal data class LanguageRequest(
     @field:NotBlank val language: String = "",
     val level: LanguageLevel = LanguageLevel.B1,

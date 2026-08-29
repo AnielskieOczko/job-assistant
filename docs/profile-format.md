@@ -24,7 +24,8 @@ profile.
 
 ## Skill names
 
-`skills[].skill` and `experiences[].bullets[].skills[]` are catalog names or aliases, not ids.
+`skills[].skill`, `experiences[].bullets[].skills[]`, `projects[].skills[]` and
+`projects[].bullets[].skills[]` are catalog names or aliases, not ids.
 Any spelling the catalog knows works: `postgres`, `PostgreSQL` and `psql` all resolve to the same
 skill. Import fails with HTTP 400 listing every name it could not resolve, rather than silently
 dropping it — a dropped skill would vanish from every future gap report.
@@ -48,9 +49,10 @@ Categories: `LANGUAGE`, `FRAMEWORK`, `DATABASE`, `MESSAGING`, `CLOUD`, `DEVOPS`,
 ## Two rules every write enforces
 
 1. **Every skill must resolve** to a catalog entry — by name here, by id for per-entity edits.
-2. **A bullet may only be tagged with skills the profile declares.** Tagging a bullet with
-   `Kubernetes` while `Kubernetes` is absent from `skills[]` is rejected — otherwise that skill
-   could reach a CV with nothing backing it.
+2. **A bullet — or a project's own skill badge — may only cite skills the profile declares.**
+   Tagging a bullet with `Kubernetes`, or listing it in `projects[].skills[]`, while `Kubernetes` is
+   absent from the top-level `skills[]` is rejected — otherwise that skill could reach a CV with
+   nothing backing it.
 
 Both are enforced for import and for per-entity editing alike. The second one also runs in the other
 direction once deletes exist: removing a skill that bullets still cite is refused with HTTP 409
@@ -65,6 +67,16 @@ listing them, rather than quietly untagging the evidence behind a claim.
 - `credentials[].kind`: `COURSE` | `BOOTCAMP` | `CERTIFICATION` | `OTHER`.
 - `credentials[].expiresOn` must not be earlier than `credentials[].issuedOn` when both are set —
   the same rule `experiences[].endedOn` follows against `startedOn`.
+- `projects[]` is side-project evidence — the main thing a career changer has that they can do the
+  work — separate from `experiences[]` because it carries none of employment's contractual fields
+  (no company, no role title, no "current" date range). `projects[].bullets[]` are the same shape
+  and follow the same skill-declaration rule as `experiences[].bullets[]`; `projects[].skills[]` is
+  a separate, project-level skill badge rather than derived from the bullets, so a project can name
+  its stack even where the bullets themselves don't spell every technology out. `projects[].endedOn`
+  must not be earlier than `projects[].startedOn` when both are set. **`projects[].url` is a direct
+  identifier** — `github.com/AnielskieOczko/…` names the candidate as surely as an email does — so
+  it is never sent to a model; it only reaches the rendered CV straight from the database, the same
+  treatment the candidate's name and photo already get.
 - Array order is preserved and becomes the display order on the CV — for **every** collection.
   Before `V8` that was not true of `languages[]`, which was read back alphabetically, and of
   `skills[]`, which happened to work only because a fresh import inserted them in document order.

@@ -25,6 +25,7 @@ internal class ProfileWriteService(
     private val bullets: ExperienceBulletRepository,
     private val education: EducationRepository,
     private val credentials: CredentialRepository,
+    private val projects: ProjectRepository,
     private val languages: LanguageSkillRepository,
     private val jdbc: JdbcClient,
 ) {
@@ -141,12 +142,15 @@ internal class ProfileWriteService(
     @Transactional
     fun deleteSkill(profileId: Long, id: Long): CandidateProfile {
         val row = skills.findByIdAndProfileId(id, profileId) ?: throw unknown("skill", id)
-        val blocking = bullets.findTaggedWithForProfile(row.canonicalSkillId, profileId)
-        if (blocking.isNotEmpty()) {
+        val blockingBullets = bullets.findTaggedWithForProfile(row.canonicalSkillId, profileId)
+        val blockingProjects = projects.findDirectlyTaggedWithForProfile(row.canonicalSkillId, profileId)
+        if (blockingBullets.isNotEmpty() || blockingProjects.isNotEmpty()) {
             val name = catalog.findById(row.canonicalSkillId)?.name ?: "skill ${row.canonicalSkillId}"
             throw ProfileConflictException(
-                "$name is still cited by ${blocking.size} bullet(s). Untag them first, or delete them.",
-                blocking.map { BlockingBullet(it.id!!, it.text) },
+                "$name is still cited by ${blockingBullets.size} bullet(s) and ${blockingProjects.size} project(s). " +
+                    "Untag them first, or delete them.",
+                blockingBullets.map { BlockingBullet(it.id!!, it.text) },
+                blockingProjects.map { BlockingProject(it.id!!, it.name) },
             )
         }
         skills.delete(row)
@@ -221,6 +225,7 @@ internal class ProfileWriteService(
         bullets.save(
             ExperienceBulletRow(
                 workExperienceId = experienceId,
+                projectId = null,
                 text = request.text,
                 displayOrder = nextOrder("experience_bullet", "work_experience_id = $experienceId"),
                 skills = request.skillIds.mapTo(mutableSetOf()) { ExperienceBulletSkillRow(it) },
@@ -351,6 +356,80 @@ internal class ProfileWriteService(
     fun reorderCredentials(profileId: Long, ids: List<Long>): CandidateProfile =
         reorder(profileId, "credential", ids, credentials.findAllOrdered(profileId).map { it.id!! })
 
+    // --------------------------------------------------------------- projects
+
+    @Transactional
+    fun addProject(profileId: Long, request: ProjectRequest): CandidateProfile {
+        requireProfileExists(profileId)
+        requireDatesOrdered(request)
+        requireDeclared(profileId, request.skillIds)
+        projects.save(
+            ProjectRow(
+                profileId = profileId,
+                name = request.name,
+                url = request.url,
+                description = request.description,
+                startedOn = request.startedOn,
+                endedOn = request.endedOn,
+                displayOrder = nextOrder("project", profileId),
+                skills = request.skillIds.mapTo(mutableSetOf()) { ProjectSkillRow(it) },
+            )
+        )
+        return commit(profileId)
+    }
+
+    @Transactional
+    fun updateProject(profileId: Long, id: Long, request: ProjectRequest): CandidateProfile {
+        requireDatesOrdered(request)
+        requireDeclared(profileId, request.skillIds)
+        val row = projects.findByIdAndProfileId(id, profileId) ?: throw unknown("project", id)
+        projects.save(
+            row.copy(
+                name = request.name,
+                url = request.url,
+                description = request.description,
+                startedOn = request.startedOn,
+                endedOn = request.endedOn,
+                skills = request.skillIds.mapTo(mutableSetOf()) { ProjectSkillRow(it) },
+            )
+        )
+        return commit(profileId)
+    }
+
+    /** Its bullets cascade from the `project` row, same as an experience's do. */
+    @Transactional
+    fun deleteProject(profileId: Long, id: Long): CandidateProfile {
+        val row = projects.findByIdAndProfileId(id, profileId) ?: throw unknown("project", id)
+        projects.delete(row)
+        return commit(profileId)
+    }
+
+    @Transactional
+    fun reorderProjects(profileId: Long, ids: List<Long>): CandidateProfile =
+        reorder(profileId, "project", ids, projects.findAllOrdered(profileId).map { it.id!! })
+
+    @Transactional
+    fun addProjectBullet(profileId: Long, projectId: Long, request: BulletRequest): CandidateProfile {
+        projects.findByIdAndProfileId(projectId, profileId) ?: throw unknown("project", projectId)
+        requireDeclared(profileId, request.skillIds)
+        bullets.save(
+            ExperienceBulletRow(
+                workExperienceId = null,
+                projectId = projectId,
+                text = request.text,
+                displayOrder = nextOrder("experience_bullet", "project_id = $projectId"),
+                skills = request.skillIds.mapTo(mutableSetOf()) { ExperienceBulletSkillRow(it) },
+            )
+        )
+        return commit(profileId)
+    }
+
+    @Transactional
+    fun reorderProjectBullets(profileId: Long, projectId: Long, ids: List<Long>): CandidateProfile {
+        projects.findByIdAndProfileId(projectId, profileId) ?: throw unknown("project", projectId)
+        return reorder(profileId, "experience_bullet", ids, bullets.findByProject(projectId).map { it.id!! })
+    }
+
     // -------------------------------------------------------------- languages
 
     @Transactional
@@ -428,6 +507,14 @@ internal class ProfileWriteService(
         val expires = request.expiresOn
         if (issued != null && expires != null && expires < issued) {
             throw ProfileConflictException("A credential cannot expire ($expires) before it was issued ($issued).")
+        }
+    }
+
+    private fun requireDatesOrdered(request: ProjectRequest) {
+        val started = request.startedOn
+        val ended = request.endedOn
+        if (started != null && ended != null && ended < started) {
+            throw ProfileConflictException("A project cannot end ($ended) before it starts ($started).")
         }
     }
 
