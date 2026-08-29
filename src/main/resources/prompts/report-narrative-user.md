@@ -5,6 +5,9 @@ Company: {{company}}
 Match score: {{matchScore}} ({{scoreExplanation}})
 Output language: {{language}}
 
+The candidate's stated goal (an aspiration, not experience):
+{{careerGoal}}
+
 Must-have requirements:
 {{mustHaves}}
 

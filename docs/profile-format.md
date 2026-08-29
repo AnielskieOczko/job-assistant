@@ -81,3 +81,14 @@ listing them, rather than quietly untagging the evidence behind a claim.
   Before `V8` that was not true of `languages[]`, which was read back alphabetically, and of
   `skills[]`, which happened to work only because a fresh import inserted them in document order.
 - A language is unique case-insensitively: `English` and `english` are the same entry.
+- `details.careerGoal` is what the candidate is trying to move *toward*, as distinct from
+  `details.headline` and `details.summary`, which describe what they have already done — the
+  worked example is a PM writing "I'm moving into backend development." It is prose shown to a
+  model as an aspiration, never a capability: `matchScore`, `RequirementMatcher` and
+  `SkillCoverage` do not read it, and it plays no part in the deterministic diff. Two traps follow
+  from that: naming a technology from it that the profile does not otherwise hold still fails
+  `CvInvariant` on a generated CV or cover letter — an aspiration is not evidence, so "I want to
+  move into Kubernetes work" gets the generation rejected exactly as if the word had appeared
+  anywhere else in the document — and because it is free text, it can carry the candidate's own
+  name, which trips `PromptPrivacyInvariant` and fails the analysis. Write it in the first person
+  with no contact details.

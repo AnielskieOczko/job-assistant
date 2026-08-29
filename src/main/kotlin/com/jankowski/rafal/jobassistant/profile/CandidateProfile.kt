@@ -42,6 +42,12 @@ data class ProfileDetails(
     val phone: String? = null,
     val location: String? = null,
     val summary: String? = null,
+    /**
+     * What the candidate is trying to move toward, as distinct from [headline] and [summary],
+     * which describe what they have already done. Free prose, shown to a model as an aspiration
+     * rather than a capability - it must never move `matchScore` or any other deterministic diff.
+     */
+    val careerGoal: String? = null,
 )
 
 data class ProfileLink(val id: Long, val label: String, val url: String)

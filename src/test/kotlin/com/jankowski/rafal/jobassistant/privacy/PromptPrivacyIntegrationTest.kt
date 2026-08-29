@@ -252,6 +252,40 @@ internal class PromptPrivacyIntegrationTest(
         assertNoIdentifiersIn(everythingSentToModels())
     }
 
+    /**
+     * `careerGoal` is free text, so it can carry the candidate's own name exactly as an offer can -
+     * "Zzqxname Qqvsurname is looking to move into platform engineering" trips the same guard that
+     * `a prompt carrying an identifier is refused rather than sent` proves for offer text. This is
+     * expected behaviour, not a bug to route around: the fix belongs at the input, not here.
+     */
+    @Test
+    fun `a career goal carrying the candidate's own name is refused rather than sent`() {
+        profiles.replace(
+            profileId,
+            ProfileImport(
+                details = ProfileDetails(
+                    fullName = SENTINEL_NAME,
+                    headline = "Backend Engineer",
+                    careerGoal = "$SENTINEL_NAME is looking to move into platform engineering.",
+                ),
+                skills = listOf(SkillImport("Kotlin", Proficiency.EXPERT)),
+            ),
+        )
+        models[LlmTask.EXTRACTION].enqueue(
+            """{"title":"x","company":"y","requirements":[{"rawText":"Kotlin","catalogSkill":"Kotlin","importance":"MUST_HAVE","rationale":""}]}"""
+        )
+
+        val analysisId = analyses.start(offerId, profileId)
+        await().atMost(Duration.ofSeconds(20)).until {
+            analyses.findReport(analysisId)?.state?.isTerminal == true
+        }
+
+        val report = analyses.findReport(analysisId)!!
+        assertTrue(report.state.name == "FAILED", "the analysis should have been refused")
+        assertTrue(report.error!!.contains("fullName"), "the failure should name the offending field")
+        assertFalse(report.error!!.contains(SENTINEL_NAME), "the error must not echo the value itself")
+    }
+
     @Test
     fun `the audit log never records an identifier`() {
         runAnalysis()

@@ -337,6 +337,8 @@ export interface ProfileDetails {
   phone: string | null
   location: string | null
   summary: string | null
+  /** What the candidate is aiming at next, as distinct from `summary`'s account of what they've done. */
+  careerGoal: string | null
 }
 
 export interface ProfileLink {
@@ -522,6 +524,7 @@ export interface DetailsRequest {
   phone?: string | null
   location?: string | null
   summary?: string | null
+  careerGoal?: string | null
 }
 
 export interface LinkRequest { label: string; url: string }

@@ -211,7 +211,7 @@ class ApiContractTest {
             {
                 assertKeys(
                     ProfileDetails(fullName = "Rafal"),
-                    "fullName", "headline", "email", "phone", "location", "summary",
+                    "fullName", "headline", "email", "phone", "location", "summary", "careerGoal",
                 )
             },
             {

@@ -124,6 +124,7 @@ internal class AnalysisRunner(
                 niceToHaves = AnalysisPromptFormatter.requirements(matched, Importance.NICE_TO_HAVE),
                 languageRequirements = AnalysisPromptFormatter.languages(languageFindings),
                 unresolved = AnalysisPromptFormatter.unresolved(matched),
+                careerGoal = AnalysisPromptFormatter.careerGoal(profile.details.careerGoal),
             )
 
         saveNarrative(analysisId, narrative, score)

@@ -22,6 +22,7 @@ internal interface ReportNarrator {
         @V("niceToHaves") niceToHaves: String,
         @V("languageRequirements") languageRequirements: String,
         @V("unresolved") unresolved: String,
+        @V("careerGoal") careerGoal: String,
     ): ReportNarrative
 }
 

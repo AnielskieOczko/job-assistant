@@ -23,6 +23,15 @@ internal object ProfileBriefing {
         profile.details.headline?.let { appendLine("Headline: $it") }
         appendLine()
 
+        // An aspiration, not a capability - it must supply direction and motivation only. Naming a
+        // technology from this line that is absent from the skills list below still fails
+        // CvInvariant, exactly as if it had been invented anywhere else in the document.
+        profile.details.careerGoal?.ifBlank { null }?.let {
+            appendLine("The candidate's stated goal (an aspiration, not experience - do not name any technology from this line that is not already in the skills list below):")
+            appendLine(it)
+            appendLine()
+        }
+
         appendLine("Skills (these are the ONLY skills that exist):")
         profile.skills.forEach { skill ->
             val name = catalog.findById(skill.skillId)?.name ?: return@forEach

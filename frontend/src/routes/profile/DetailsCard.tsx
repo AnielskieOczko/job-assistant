@@ -87,6 +87,13 @@ export function DetailsCard({ profileId, profile }: { profileId: number; profile
           <p className="mt-4 text-sm leading-relaxed">{details.summary}</p>
         ) : null}
 
+        {details.careerGoal ? (
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            <span className="font-medium text-foreground">Aiming at: </span>
+            {details.careerGoal}
+          </p>
+        ) : null}
+
         <div className="mt-4 border-t pt-3">
           <div className="flex items-center justify-between">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Links</p>
@@ -170,6 +177,7 @@ function DetailsDialog({
   const [phone, setPhone] = useState('')
   const [location, setLocation] = useState('')
   const [summary, setSummary] = useState('')
+  const [careerGoal, setCareerGoal] = useState('')
 
   // Seed during render rather than in an effect - the idiom the rest of the app uses.
   if (open && seeded !== profile.revision) {
@@ -180,6 +188,7 @@ function DetailsDialog({
     setPhone(profile.details.phone ?? '')
     setLocation(profile.details.location ?? '')
     setSummary(profile.details.summary ?? '')
+    setCareerGoal(profile.details.careerGoal ?? '')
   }
 
   const save = useProfileEdit(profileId, (body: DetailsRequest) => putDetails(profileId, body), 'Details saved')
@@ -209,6 +218,21 @@ function DetailsDialog({
               onChange={(e) => setSummary(e.target.value)}
             />
           </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="details-career-goal">Career goal</Label>
+            <Textarea
+              id="details-career-goal"
+              rows={3}
+              placeholder="e.g. I'm moving from product management into backend development."
+              value={careerGoal}
+              onChange={(e) => setCareerGoal(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              What you're aiming at next, not what you've already done. Write in the first person and
+              leave out your name and contact details — this goes to the AI that writes your gap
+              report and cover letter, and a name here will cause generation to fail.
+            </p>
+          </div>
         </div>
 
         {save.isError ? <ApiErrorAlert error={save.error} /> : null}
@@ -226,6 +250,7 @@ function DetailsDialog({
                   phone: blankToNull(phone),
                   location: blankToNull(location),
                   summary: blankToNull(summary),
+                  careerGoal: blankToNull(careerGoal),
                 },
                 { onSuccess: () => onOpenChange(false) },
               )
