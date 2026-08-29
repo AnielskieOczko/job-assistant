@@ -30,6 +30,13 @@ data class GeneratedDocument(
      */
     val droppedBulletCount: Int = 0,
     val droppedSkillCount: Int = 0,
+    /**
+     * The profile's consent clause language that was rendered onto this CV, or null when the
+     * profile had none for [language]. Null is reported rather than silently omitting the section:
+     * an absent consent clause is the same shape of failure as an empty extraction reading as
+     * success, just on the document side. Always null for a cover letter, which carries no clause.
+     */
+    val consentClauseLanguage: String? = null,
 )
 
 /**

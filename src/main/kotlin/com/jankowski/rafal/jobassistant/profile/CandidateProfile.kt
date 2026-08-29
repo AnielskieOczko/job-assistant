@@ -15,6 +15,7 @@ data class CandidateProfile(
     val education: List<Education>,
     val credentials: List<Credential>,
     val projects: List<Project>,
+    val consentClauses: List<ConsentClause>,
     val languages: List<LanguageSkill>,
     /**
      * Write counter for the whole profile. Output derived from the profile records the value it was
@@ -117,3 +118,12 @@ data class Project(
 )
 
 data class LanguageSkill(val id: Long, val language: String, val level: LanguageLevel)
+
+/**
+ * A data-processing consent clause for a CV rendered in [language]. Rendered from here straight
+ * into the document and never sent to a model - a model paraphrasing a consent statement would
+ * change what is being consented to, so "rephrase and reorder" is exactly the licence this text
+ * must not be under. Unique per profile per language (case-insensitively), because a single
+ * clause would print the wrong language's legal boilerplate under a CV in another language.
+ */
+data class ConsentClause(val id: Long, val language: String, val text: String)

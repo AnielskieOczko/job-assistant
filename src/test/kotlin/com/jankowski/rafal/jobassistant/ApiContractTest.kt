@@ -34,6 +34,7 @@ import com.jankowski.rafal.jobassistant.offer.Application
 import com.jankowski.rafal.jobassistant.offer.ApplicationStatus
 import com.jankowski.rafal.jobassistant.offer.JobOffer
 import com.jankowski.rafal.jobassistant.profile.CandidateProfile
+import com.jankowski.rafal.jobassistant.profile.ConsentClause
 import com.jankowski.rafal.jobassistant.profile.Credential
 import com.jankowski.rafal.jobassistant.profile.CredentialKind
 import com.jankowski.rafal.jobassistant.profile.Education
@@ -210,6 +211,12 @@ class ApiContractTest {
             },
             {
                 assertKeys(
+                    ConsentClause(1, "English", "I consent to processing of my data."),
+                    "id", "language", "text",
+                )
+            },
+            {
+                assertKeys(
                     ProfileDetails(fullName = "Rafal"),
                     "fullName", "headline", "email", "phone", "location", "summary", "careerGoal",
                 )
@@ -220,10 +227,10 @@ class ApiContractTest {
                         details = ProfileDetails(fullName = "Rafal"), links = emptyList(),
                         skills = emptyList(), experiences = listOf(experience),
                         education = emptyList(), credentials = emptyList(), projects = emptyList(),
-                        languages = emptyList(),
+                        consentClauses = emptyList(), languages = emptyList(),
                     ),
                     "details", "links", "skills", "experiences", "education", "credentials", "projects",
-                    "languages", "revision",
+                    "consentClauses", "languages", "revision",
                     // Computed; `bullets` duplicates experiences[].bullets and the UI ignores it.
                     "heldSkillIds", "bullets",
                 )
@@ -291,7 +298,7 @@ class ApiContractTest {
                     language = "English", html = "<html/>", createdAt = Instant.EPOCH,
                 ),
                 "id", "offerId", "profileId", "analysisId", "type", "language", "html", "createdAt",
-                "profileRevision", "droppedBulletCount", "droppedSkillCount",
+                "profileRevision", "droppedBulletCount", "droppedSkillCount", "consentClauseLanguage",
             )
         },
         {

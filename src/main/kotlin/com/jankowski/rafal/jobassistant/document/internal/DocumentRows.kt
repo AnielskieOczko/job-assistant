@@ -23,6 +23,8 @@ internal data class GeneratedDocumentRow(
     val createdAt: Instant = Instant.now(),
     /** Profile revision this document was built from - null for rows that predate the counter. */
     val profileRevision: Long? = null,
+    /** The consent clause language rendered onto this document, or null if none matched. See V23. */
+    val consentClauseLanguage: String? = null,
 )
 
 internal interface GeneratedDocumentRepository : CrudRepository<GeneratedDocumentRow, Long> {

@@ -13,6 +13,7 @@ import com.jankowski.rafal.jobassistant.profile.ProfileDetails
 import com.jankowski.rafal.jobassistant.profile.ProfileImport
 import com.jankowski.rafal.jobassistant.profile.ProfileService
 import com.jankowski.rafal.jobassistant.profile.SkillImport
+import com.jankowski.rafal.jobassistant.profile.internal.ConsentClauseRequest
 import com.jankowski.rafal.jobassistant.profile.internal.DetailsRequest
 import com.jankowski.rafal.jobassistant.profile.internal.ProfileManagementService
 import com.jankowski.rafal.jobassistant.profile.internal.ProfileWriteService
@@ -390,6 +391,91 @@ internal class DocumentGenerationIntegrationTest(
     @Test
     fun `generating for an unknown offer is refused`() {
         assertThrows<NoSuchElementException> { documents.generate(999_999, profileId, DocumentType.CV) }
+    }
+
+    // ------------------------------------------------------- consent clauses
+
+    @Test
+    fun `a CV renders the matching consent clause with the company substituted`() {
+        writes.addConsentClause(
+            profileId,
+            ConsentClauseRequest(language = "English", text = "I consent to processing of my data by {{company}}."),
+        )
+        scriptCv(honestCv)
+
+        val document = documents.generate(offerId, profileId, DocumentType.CV, "English")
+
+        assertTrue(document.html.contains("I consent to processing of my data by Acme."))
+        assertEquals("English", document.consentClauseLanguage)
+    }
+
+    @Test
+    fun `a CV omits the consent clause and records null when no clause matches the language`() {
+        writes.addConsentClause(profileId, ConsentClauseRequest(language = "Polish", text = "Zgoda."))
+        scriptCv(honestCv)
+
+        val document = documents.generate(offerId, profileId, DocumentType.CV, "English")
+
+        assertFalse(document.html.contains("Zgoda."))
+        assertEquals(null, document.consentClauseLanguage)
+    }
+
+    @Test
+    fun `a cover letter never carries a consent clause`() {
+        writes.addConsentClause(profileId, ConsentClauseRequest(language = "English", text = "I consent."))
+        models[LlmTask.DOCUMENT].enqueue("""{"paragraphs":["I build Kotlin services."]}""")
+
+        val document = documents.generate(offerId, profileId, DocumentType.COVER_LETTER, "English")
+
+        assertFalse(document.html.contains("I consent."))
+        assertEquals(null, document.consentClauseLanguage)
+    }
+
+    /**
+     * The clause is user-authored free text, so `CvInvariant` still scans it exactly as it scans a
+     * rewritten bullet - excluding it would leave a way for the rendered page to name a technology
+     * the profile does not hold. See issue #52's first trap.
+     */
+    @Test
+    fun `a consent clause naming a skill the profile lacks fails the generation`() {
+        writes.addConsentClause(
+            profileId,
+            ConsentClauseRequest(language = "English", text = "Processed using our Kubernetes-based systems."),
+        )
+        scriptCv(honestCv)
+
+        val failure = assertThrows<FabricatedClaimException> {
+            documents.generate(offerId, profileId, DocumentType.CV, "English")
+        }
+
+        assertEquals(listOf("Kubernetes"), failure.claims)
+    }
+
+    @Test
+    fun `an offer with no company name leaves the placeholder unsubstituted rather than inventing one`() {
+        writes.addConsentClause(
+            profileId,
+            ConsentClauseRequest(language = "English", text = "I consent to processing by {{company}}."),
+        )
+        val blankCompanyOfferId = offers.paste("A role with an unresolved employer name. Kotlin required.").offer.id
+        models[LlmTask.EXTRACTION].enqueue(
+            """
+            {"title":"Backend Engineer","company":"","seniority":"MID","detectedLanguage":"en",
+             "requirements":[{"rawText":"Kotlin","catalogSkill":"Kotlin","importance":"MUST_HAVE","rationale":""}],
+             "languageRequirements":[],"redFlags":[]}
+            """.trimIndent()
+        )
+        models[LlmTask.NARRATIVE].enqueue("""{"summaryMarkdown":"Strong match.","learningPlan":[]}""")
+        val analysisId = analyses.start(blankCompanyOfferId, profileId)
+        await().atMost(Duration.ofSeconds(20)).until {
+            analyses.findReport(analysisId)?.state?.isTerminal == true
+        }
+        scriptCv(honestCv)
+
+        val document = documents.generate(blankCompanyOfferId, profileId, DocumentType.CV, "English")
+
+        assertTrue(document.html.contains("I consent to processing by {{company}}."))
+        assertEquals("English", document.consentClauseLanguage)
     }
 
     @Test

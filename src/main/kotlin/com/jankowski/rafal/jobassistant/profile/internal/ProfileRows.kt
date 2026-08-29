@@ -124,6 +124,15 @@ internal data class ProjectRow(
 @Table("project_skill")
 internal data class ProjectSkillRow(val canonicalSkillId: Long)
 
+@Table("cv_consent_clause")
+internal data class ConsentClauseRow(
+    @Id val id: Long? = null,
+    val profileId: Long,
+    val language: String,
+    val text: String,
+    val displayOrder: Int,
+)
+
 @Table("language_skill")
 internal data class LanguageSkillRow(
     @Id val id: Long? = null,

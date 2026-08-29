@@ -6,6 +6,7 @@ import com.jankowski.rafal.jobassistant.document.DocumentType
 import com.jankowski.rafal.jobassistant.llm.LlmTask
 import com.jankowski.rafal.jobassistant.offer.OfferService
 import com.jankowski.rafal.jobassistant.profile.BulletImport
+import com.jankowski.rafal.jobassistant.profile.ConsentClauseImport
 import com.jankowski.rafal.jobassistant.profile.ExperienceImport
 import com.jankowski.rafal.jobassistant.profile.LanguageImport
 import com.jankowski.rafal.jobassistant.profile.LanguageLevel
@@ -97,6 +98,9 @@ internal class PromptPrivacyIntegrationTest(
                         bullets = listOf(BulletImport("Built a CLI in Kotlin.", listOf("Kotlin"))),
                     )
                 ),
+                consentClauses = listOf(
+                    ConsentClauseImport(language = "English", text = "I consent, $SENTINEL_CONSENT_MARKER.")
+                ),
                 languages = listOf(LanguageImport("English", LanguageLevel.C1)),
             )
         )
@@ -146,6 +150,7 @@ internal class PromptPrivacyIntegrationTest(
         assertFalse(sent.contains("555987654"), "the candidate's phone reached a model")
         assertFalse(sent.contains("QQVHANDLE", ignoreCase = true), "a profile link reached a model")
         assertFalse(sent.contains("ZZQXPROJECT", ignoreCase = true), "a project url reached a model")
+        assertFalse(sent.contains(SENTINEL_CONSENT_MARKER, ignoreCase = true), "a consent clause reached a model")
     }
 
     /**
@@ -220,6 +225,26 @@ internal class PromptPrivacyIntegrationTest(
         // withholding them from the prompt costs nothing.
         assertTrue(document.html.contains(SENTINEL_NAME), "the CV lost its name")
         assertTrue(document.html.contains(SENTINEL_EMAIL), "the CV lost its contact details")
+        assertNoIdentifiersIn(everythingSentToModels())
+    }
+
+    /**
+     * Same guarantee as the name and contacts above, for the consent clause: rendered from the
+     * database after the model has answered, so withholding it from the prompt costs nothing.
+     */
+    @Test
+    fun `the rendered CV still carries the consent clause the model never saw`() {
+        runAnalysis()
+        models[LlmTask.DOCUMENT].enqueue(
+            """
+            {"summaryLine":"Backend engineer.","skillNames":["Kotlin"],
+             "bullets":[{"bulletId":$kotlinBulletId,"text":"Built payment services in Kotlin."}]}
+            """.trimIndent()
+        )
+
+        val document = documents.generate(offerId, profileId, DocumentType.CV)
+
+        assertTrue(document.html.contains(SENTINEL_CONSENT_MARKER), "the CV lost its consent clause")
         assertNoIdentifiersIn(everythingSentToModels())
     }
 
@@ -306,5 +331,6 @@ internal class PromptPrivacyIntegrationTest(
         const val SENTINEL_PHONE = "+48 555 987 654"
         const val SENTINEL_LINK = "https://github.com/QQVHANDLE"
         const val SENTINEL_PROJECT_URL = "https://github.com/ZZQXPROJECT/side-project"
+        const val SENTINEL_CONSENT_MARKER = "ZZQXCONSENT"
     }
 }

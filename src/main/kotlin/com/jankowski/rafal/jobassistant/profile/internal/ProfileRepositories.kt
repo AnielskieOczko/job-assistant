@@ -158,6 +158,21 @@ internal interface ProjectRepository : CrudRepository<ProjectRow, Long> {
     fun deleteByProfileId(profileId: Long)
 }
 
+internal interface ConsentClauseRepository : CrudRepository<ConsentClauseRow, Long> {
+    @Query("select * from cv_consent_clause where profile_id = :profileId order by display_order, id")
+    fun findAllOrdered(profileId: Long): List<ConsentClauseRow>
+
+    @Query("select * from cv_consent_clause where id = :id and profile_id = :profileId")
+    fun findByIdAndProfileId(id: Long, profileId: Long): ConsentClauseRow?
+
+    @Query("select * from cv_consent_clause where profile_id = :profileId and lower(language) = lower(:language)")
+    fun findByLanguageIgnoringCase(profileId: Long, language: String): ConsentClauseRow?
+
+    @Modifying
+    @Query("delete from cv_consent_clause where profile_id = :profileId")
+    fun deleteByProfileId(profileId: Long)
+}
+
 internal interface LanguageSkillRepository : CrudRepository<LanguageSkillRow, Long> {
     @Query("select * from language_skill where profile_id = :profileId order by display_order, id")
     fun findAllOrdered(profileId: Long): List<LanguageSkillRow>

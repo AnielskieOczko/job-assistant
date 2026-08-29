@@ -2,6 +2,7 @@ package com.jankowski.rafal.jobassistant.profile.internal
 
 import com.jankowski.rafal.jobassistant.catalog.SkillCatalog
 import com.jankowski.rafal.jobassistant.profile.CandidateProfile
+import com.jankowski.rafal.jobassistant.profile.ConsentClause
 import com.jankowski.rafal.jobassistant.profile.Credential
 import com.jankowski.rafal.jobassistant.profile.CredentialKind
 import com.jankowski.rafal.jobassistant.profile.Education
@@ -32,6 +33,7 @@ internal class JdbcProfileService(
     private val education: EducationRepository,
     private val credentials: CredentialRepository,
     private val projects: ProjectRepository,
+    private val consentClauses: ConsentClauseRepository,
     private val languages: LanguageSkillRepository,
     private val jdbc: JdbcClient,
 ) : ProfileService {
@@ -55,6 +57,7 @@ internal class JdbcProfileService(
             projects = projects.findAllOrdered(profileId).map { row ->
                 row.toDomain(bulletsByProject[row.id].orEmpty().map { it.toDomain() })
             },
+            consentClauses = consentClauses.findAllOrdered(profileId).map { it.toDomain() },
             languages = languages.findAllOrdered(profileId).map { it.toDomain() },
             revision = readRevision(profileId),
         )
@@ -217,6 +220,11 @@ internal class JdbcProfileService(
                 }
             )
         }
+        consentClauses.saveAll(
+            import.consentClauses.mapIndexed { i, c ->
+                ConsentClauseRow(profileId = profileId, language = c.language, text = c.text, displayOrder = i)
+            }
+        )
         languages.saveAll(
             import.languages.mapIndexed { i, it ->
                 LanguageSkillRow(profileId = profileId, language = it.language, level = it.level.name, displayOrder = i)
@@ -335,6 +343,7 @@ internal class JdbcProfileService(
         education.deleteByProfileId(profileId)
         credentials.deleteByProfileId(profileId)
         projects.deleteByProfileId(profileId)
+        consentClauses.deleteByProfileId(profileId)
         languages.deleteByProfileId(profileId)
     }
 }
@@ -380,6 +389,8 @@ internal fun ProjectRow.toDomain(bullets: List<ExperienceBullet>) = Project(
     skillIds = skills.mapTo(mutableSetOf()) { it.canonicalSkillId },
     bullets = bullets,
 )
+
+internal fun ConsentClauseRow.toDomain() = ConsentClause(id!!, language, text)
 
 internal fun LanguageSkillRow.toDomain() =
     LanguageSkill(id!!, language, LanguageLevel.valueOf(level))

@@ -99,6 +99,11 @@ internal data class ProjectRequest(
     val skillIds: Set<Long> = emptySet(),
 )
 
+internal data class ConsentClauseRequest(
+    @field:NotBlank val language: String = "",
+    @field:NotBlank val text: String = "",
+)
+
 internal data class LanguageRequest(
     @field:NotBlank val language: String = "",
     val level: LanguageLevel = LanguageLevel.B1,

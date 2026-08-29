@@ -2,6 +2,7 @@ import { json, request } from './http'
 import type {
   BulletRequest,
   CandidateProfile,
+  ConsentClauseRequest,
   CredentialRequest,
   DetailsRequest,
   EducationRequest,
@@ -107,6 +108,13 @@ export const addProjectBullet = (profileId: number, projectId: number, body: Bul
   post(`/api/profiles/${profileId}/projects/${projectId}/bullets`, body)
 export const reorderProjectBullets = (profileId: number, projectId: number, ids: number[]) =>
   put(`/api/profiles/${profileId}/projects/${projectId}/bullets/order`, { ids })
+
+export const addConsentClause = (profileId: number, body: ConsentClauseRequest) =>
+  post(`/api/profiles/${profileId}/consent-clauses`, body)
+export const updateConsentClause = (profileId: number, id: number, body: ConsentClauseRequest) =>
+  put(`/api/profiles/${profileId}/consent-clauses/${id}`, body)
+export const deleteConsentClause = (profileId: number, id: number) =>
+  remove(`/api/profiles/${profileId}/consent-clauses/${id}`)
 
 export const addLanguage = (profileId: number, body: LanguageRequest) =>
   post(`/api/profiles/${profileId}/languages`, body)
