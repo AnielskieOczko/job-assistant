@@ -34,6 +34,8 @@ import com.jankowski.rafal.jobassistant.offer.Application
 import com.jankowski.rafal.jobassistant.offer.ApplicationStatus
 import com.jankowski.rafal.jobassistant.offer.JobOffer
 import com.jankowski.rafal.jobassistant.profile.CandidateProfile
+import com.jankowski.rafal.jobassistant.profile.Credential
+import com.jankowski.rafal.jobassistant.profile.CredentialKind
 import com.jankowski.rafal.jobassistant.profile.Education
 import com.jankowski.rafal.jobassistant.profile.ExperienceBullet
 import com.jankowski.rafal.jobassistant.profile.LanguageLevel
@@ -195,6 +197,12 @@ class ApiContractTest {
             },
             {
                 assertKeys(
+                    Credential(1, "AWS Solutions Architect", "AWS", CredentialKind.CERTIFICATION, null, null, null, null),
+                    "id", "title", "issuer", "kind", "url", "credentialId", "issuedOn", "expiresOn",
+                )
+            },
+            {
+                assertKeys(
                     ProfileDetails(fullName = "Rafal"),
                     "fullName", "headline", "email", "phone", "location", "summary",
                 )
@@ -204,9 +212,9 @@ class ApiContractTest {
                     CandidateProfile(
                         details = ProfileDetails(fullName = "Rafal"), links = emptyList(),
                         skills = emptyList(), experiences = listOf(experience),
-                        education = emptyList(), languages = emptyList(),
+                        education = emptyList(), credentials = emptyList(), languages = emptyList(),
                     ),
-                    "details", "links", "skills", "experiences", "education", "languages",
+                    "details", "links", "skills", "experiences", "education", "credentials", "languages",
                     "revision",
                     // Computed; `bullets` duplicates experiences[].bullets and the UI ignores it.
                     "heldSkillIds", "bullets",

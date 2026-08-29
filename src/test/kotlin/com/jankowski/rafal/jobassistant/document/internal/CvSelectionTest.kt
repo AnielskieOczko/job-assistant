@@ -72,6 +72,7 @@ class CvSelectionTest {
             )
         ),
         education = emptyList(),
+        credentials = emptyList(),
         languages = emptyList(),
     )
 

@@ -327,6 +327,9 @@ export type Proficiency = (typeof PROFICIENCIES)[number]
 export const LANGUAGE_LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'NATIVE'] as const
 export type LanguageLevel = (typeof LANGUAGE_LEVELS)[number]
 
+export const CREDENTIAL_KINDS = ['COURSE', 'BOOTCAMP', 'CERTIFICATION', 'OTHER'] as const
+export type CredentialKind = (typeof CREDENTIAL_KINDS)[number]
+
 export interface ProfileDetails {
   fullName: string
   headline: string | null
@@ -383,6 +386,17 @@ export interface Education {
   endedOn: string | null
 }
 
+export interface Credential {
+  id: number
+  title: string
+  issuer: string
+  kind: CredentialKind
+  url: string | null
+  credentialId: string | null
+  issuedOn: string | null
+  expiresOn: string | null
+}
+
 export interface LanguageSkill {
   id: number
   language: string
@@ -395,6 +409,7 @@ export interface CandidateProfile {
   skills: ProfileSkill[]
   experiences: WorkExperience[]
   education: Education[]
+  credentials: Credential[]
   languages: LanguageSkill[]
   /**
    * Bumped by every write to the profile. Compare against an analysis's or a document's
@@ -442,6 +457,16 @@ export interface EducationImport {
   endedOn?: string | null
 }
 
+export interface CredentialImport {
+  title: string
+  issuer: string
+  kind: CredentialKind
+  url?: string | null
+  credentialId?: string | null
+  issuedOn?: string | null
+  expiresOn?: string | null
+}
+
 export interface LanguageImport { language: string; level: LanguageLevel }
 
 export interface ProfileImport {
@@ -450,6 +475,7 @@ export interface ProfileImport {
   skills: SkillImport[]
   experiences: ExperienceImport[]
   education: EducationImport[]
+  credentials: CredentialImport[]
   languages: LanguageImport[]
 }
 
@@ -503,6 +529,16 @@ export interface EducationRequest {
   fieldOfStudy?: string | null
   startedOn?: string | null
   endedOn?: string | null
+}
+
+export interface CredentialRequest {
+  title: string
+  issuer: string
+  kind: CredentialKind
+  url?: string | null
+  credentialId?: string | null
+  issuedOn?: string | null
+  expiresOn?: string | null
 }
 
 export interface LanguageRequest { language: string; level: LanguageLevel }

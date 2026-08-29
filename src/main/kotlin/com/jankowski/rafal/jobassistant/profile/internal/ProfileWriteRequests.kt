@@ -1,5 +1,6 @@
 package com.jankowski.rafal.jobassistant.profile.internal
 
+import com.jankowski.rafal.jobassistant.profile.CredentialKind
 import com.jankowski.rafal.jobassistant.profile.LanguageLevel
 import com.jankowski.rafal.jobassistant.profile.Proficiency
 import jakarta.validation.constraints.NotBlank
@@ -76,6 +77,16 @@ internal data class EducationRequest(
     val fieldOfStudy: String? = null,
     val startedOn: LocalDate? = null,
     val endedOn: LocalDate? = null,
+)
+
+internal data class CredentialRequest(
+    @field:NotBlank val title: String = "",
+    @field:NotBlank val issuer: String = "",
+    val kind: CredentialKind = CredentialKind.COURSE,
+    val url: String? = null,
+    val credentialId: String? = null,
+    val issuedOn: LocalDate? = null,
+    val expiresOn: LocalDate? = null,
 )
 
 internal data class LanguageRequest(

@@ -90,6 +90,20 @@ internal data class EducationRow(
     val displayOrder: Int,
 )
 
+@Table("credential")
+internal data class CredentialRow(
+    @Id val id: Long? = null,
+    val profileId: Long,
+    val title: String,
+    val issuer: String,
+    val kind: String,
+    val url: String?,
+    val credentialId: String?,
+    val issuedOn: LocalDate?,
+    val expiresOn: LocalDate?,
+    val displayOrder: Int,
+)
+
 @Table("language_skill")
 internal data class LanguageSkillRow(
     @Id val id: Long? = null,

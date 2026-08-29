@@ -62,6 +62,9 @@ listing them, rather than quietly untagging the evidence behind a claim.
 - `languages[].level`: CEFR `A1`–`C2`, or `NATIVE`. Offers asking for "English B2" are checked
   against this by ordinal comparison, not by a model's opinion.
 - `experiences[].endedOn: null` means the role is current.
+- `credentials[].kind`: `COURSE` | `BOOTCAMP` | `CERTIFICATION` | `OTHER`.
+- `credentials[].expiresOn` must not be earlier than `credentials[].issuedOn` when both are set —
+  the same rule `experiences[].endedOn` follows against `startedOn`.
 - Array order is preserved and becomes the display order on the CV — for **every** collection.
   Before `V8` that was not true of `languages[]`, which was read back alphabetically, and of
   `skills[]`, which happened to work only because a fresh import inserted them in document order.

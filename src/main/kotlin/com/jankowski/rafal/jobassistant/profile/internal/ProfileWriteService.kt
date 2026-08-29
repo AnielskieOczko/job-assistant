@@ -24,6 +24,7 @@ internal class ProfileWriteService(
     private val experiences: WorkExperienceRepository,
     private val bullets: ExperienceBulletRepository,
     private val education: EducationRepository,
+    private val credentials: CredentialRepository,
     private val languages: LanguageSkillRepository,
     private val jdbc: JdbcClient,
 ) {
@@ -299,6 +300,57 @@ internal class ProfileWriteService(
     fun reorderEducation(profileId: Long, ids: List<Long>): CandidateProfile =
         reorder(profileId, "education", ids, education.findAllOrdered(profileId).map { it.id!! })
 
+    // ------------------------------------------------------------ credentials
+
+    @Transactional
+    fun addCredential(profileId: Long, request: CredentialRequest): CandidateProfile {
+        requireProfileExists(profileId)
+        requireDatesOrdered(request)
+        credentials.save(
+            CredentialRow(
+                profileId = profileId,
+                title = request.title,
+                issuer = request.issuer,
+                kind = request.kind.name,
+                url = request.url,
+                credentialId = request.credentialId,
+                issuedOn = request.issuedOn,
+                expiresOn = request.expiresOn,
+                displayOrder = nextOrder("credential", profileId),
+            )
+        )
+        return commit(profileId)
+    }
+
+    @Transactional
+    fun updateCredential(profileId: Long, id: Long, request: CredentialRequest): CandidateProfile {
+        requireDatesOrdered(request)
+        val row = credentials.findByIdAndProfileId(id, profileId) ?: throw unknown("credential", id)
+        credentials.save(
+            row.copy(
+                title = request.title,
+                issuer = request.issuer,
+                kind = request.kind.name,
+                url = request.url,
+                credentialId = request.credentialId,
+                issuedOn = request.issuedOn,
+                expiresOn = request.expiresOn,
+            )
+        )
+        return commit(profileId)
+    }
+
+    @Transactional
+    fun deleteCredential(profileId: Long, id: Long): CandidateProfile {
+        val row = credentials.findByIdAndProfileId(id, profileId) ?: throw unknown("credential", id)
+        credentials.delete(row)
+        return commit(profileId)
+    }
+
+    @Transactional
+    fun reorderCredentials(profileId: Long, ids: List<Long>): CandidateProfile =
+        reorder(profileId, "credential", ids, credentials.findAllOrdered(profileId).map { it.id!! })
+
     // -------------------------------------------------------------- languages
 
     @Transactional
@@ -368,6 +420,14 @@ internal class ProfileWriteService(
         val ended = request.endedOn ?: return
         if (ended < request.startedOn) {
             throw ProfileConflictException("A role cannot end (${ended}) before it starts (${request.startedOn}).")
+        }
+    }
+
+    private fun requireDatesOrdered(request: CredentialRequest) {
+        val issued = request.issuedOn
+        val expires = request.expiresOn
+        if (issued != null && expires != null && expires < issued) {
+            throw ProfileConflictException("A credential cannot expire ($expires) before it was issued ($issued).")
         }
     }
 

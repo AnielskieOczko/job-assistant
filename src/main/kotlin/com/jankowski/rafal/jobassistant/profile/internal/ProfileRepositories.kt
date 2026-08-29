@@ -105,6 +105,18 @@ internal interface EducationRepository : CrudRepository<EducationRow, Long> {
     fun deleteByProfileId(profileId: Long)
 }
 
+internal interface CredentialRepository : CrudRepository<CredentialRow, Long> {
+    @Query("select * from credential where profile_id = :profileId order by display_order, id")
+    fun findAllOrdered(profileId: Long): List<CredentialRow>
+
+    @Query("select * from credential where id = :id and profile_id = :profileId")
+    fun findByIdAndProfileId(id: Long, profileId: Long): CredentialRow?
+
+    @Modifying
+    @Query("delete from credential where profile_id = :profileId")
+    fun deleteByProfileId(profileId: Long)
+}
+
 internal interface LanguageSkillRepository : CrudRepository<LanguageSkillRow, Long> {
     @Query("select * from language_skill where profile_id = :profileId order by display_order, id")
     fun findAllOrdered(profileId: Long): List<LanguageSkillRow>

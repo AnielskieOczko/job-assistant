@@ -2,6 +2,7 @@ import { json, request } from './http'
 import type {
   BulletRequest,
   CandidateProfile,
+  CredentialRequest,
   DetailsRequest,
   EducationRequest,
   ExperienceRequest,
@@ -84,6 +85,15 @@ export const deleteEducation = (profileId: number, id: number) =>
   remove(`/api/profiles/${profileId}/education/${id}`)
 export const reorderEducation = (profileId: number, ids: number[]) =>
   put(`/api/profiles/${profileId}/education/order`, { ids })
+
+export const addCredential = (profileId: number, body: CredentialRequest) =>
+  post(`/api/profiles/${profileId}/credentials`, body)
+export const updateCredential = (profileId: number, id: number, body: CredentialRequest) =>
+  put(`/api/profiles/${profileId}/credentials/${id}`, body)
+export const deleteCredential = (profileId: number, id: number) =>
+  remove(`/api/profiles/${profileId}/credentials/${id}`)
+export const reorderCredentials = (profileId: number, ids: number[]) =>
+  put(`/api/profiles/${profileId}/credentials/order`, { ids })
 
 export const addLanguage = (profileId: number, body: LanguageRequest) =>
   post(`/api/profiles/${profileId}/languages`, body)
