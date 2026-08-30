@@ -9,8 +9,10 @@ import { ProfilePage } from '@/routes/profile/ProfilePage'
 import { CatalogPage } from '@/routes/CatalogPage'
 import { GapsPage } from '@/routes/GapsPage'
 import { MarketPage } from '@/routes/market/MarketPage'
-import { LlmCallsPage } from '@/routes/LlmCallsPage'
-import { LlmCallDetailPage } from '@/routes/LlmCallDetailPage'
+import { LlmLayout } from '@/routes/llm/LlmLayout'
+import { LlmCallsPage } from '@/routes/llm/LlmCallsPage'
+import { LlmSpendPage } from '@/routes/llm/LlmSpendPage'
+import { LlmCallDetailPage } from '@/routes/llm/LlmCallDetailPage'
 
 export default function App() {
   return (
@@ -27,8 +29,13 @@ export default function App() {
         <Route path="catalog" element={<CatalogPage />} />
         <Route path="gaps" element={<GapsPage />} />
         <Route path="market" element={<MarketPage />} />
-        <Route path="llm" element={<LlmCallsPage />} />
-        <Route path="llm/:callId" element={<LlmCallDetailPage />} />
+        <Route path="llm" element={<LlmLayout />}>
+          <Route index element={<LlmCallsPage />} />
+          <Route path="spend" element={<LlmSpendPage />} />
+        </Route>
+        {/* Outside the layout: a single call is not one of the two readings the tabs offer, and
+            `calls/` keeps it from ever competing with `spend` for the same path segment. */}
+        <Route path="llm/calls/:callId" element={<LlmCallDetailPage />} />
         <Route path="*" element={<Navigate to="/offers" replace />} />
       </Route>
     </Routes>

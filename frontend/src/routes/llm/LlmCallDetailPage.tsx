@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { formatDateTime, formatDuration } from '@/lib/format'
+import { formatCallCost, formatDateTime, formatDuration } from '@/lib/format'
 
 /** Pretty-print when it parses, show it raw when it does not — a malformed body is the finding. */
 function prettyJson(raw: string): string {
@@ -44,9 +44,29 @@ export function LlmCallDetailPage() {
             <Badge variant="outline">{meta.task}</Badge>
             <span className="font-mono text-xs">{meta.modelName ?? '—'}</span>
             <span>· {meta.modelProfile}</span>
+            {/* A router serves one model slug from providers with different capabilities, so this
+                is what makes two identical-looking calls tell different stories. */}
+            {meta.servingProvider ? <span>· via {meta.servingProvider}</span> : null}
             <span>· {formatDateTime(meta.createdAt)}</span>
             <span>· {formatDuration(meta.latencyMs)}</span>
             <span>· {meta.inputTokens ?? '—'} in / {meta.outputTokens ?? '—'} out</span>
+            {/* Already inside the output count and already paid for, but nowhere in the text
+                below — so it is only visible if it is said. */}
+            {meta.reasoningOutputTokens ? (
+              <span>· {meta.reasoningOutputTokens.toLocaleString()} reasoning</span>
+            ) : null}
+            {meta.cachedInputTokens ? (
+              <span>· {meta.cachedInputTokens.toLocaleString()} cached</span>
+            ) : null}
+            <span>· {formatCallCost(meta.costUsd)}</span>
+            {meta.finishReason && meta.finishReason !== 'STOP' ? (
+              <Badge variant="outline" className="text-amber-600">{meta.finishReason}</Badge>
+            ) : null}
+            {/* The join key to the provider's own billing dashboard, so this row can be matched
+                against a line on the invoice rather than inferred from a timestamp. */}
+            {meta.providerCallId ? (
+              <span className="font-mono text-xs select-all">· {meta.providerCallId}</span>
+            ) : null}
           </span>
         }
       />

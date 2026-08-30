@@ -3,6 +3,33 @@
 Research for [issue #11](https://github.com/AnielskieOczko/job-assistant/issues/11), part of the
 roadmap map (#9). Blocks #15.
 
+## Status: implemented, with two corrections
+
+Built on 2026-08-30. The verdict below held: cost arrives inline, the raw body already reaches
+`AuditingChatModelListener`, and capturing it was a cast and a permissive JSON read. Two findings
+did **not** survive a re-check of OpenRouter's docs on the day of implementation, and are corrected
+here rather than edited away, because the reasoning that produced them is still worth reading.
+
+1. **`cost_details.upstream_inference_cost` is BYOK-only.** The API reference now states it "is only
+   available for BYOK requests. For all other requests it will be 0 or null." The
+   `upstream_cost_usd` column proposed under *Recommended column shape* would therefore be null on
+   every row this application writes, so **it was not added**. The other three columns were, plus
+   `finish_reason`, `provider_call_id` and a `subject_kind`/`subject_id` pair — see `V24`.
+2. **`GET /api/v1/credits` needs a *management* key** and answers 403 to an inference key, so the
+   account-reconciliation idea this research gestured at could not have used it.
+   **`GET /api/v1/key`** is the inference-key equivalent and is the better fit anyway: it describes
+   the key doing the calling, and reports `usage`, `usage_daily`, `usage_monthly`, `limit` and
+   `limit_remaining`. That is what `/api/llm/spend/account` calls.
+
+A third point the research flagged as unverifiable is now routed around rather than resolved.
+Whether `usage.cost` is denominated in dollars or in OpenRouter "credits" is still not stated
+anywhere in their docs — but `/api/v1/key` reports in the *same* unit, so the comparison the
+dashboard draws is valid either way, and nothing in the application ever converts the number.
+
+One thing this research did not anticipate, and which shaped the design more than anything in it:
+`llm_call` is purged after thirty days and cascade-deleted with its profile, so it cannot hold an
+accumulated total at all. That is why `V25` adds `llm_spend_daily`.
+
 ## Verdict
 
 Yes. OpenRouter returns the actual charged cost, in USD, inside the ordinary synchronous chat

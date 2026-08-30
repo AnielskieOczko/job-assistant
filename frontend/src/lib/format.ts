@@ -64,3 +64,24 @@ export function formatDuration(ms: number | null): string {
   if (ms === null) return '—'
   return ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`
 }
+
+/**
+ * A single call's price, which is routinely a fraction of a cent.
+ *
+ * Rounded to cents a real call reads as `$0.00`, which is indistinguishable from free and from
+ * unpriced — so small values keep enough decimals to stay a number you can compare. Null is `—`,
+ * never `$0.00`: a provider that reported no price did not report a price of zero.
+ */
+export function formatCallCost(usd: number | null | undefined): string {
+  if (usd === null || usd === undefined) return '—'
+  if (usd === 0) return '$0'
+  if (usd < 0.01) return `$${usd.toPrecision(3)}`
+  return `$${usd.toFixed(4)}`
+}
+
+/** A total. Big enough to be worth cents, small enough that the first one will not be. */
+export function formatSpend(usd: number | null | undefined): string {
+  if (usd === null || usd === undefined) return '—'
+  if (usd > 0 && usd < 0.01) return `$${usd.toPrecision(2)}`
+  return `$${usd.toFixed(2)}`
+}

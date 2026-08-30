@@ -57,7 +57,9 @@ Playwright, which downloads Chromium on first use.
 | `/gaps` | Cross-offer aggregate gap report |
 | `/market` | The ingested corpus: scope, salary bands, demand table, offers behind it |
 | `/catalog` | Unmatched-term review queue and skill browser |
-| `/llm`, `/llm/:id` | Model call audit — prompt, raw response, tokens, latency |
+| `/llm` | Model call audit — prompt, raw response, tokens, cost, latency |
+| `/llm/spend` | What the models cost: hero, KPI row, one chart, breakdowns by task/model/profile |
+| `/llm/calls/:id` | One call in full. Under `calls/` so it can never compete with `spend` |
 
 ## The market dashboard
 

@@ -6,7 +6,9 @@ import { cn } from '@/lib/utils'
  *
  * [caption] is required rather than optional on purpose. A median over eleven offers and a median
  * over four hundred render identically unless the count travels with the number, and the whole
- * reason for ingesting a corpus was to stop guessing. Every tile on this page says what it counted.
+ * reason for ingesting a corpus was to stop guessing. The spend dashboard needs the same
+ * discipline for a different reason - a total over calls that reported no price is a floor - which
+ * is why this lives in `components/` rather than in either page.
  *
  * A tile whose statistic did not clear its honesty floor still renders — carrying the count and
  * the words instead of the number ([belowFloor]). It is never greyed out: a greyed-out tile reads

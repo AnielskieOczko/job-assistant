@@ -16,7 +16,16 @@ import com.jankowski.rafal.jobassistant.catalog.UnmatchedTerm
 import com.jankowski.rafal.jobassistant.catalog.UnmatchedTermStatus
 import com.jankowski.rafal.jobassistant.document.DocumentType
 import com.jankowski.rafal.jobassistant.document.GeneratedDocument
+import com.jankowski.rafal.jobassistant.llm.BudgetStatus
 import com.jankowski.rafal.jobassistant.llm.LlmCall
+import com.jankowski.rafal.jobassistant.llm.ProviderAccount
+import com.jankowski.rafal.jobassistant.llm.SpendBucket
+import com.jankowski.rafal.jobassistant.llm.SpendGroup
+import com.jankowski.rafal.jobassistant.llm.SpendPoint
+import com.jankowski.rafal.jobassistant.llm.SpendReport
+import com.jankowski.rafal.jobassistant.llm.SpendSeries
+import com.jankowski.rafal.jobassistant.llm.SpendSummary
+import com.jankowski.rafal.jobassistant.llm.SpendTotal
 import com.jankowski.rafal.jobassistant.market.CorpusSummary
 import com.jankowski.rafal.jobassistant.market.IngestionReport
 import com.jankowski.rafal.jobassistant.market.IngestionSchedule
@@ -303,12 +312,89 @@ class ApiContractTest {
         },
         {
             assertKeys(
-                LlmCall(1, "EXTRACTION", "openrouter", "model", "CoreWeave", 1, 1, 1L, null, Instant.EPOCH),
-                "id", "task", "modelProfile", "modelName", "servingProvider", "inputTokens",
-                "outputTokens", "latencyMs", "error", "createdAt",
+                LlmCall(
+                    id = 1, task = "EXTRACTION", modelProfile = "openrouter", modelName = "model",
+                    servingProvider = "CoreWeave", providerCallId = "gen-1",
+                    costUsd = BigDecimal("0.00012345"), inputTokens = 1, outputTokens = 1,
+                    cachedInputTokens = 1, reasoningOutputTokens = 1, finishReason = "STOP",
+                    latencyMs = 1L, error = null, subjectKind = "OFFER", subjectId = 1,
+                    createdAt = Instant.EPOCH,
+                ),
+                "id", "task", "modelProfile", "modelName", "servingProvider", "providerCallId",
+                "costUsd", "inputTokens", "outputTokens", "cachedInputTokens",
+                "reasoningOutputTokens", "finishReason", "latencyMs", "error", "subjectKind",
+                "subjectId", "createdAt",
             )
         },
     )
+
+    @Test
+    fun `llm spend wire formats`() {
+        val total = SpendTotal(
+            costUsd = BigDecimal("0.12345678"), calls = 10, pricedCalls = 9, failedCalls = 1,
+            inputTokens = 100, outputTokens = 50, cachedInputTokens = 20,
+            reasoningOutputTokens = 5,
+        )
+        val report = SpendReport(
+            summary = SpendSummary(
+                today = total, last7Days = total, last30Days = total, lifetime = total,
+                recordedSince = LocalDate.EPOCH,
+                budget = BudgetStatus(
+                    dailyLimitUsd = BigDecimal("1.00"), dailySpentUsd = BigDecimal("0.12"),
+                    monthlyLimitUsd = null, monthlySpentUsd = BigDecimal("0.12"),
+                    exhausted = false,
+                ),
+            ),
+            series = SpendSeries(
+                bucket = SpendBucket.DAY, from = LocalDate.EPOCH, to = LocalDate.EPOCH,
+                points = listOf(SpendPoint(LocalDate.EPOCH, total)),
+            ),
+            windowDays = 30,
+            byTask = listOf(SpendGroup("EXTRACTION", total)),
+            byModel = emptyList(),
+            byProfile = emptyList(),
+            windowTotal = total,
+        )
+
+        assertAll(
+            {
+                assertKeys(
+                    report, "summary", "series", "windowDays", "byTask", "byModel", "byProfile",
+                    "windowTotal",
+                )
+            },
+            {
+                assertKeys(
+                    report.summary, "today", "last7Days", "last30Days", "lifetime",
+                    "recordedSince", "budget",
+                )
+            },
+            {
+                assertKeys(
+                    report.summary.budget, "dailyLimitUsd", "dailySpentUsd", "monthlyLimitUsd",
+                    "monthlySpentUsd", "exhausted",
+                )
+            },
+            { assertKeys(report.series, "bucket", "from", "to", "points") },
+            { assertKeys(report.series.points.single(), "periodStart", "total") },
+            { assertKeys(report.byTask.single(), "key", "total") },
+            {
+                assertKeys(
+                    total, "costUsd", "calls", "pricedCalls", "failedCalls", "inputTokens",
+                    "outputTokens", "cachedInputTokens", "reasoningOutputTokens",
+                )
+            },
+            {
+                // `available` is a computed getter, so it is serialized and the frontend depends
+                // on it - exactly the kind of key that disappears unnoticed.
+                assertKeys(
+                    ProviderAccount.unavailable("no provider"),
+                    "modelProfile", "usageUsd", "usageTodayUsd", "usageMonthUsd", "limitUsd",
+                    "limitRemainingUsd", "checkedAt", "unavailableReason", "available",
+                )
+            },
+        )
+    }
 
     @Test
     fun `market dashboard wire formats`() {

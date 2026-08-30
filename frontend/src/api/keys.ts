@@ -1,4 +1,4 @@
-import type { DemandRanking, DocumentType, TriageRanking } from './types'
+import type { DemandRanking, DocumentType, SpendBucket, TriageRanking } from './types'
 
 /** Query key factory. Keeping them here stops invalidation from drifting out of sync. */
 export const keys = {
@@ -36,4 +36,6 @@ export const keys = {
 
   llmCalls: (limit: number) => ['llm', 'calls', limit] as const,
   llmCall: (id: number) => ['llm', 'call', id] as const,
+  llmSpend: (days: number, bucket: SpendBucket) => ['llm', 'spend', days, bucket] as const,
+  llmAccount: ['llm', 'account'] as const,
 }

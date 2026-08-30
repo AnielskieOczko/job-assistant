@@ -647,7 +647,7 @@ export interface GeneratedDocument {
 
 /* ---------------------------------------------------------------------- llm */
 
-export const LLM_TASKS = ['EXTRACTION', 'NARRATIVE', 'DOCUMENT'] as const
+export const LLM_TASKS = ['EXTRACTION', 'NARRATIVE', 'DOCUMENT', 'TRIAGE'] as const
 export type LlmTaskName = (typeof LLM_TASKS)[number]
 
 export interface LlmCall {
@@ -658,10 +658,28 @@ export interface LlmCall {
   modelName: string | null
   /** Upstream provider behind a router (OpenRouter reports one); null for direct providers. */
   servingProvider: string | null
+  /** The provider's own generation id — the join key to their billing dashboard. */
+  providerCallId: string | null
+  /**
+   * What the account was charged, in the provider's billing unit.
+   *
+   * `null` is not `0`. It means the provider reported no price at all (a local model), which is
+   * why every total built from these carries how many of its calls were priced.
+   */
+  costUsd: number | null
   inputTokens: number | null
   outputTokens: number | null
+  /** The part of `inputTokens` served from a prompt cache, and billed at a discount. */
+  cachedInputTokens: number | null
+  /** The part of `outputTokens` spent reasoning — paid for, and absent from the response text. */
+  reasoningOutputTokens: number | null
+  /** Anything but `STOP` is worth a look; `LENGTH` means a truncated answer you still paid for. */
+  finishReason: string | null
   latencyMs: number | null
   error: string | null
+  /** What caused the call, as an opaque label — `'OFFER'` today. */
+  subjectKind: string | null
+  subjectId: number | null
   createdAt: string
 }
 
@@ -669,6 +687,106 @@ export interface LlmCallDetail {
   call: LlmCall
   requestJson: string
   responseText: string | null
+}
+
+/**
+ * Spend over some slice, and the counts that say how much of it is measured.
+ *
+ * `pricedCalls` below `calls` means `costUsd` is a **floor**, not a total: the remaining calls went
+ * to a provider that reported no price at all. Rendering the money without that pair is the mistake
+ * this shape exists to make awkward.
+ */
+export interface SpendTotal {
+  costUsd: number
+  calls: number
+  pricedCalls: number
+  failedCalls: number
+  inputTokens: number
+  outputTokens: number
+  /** Part of `inputTokens`, billed at a discount. A cache that stopped working shows up here. */
+  cachedInputTokens: number
+  /** Part of `outputTokens`. Paid for, and never visible in any response text. */
+  reasoningOutputTokens: number
+}
+
+/** A null limit is no cap at all, not a cap of zero. */
+export interface BudgetStatus {
+  dailyLimitUsd: number | null
+  dailySpentUsd: number
+  monthlyLimitUsd: number | null
+  monthlySpentUsd: number
+  /** A cap is set and already reached, so the next model call will be refused. */
+  exhausted: boolean
+}
+
+export interface SpendSummary {
+  today: SpendTotal
+  last7Days: SpendTotal
+  last30Days: SpendTotal
+  lifetime: SpendTotal
+  /**
+   * The first day the rollup holds — `YYYY-MM-DD`.
+   *
+   * "Lifetime" means since this day. Spend before cost capture existed was never recorded and
+   * cannot be recovered, and saying so is the difference between a total and an understatement.
+   */
+  recordedSince: string | null
+  budget: BudgetStatus
+}
+
+export const SPEND_BUCKETS = ['DAY', 'WEEK', 'MONTH'] as const
+export type SpendBucket = (typeof SPEND_BUCKETS)[number]
+
+export interface SpendPoint {
+  /** `YYYY-MM-DD` — the first day of the bucket. */
+  periodStart: string
+  total: SpendTotal
+}
+
+/** Empty buckets are present and zero, so a quiet fortnight cannot compress the axis. */
+export interface SpendSeries {
+  bucket: SpendBucket
+  from: string
+  to: string
+  points: SpendPoint[]
+}
+
+export interface SpendGroup {
+  key: string
+  total: SpendTotal
+}
+
+export interface SpendReport {
+  summary: SpendSummary
+  series: SpendSeries
+  windowDays: number
+  byTask: SpendGroup[]
+  byModel: SpendGroup[]
+  byProfile: SpendGroup[]
+  /** Spend inside `windowDays` — the denominator for every share the breakdowns imply. */
+  windowTotal: SpendTotal
+}
+
+/**
+ * What the provider says the key has spent, as opposed to what this application recorded.
+ *
+ * Shown beside our own total, because **the gap is the point**: our figure is an undercount by
+ * construction — nothing from before cost capture existed, and nothing spent on the same key by
+ * anything else. `available: false` with a reason is the ordinary answer for a local model, and
+ * must read as "not applicable" rather than as a broken dashboard.
+ */
+export interface ProviderAccount {
+  modelProfile: string | null
+  usageUsd: number | null
+  usageTodayUsd: number | null
+  usageMonthUsd: number | null
+  /** Null means unlimited, not zero. */
+  limitUsd: number | null
+  limitRemainingUsd: number | null
+  /** When the figure was actually read, which is not when it was served. */
+  checkedAt: string | null
+  unavailableReason: string | null
+  available: boolean
 }
 
 /* -------------------------------------------------------------------- market */

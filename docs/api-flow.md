@@ -171,6 +171,33 @@ you about one job.
 Every model call is recorded:
 
 ```bash
-curl 'localhost:8080/api/llm/calls?limit=20'   # task, model, tokens, latency, error
+curl 'localhost:8080/api/llm/calls?limit=20'   # task, model, tokens, cost, latency, error
 curl localhost:8080/api/llm/calls/7            # full prompt and raw response
 ```
+
+## What it cost
+
+```bash
+curl 'localhost:8080/api/llm/spend?days=90&bucket=WEEK'   # summary, series, breakdowns
+curl localhost:8080/api/llm/spend/account                 # what the provider says the key spent
+```
+
+Two things to know before reading either number.
+
+`/api/llm/spend` never touches `llm_call`. That table is purged after thirty days and
+cascade-deleted with its profile, so a total read from it would shrink over time while still being
+labelled a total. Everything here comes from `llm_spend_daily`, which is written in the same
+transaction as each audit row and never purged.
+
+**Every figure carries `pricedCalls` beside `calls`.** A provider that reports no price still
+produces a row, so a `costUsd` whose `pricedCalls` is below its `calls` is a floor rather than a
+total. Anything rendering the money renders that pair.
+
+`/api/llm/spend/account` is a separate request because it is an outbound call to the provider — a
+dashboard that cannot render until a third party answers goes down when they do. It reads
+`GET /api/v1/key` on OpenRouter, which works with the inference key already configured (`/credits`
+and `/activity` need a management key and answer 403). A failure comes back as
+`available: false` with a reason, never a 5xx: for a profile pointed at a local model there is no
+account to report on. The two figures are meant to be read side by side, and **the gap is the
+point** — ours holds nothing from before cost capture existed and nothing spent on the same key by
+anything else.

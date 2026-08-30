@@ -10,6 +10,7 @@ import com.jankowski.rafal.jobassistant.document.FabricatedClaimException
 import com.jankowski.rafal.jobassistant.document.GeneratedDocument
 import com.jankowski.rafal.jobassistant.llm.AiServiceFactory
 import com.jankowski.rafal.jobassistant.llm.LlmCallScope
+import com.jankowski.rafal.jobassistant.llm.LlmCallScope.SUBJECT_OFFER
 import com.jankowski.rafal.jobassistant.llm.LlmTask
 import com.jankowski.rafal.jobassistant.offer.OfferService
 import com.jankowski.rafal.jobassistant.profile.CandidateProfile
@@ -54,8 +55,11 @@ internal class JdbcDocumentService(
         val roleTitle = offer.title ?: offer.displayTitle
         val company = offer.company ?: "the company"
 
-        // Scoped so the model call's audit row names the profile it was about and is erased with it.
-        val built = LlmCallScope.forProfile(profileId) {
+        // Scoped so the model call's audit row names the profile it was about and is erased with
+        // it. The subject is the offer, not the document about to be saved: the document has no id
+        // yet, and pricing a whole application - analysis plus both documents - is the question
+        // worth being able to ask.
+        val built = LlmCallScope.forProfile(profileId, SUBJECT_OFFER, offerId) {
             when (type) {
                 DocumentType.CV -> buildCv(profile, report, roleTitle, company, language, offer.company)
                 DocumentType.COVER_LETTER -> buildCoverLetter(profile, report, roleTitle, company, language)

@@ -3,6 +3,9 @@ package com.jankowski.rafal.jobassistant.llm.internal
 import com.jankowski.rafal.jobassistant.llm.LlmCall
 import com.jankowski.rafal.jobassistant.llm.LlmCallDetail
 import com.jankowski.rafal.jobassistant.llm.LlmCallLog
+import com.jankowski.rafal.jobassistant.llm.LlmSpendInsights
+import com.jankowski.rafal.jobassistant.llm.SpendBucket
+import com.jankowski.rafal.jobassistant.llm.SpendReport
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
