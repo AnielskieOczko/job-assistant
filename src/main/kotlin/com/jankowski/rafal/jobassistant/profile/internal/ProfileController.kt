@@ -210,6 +210,24 @@ internal class ProfileController(
         @Valid @RequestBody request: ReorderRequest,
     ) = writes.reorderProjectBullets(profileId, projectId, request.ids)
 
+    // ------------------------------------------------------- consent clauses
+
+    @PostMapping("/consent-clauses")
+    @ResponseStatus(HttpStatus.CREATED)
+    fun addConsentClause(@PathVariable profileId: Long, @Valid @RequestBody request: ConsentClauseRequest) =
+        writes.addConsentClause(profileId, request)
+
+    @PutMapping("/consent-clauses/{id}")
+    fun updateConsentClause(
+        @PathVariable profileId: Long,
+        @PathVariable id: Long,
+        @Valid @RequestBody request: ConsentClauseRequest,
+    ) = writes.updateConsentClause(profileId, id, request)
+
+    @DeleteMapping("/consent-clauses/{id}")
+    fun deleteConsentClause(@PathVariable profileId: Long, @PathVariable id: Long) =
+        writes.deleteConsentClause(profileId, id)
+
     // -------------------------------------------------------------- languages
 
     @PostMapping("/languages")

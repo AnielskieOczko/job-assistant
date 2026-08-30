@@ -330,6 +330,52 @@ internal class ProfileCrudIntegrationTest(
         assertTrue(afterDeletingProjectBullet.projects.single().bullets.isEmpty())
     }
 
+    // ------------------------------------------------------- consent clauses
+
+    @Test
+    fun `a consent clause can be added, edited and deleted`() {
+        seed()
+
+        val added = writes.addConsentClause(
+            profileId, ConsentClauseRequest(language = "English", text = "I consent to processing of my data."),
+        ).consentClauses.single()
+        assertEquals("English", added.language)
+
+        val updated = writes.updateConsentClause(
+            profileId, added.id, ConsentClauseRequest(language = "English", text = "Updated wording."),
+        ).consentClauses.single()
+        assertEquals("Updated wording.", updated.text)
+
+        val afterDelete = writes.deleteConsentClause(profileId, added.id)
+        assertTrue(afterDelete.consentClauses.isEmpty())
+    }
+
+    @Test
+    fun `a second consent clause for the same language cannot be added`() {
+        seed()
+        writes.addConsentClause(profileId, ConsentClauseRequest(language = "Polish", text = "Zgoda."))
+
+        val rejected = assertThrows<ProfileConflictException> {
+            writes.addConsentClause(profileId, ConsentClauseRequest(language = "polish", text = "Inna zgoda."))
+        }
+
+        assertContains(rejected.message!!, "Polish")
+        assertEquals(1, profiles.require(profileId).consentClauses.size)
+    }
+
+    @Test
+    fun `editing a consent clause into another language's slot is rejected`() {
+        seed()
+        writes.addConsentClause(profileId, ConsentClauseRequest(language = "English", text = "English wording."))
+        val polish = writes.addConsentClause(
+            profileId, ConsentClauseRequest(language = "Polish", text = "Zgoda."),
+        ).consentClauses.single { it.language == "Polish" }
+
+        assertThrows<ProfileConflictException> {
+            writes.updateConsentClause(profileId, polish.id, ConsentClauseRequest(language = "English", text = "Zgoda."))
+        }
+    }
+
     // -------------------------------------------------------------- bootstrap
 
     @Test

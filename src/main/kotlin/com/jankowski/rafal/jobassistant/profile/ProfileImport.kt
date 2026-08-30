@@ -16,6 +16,7 @@ data class ProfileImport(
     val education: List<EducationImport> = emptyList(),
     val credentials: List<CredentialImport> = emptyList(),
     val projects: List<ProjectImport> = emptyList(),
+    val consentClauses: List<ConsentClauseImport> = emptyList(),
     val languages: List<LanguageImport> = emptyList(),
 )
 
@@ -67,6 +68,8 @@ data class ProjectImport(
     val skills: List<String> = emptyList(),
     val bullets: List<BulletImport> = emptyList(),
 )
+
+data class ConsentClauseImport(val language: String, val text: String)
 
 data class LanguageImport(val language: String, val level: LanguageLevel)
 

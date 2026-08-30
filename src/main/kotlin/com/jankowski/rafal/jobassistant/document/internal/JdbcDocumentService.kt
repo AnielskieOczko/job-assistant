@@ -57,7 +57,7 @@ internal class JdbcDocumentService(
         // Scoped so the model call's audit row names the profile it was about and is erased with it.
         val built = LlmCallScope.forProfile(profileId) {
             when (type) {
-                DocumentType.CV -> buildCv(profile, report, roleTitle, company, language)
+                DocumentType.CV -> buildCv(profile, report, roleTitle, company, language, offer.company)
                 DocumentType.COVER_LETTER -> buildCoverLetter(profile, report, roleTitle, company, language)
             }
         }
@@ -77,6 +77,7 @@ internal class JdbcDocumentService(
                 droppedBulletCount = built.droppedBulletCount,
                 droppedSkillCount = built.droppedSkillCount,
                 profileRevision = profile.revision,
+                consentClauseLanguage = built.consentClauseLanguage,
             )
         )
         return saved.toDomain()
@@ -102,6 +103,7 @@ internal class JdbcDocumentService(
         val droppedBulletCount: Int = 0,
         val droppedSkillCount: Int = 0,
         val droppedNames: List<String> = emptyList(),
+        val consentClauseLanguage: String? = null,
     )
 
     private fun buildCv(
@@ -110,6 +112,7 @@ internal class JdbcDocumentService(
         roleTitle: String,
         company: String,
         language: String,
+        rawCompany: String?,
     ): Built {
         val tailored = aiServices.create(CvTailor::class.java, LlmTask.DOCUMENT).tailor(
             roleTitle = roleTitle,
@@ -120,12 +123,24 @@ internal class JdbcDocumentService(
         )
 
         val selection = CvSelection.from(tailored, profile, catalog)
+        val clause = profile.consentClauses.firstOrNull { it.language.equals(language, ignoreCase = true) }
+        // Deterministic string substitution, never a model - see ConsentClause. An offer with no
+        // company name leaves the placeholder visible rather than substituting a made-up employer.
+        val consentText = clause?.let { rawCompany?.let { name -> it.text.replace("{{company}}", name) } ?: it.text }
         return Built(
-            html = render("cv", mapOf("cv" to selection.toView(profile, catalog), "langCode" to langCode(language))),
+            html = render(
+                "cv",
+                mapOf(
+                    "cv" to selection.toView(profile, catalog),
+                    "langCode" to langCode(language),
+                    "consentClause" to (consentText ?: ""),
+                )
+            ),
             selection = selection,
             droppedBulletCount = selection.droppedBulletIds.size,
             droppedSkillCount = selection.droppedSkillNames.size,
             droppedNames = selection.droppedSkillNames + selection.droppedBulletIds.map { "bullet#$it" },
+            consentClauseLanguage = clause?.language,
         )
     }
 
@@ -212,4 +227,5 @@ private fun GeneratedDocumentRow.toDomain() = GeneratedDocument(
     profileRevision = profileRevision,
     droppedBulletCount = droppedBulletCount,
     droppedSkillCount = droppedSkillCount,
+    consentClauseLanguage = consentClauseLanguage,
 )

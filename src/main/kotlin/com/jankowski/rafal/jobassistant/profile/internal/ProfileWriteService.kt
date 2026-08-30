@@ -26,6 +26,7 @@ internal class ProfileWriteService(
     private val education: EducationRepository,
     private val credentials: CredentialRepository,
     private val projects: ProjectRepository,
+    private val consentClauses: ConsentClauseRepository,
     private val languages: LanguageSkillRepository,
     private val jdbc: JdbcClient,
 ) {
@@ -432,6 +433,46 @@ internal class ProfileWriteService(
     fun reorderProjectBullets(profileId: Long, projectId: Long, ids: List<Long>): CandidateProfile {
         projects.findByIdAndProfileId(projectId, profileId) ?: throw unknown("project", projectId)
         return reorder(profileId, "experience_bullet", ids, bullets.findByProject(projectId).map { it.id!! })
+    }
+
+    // ------------------------------------------------------- consent clauses
+
+    @Transactional
+    fun addConsentClause(profileId: Long, request: ConsentClauseRequest): CandidateProfile {
+        requireProfileExists(profileId)
+        consentClauses.findByLanguageIgnoringCase(profileId, request.language)?.let {
+            throw ProfileConflictException(
+                "A consent clause for ${it.language} already exists. Edit that entry instead of adding it again."
+            )
+        }
+        consentClauses.save(
+            ConsentClauseRow(
+                profileId = profileId,
+                language = request.language,
+                text = request.text,
+                displayOrder = nextOrder("cv_consent_clause", profileId),
+            )
+        )
+        return commit(profileId)
+    }
+
+    @Transactional
+    fun updateConsentClause(profileId: Long, id: Long, request: ConsentClauseRequest): CandidateProfile {
+        val row = consentClauses.findByIdAndProfileId(id, profileId) ?: throw unknown("consent clause", id)
+        consentClauses.findByLanguageIgnoringCase(profileId, request.language)
+            ?.takeIf { it.id != id }
+            ?.let {
+                throw ProfileConflictException("A consent clause for ${it.language} already exists.")
+            }
+        consentClauses.save(row.copy(language = request.language, text = request.text))
+        return commit(profileId)
+    }
+
+    @Transactional
+    fun deleteConsentClause(profileId: Long, id: Long): CandidateProfile {
+        val row = consentClauses.findByIdAndProfileId(id, profileId) ?: throw unknown("consent clause", id)
+        consentClauses.delete(row)
+        return commit(profileId)
     }
 
     // -------------------------------------------------------------- languages

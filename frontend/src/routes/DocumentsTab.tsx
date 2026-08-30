@@ -10,6 +10,7 @@ import {
 } from '@/api/documents'
 import { ApiError } from '@/api/http'
 import { keys } from '@/api/keys'
+import { getProfile } from '@/api/profile'
 import type { DocumentType, GeneratedDocument } from '@/api/types'
 import { ApiErrorAlert } from '@/components/ApiErrorAlert'
 import { StaleProfileNotice } from '@/components/StaleProfileNotice'
@@ -64,6 +65,17 @@ function DocumentPanel({ type, title }: { type: DocumentType; title: string }) {
     enabled: profileId !== null,
   })
 
+  // Only a CV carries a consent clause - see issue #52. Fetched here rather than lifted to
+  // DocumentsTab because only this panel needs it, and ProfilePage already owns the cache entry.
+  const profile = useQuery({
+    queryKey: keys.profile(profileId ?? -1),
+    queryFn: () => getProfile(profileId!),
+    enabled: type === 'CV' && profileId !== null,
+  })
+  const hasConsentClauseForLanguage = profile.data?.consentClauses.some(
+    (clause) => clause.language.toLowerCase() === language.toLowerCase(),
+  )
+
   const generate = useMutation({
     mutationFn: () => generateDocument(offerId, profileId!, type, language),
     onSuccess: () => {
@@ -106,6 +118,12 @@ function DocumentPanel({ type, title }: { type: DocumentType; title: string }) {
       </CardHeader>
 
       <CardContent className="space-y-4">
+        {type === 'CV' && profile.isSuccess && hasConsentClauseForLanguage === false ? (
+          <p className="text-xs text-muted-foreground">
+            No {language} consent clause on this profile — the CV will render without one.{' '}
+            <Link to="/profile" className="underline underline-offset-2">Add one</Link>.
+          </p>
+        ) : null}
         {error?.status === 422 ? <FabricatedClaims error={error} /> : null}
         {error?.status === 409 ? <NeedsAnalysis /> : null}
         {generate.isError && error?.status !== 422 && error?.status !== 409 ? (
@@ -134,6 +152,15 @@ function DocumentPanel({ type, title }: { type: DocumentType; title: string }) {
               <Badge variant="secondary">{doc.language}</Badge>
               <span>Generated {formatDateTime(doc.createdAt)}</span>
               <DiscardedChoices doc={doc} />
+              {doc.type === 'CV' && doc.consentClauseLanguage === null ? (
+                <Badge
+                  variant="outline"
+                  className="border-amber-500/40 text-amber-700 dark:text-amber-400"
+                  title={`No ${doc.language} consent clause was found on the profile, so this CV rendered without one.`}
+                >
+                  No consent clause
+                </Badge>
+              ) : null}
               <span className="ml-auto flex gap-2">
                 <Button asChild size="sm" variant="outline">
                   <a href={documentPdfUrl(doc.id)} target="_blank" rel="noreferrer">

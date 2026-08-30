@@ -9,6 +9,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { PageHeader } from '@/components/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { ConsentClauseCard } from './ConsentClauseCard'
 import { CredentialsCard } from './CredentialsCard'
 import { DetailsCard } from './DetailsCard'
 import { EducationCard } from './EducationCard'
@@ -81,10 +82,11 @@ export function ProfilePage() {
           <SkillsCard profileId={profileId} profile={profile.data} />
           <ExperienceCard profileId={profileId} profile={profile.data} />
           <ProjectCard profileId={profileId} profile={profile.data} />
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
             <EducationCard profileId={profileId} profile={profile.data} />
             <CredentialsCard profileId={profileId} profile={profile.data} />
             <LanguagesCard profileId={profileId} profile={profile.data} />
+            <ConsentClauseCard profileId={profileId} profile={profile.data} />
           </div>
         </div>
       )}

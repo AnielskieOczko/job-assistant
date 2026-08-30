@@ -77,6 +77,18 @@ listing them, rather than quietly untagging the evidence behind a claim.
   identifier** — `github.com/AnielskieOczko/…` names the candidate as surely as an email does — so
   it is never sent to a model; it only reaches the rendered CV straight from the database, the same
   treatment the candidate's name and photo already get.
+- `consentClauses[]` is the CV's data-processing consent clause (RODO/GDPR), one per output
+  **language**, unique case-insensitively the same way a `languages[]` entry is. It is rendered onto
+  a generated CV straight from the database and never sent to a model — a model paraphrasing a
+  consent statement would change what is being consented to, so this text is exempt from the
+  "rephrase and reorder" licence a tailored CV otherwise has. `consentClauses[].text` may contain
+  `{{company}}`, substituted at render time from the offer by plain string replacement; when the
+  offer has no company name the placeholder is left visible rather than a made-up employer being
+  substituted in. A CV rendered in a language with no matching clause simply omits the section, and
+  the generated document records `consentClauseLanguage: null` so the gap is visible rather than
+  silent. Ordinary legal text will not collide with a catalog skill, but the field is user-authored
+  free text like any other bullet, so `CvInvariant` still scans it — naming a technology in it that
+  the profile does not otherwise hold fails the generation exactly as anywhere else on the CV.
 - Array order is preserved and becomes the display order on the CV — for **every** collection.
   Before `V8` that was not true of `languages[]`, which was read back alphabetically, and of
   `skills[]`, which happened to work only because a fresh import inserted them in document order.

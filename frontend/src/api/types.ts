@@ -421,6 +421,18 @@ export interface LanguageSkill {
   level: LanguageLevel
 }
 
+/**
+ * A data-processing consent clause for a CV rendered in `language`. Rendered from here straight
+ * into the document and never sent to a model. `text` may contain `{{company}}`, substituted from
+ * the offer at render time by plain string replacement - left unsubstituted, visibly, when the
+ * offer has no company name rather than inventing an employer.
+ */
+export interface ConsentClause {
+  id: number
+  language: string
+  text: string
+}
+
 export interface CandidateProfile {
   details: ProfileDetails
   links: ProfileLink[]
@@ -429,6 +441,7 @@ export interface CandidateProfile {
   education: Education[]
   credentials: Credential[]
   projects: Project[]
+  consentClauses: ConsentClause[]
   languages: LanguageSkill[]
   /**
    * Bumped by every write to the profile. Compare against an analysis's or a document's
@@ -496,6 +509,8 @@ export interface ProjectImport {
   bullets: BulletImport[]
 }
 
+export interface ConsentClauseImport { language: string; text: string }
+
 export interface LanguageImport { language: string; level: LanguageLevel }
 
 export interface ProfileImport {
@@ -506,6 +521,7 @@ export interface ProfileImport {
   education: EducationImport[]
   credentials: CredentialImport[]
   projects: ProjectImport[]
+  consentClauses: ConsentClauseImport[]
   languages: LanguageImport[]
 }
 
@@ -581,6 +597,8 @@ export interface ProjectRequest {
   skillIds: number[]
 }
 
+export interface ConsentClauseRequest { language: string; text: string }
+
 export interface LanguageRequest { language: string; level: LanguageLevel }
 
 /** Must name every id in the collection exactly once; a partial list is rejected with 409. */
@@ -620,6 +638,11 @@ export interface GeneratedDocument {
    */
   droppedBulletCount: number
   droppedSkillCount: number
+  /**
+   * The consent clause language rendered onto this document, or null when the profile had none for
+   * `language`. Always null for a cover letter, which carries no clause.
+   */
+  consentClauseLanguage: string | null
 }
 
 /* ---------------------------------------------------------------------- llm */

@@ -100,6 +100,16 @@
       ]
     }
   ],
+  "consentClauses": [
+    {
+      "language": "Polish",
+      "text": "Wyrażam zgodę na przetwarzanie moich danych osobowych zawartych w niniejszej aplikacji przez {{company}} na potrzeby obecnego procesu rekrutacji, zgodnie z Rozporządzeniem Parlamentu Europejskiego i Rady (UE) 2016/679 z dnia 27 kwietnia 2016 r. (RODO)."
+    },
+    {
+      "language": "English",
+      "text": "I consent to the processing of my personal data contained in this application by {{company}} for the purposes of this recruitment process, in accordance with Regulation (EU) 2016/679 (GDPR)."
+    }
+  ],
   "languages": [
     { "language": "Polish", "level": "NATIVE" },
     { "language": "English", "level": "C1" }
