@@ -128,7 +128,25 @@ job-assistant:
     audit:
       # How long a copy of a prompt is kept in llm_call. Even with identifiers kept out of prompts,
       # what remains describes who worked where. PT0S keeps rows forever.
+      #
+      # This does NOT age out the spend totals: llm_spend_daily is written alongside each audit row
+      # and is never purged, which is the whole reason it exists as a separate table.
       retention: P30D
+    budget:
+      # Hard caps on model spend, in the provider's billing unit. Both unset, which means no cap.
+      #
+      # Deliberately not given a default: a limit guessed on the reader's behalf would refuse work
+      # for a reason nobody chose. Set one and a call is refused - not warned about - once the
+      # running total for the period reaches it, before anything is sent. Periods are UTC days and
+      # UTC calendar months, matching llm_spend_daily and the providers' own dashboards.
+      #
+      # daily-usd: 0.50
+      # monthly-usd: 10.00
+    account:
+      # How long the provider's own spend figure is reused before being fetched again. It moves in
+      # cents per day while the dashboard refreshes every thirty seconds, so this is the difference
+      # between one outbound request against a billing endpoint and hundreds. PT0S fetches always.
+      cache-ttl: PT5M
     # Which profile serves which task (decision 22: all remote by default).
     tasks:
       extraction: openrouter

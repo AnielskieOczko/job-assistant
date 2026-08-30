@@ -141,8 +141,11 @@ under **`docs/research/`**.
   and LangChain4j 1.19 hands the raw provider JSON to the `AuditingChatModelListener` that already
   runs, through `OpenAiChatResponseMetadata.rawHttpResponse()` — verified against the 1.19.0 jar,
   where the field is set unconditionally. Capturing cost is a cast and a permissive JSON read, not a
-  new seam. Four nullable columns on `llm_call` (`cost_usd`, `upstream_cost_usd`,
-  `cached_input_tokens`, `reasoning_output_tokens`) unblock both cost display and the spend guardrail.
+  new seam. **Now built**, with two corrections recorded in that file: `upstream_cost_usd` was
+  dropped (its source field is BYOK-only and would always be null), and account reconciliation uses
+  `GET /api/v1/key` rather than `/credits`, which needs a management key. The accumulated total
+  needed a table of its own — `llm_call` is purged after thirty days, so it can hold per-call
+  evidence but never a lifetime figure.
 - **[What can GitHub tell us about a repository?](https://github.com/AnielskieOczko/job-assistant/issues/12)**
   → `docs/research/12-github-project-import.md`. A project import is not mechanical. Owner-stated
   fields are safe but thin on a real account — `description` present on 5 of 11 repositories,
@@ -279,10 +282,13 @@ run, because until then it is not known which items earn detailed shaping.
   already exists and nothing reads it — but at a few dozen applications any correlation is noise.
 - **Where a cross-offer shortlist ranking lives.** Urgent only if automated ingestion ships — and
   ticket 10 concluded it would ship as a trickle, which weakens the case rather than strengthening it.
-- **Placement of two small insurance policies.** The LLM spend guardrail's *mechanism* is no longer
-  fog: ticket 11 established that `usage.cost` arrives inline and the audit listener already receives
-  it, so only its rank remains open. Profile durability is untouched — ground truth is hand-authored
-  in one Postgres, import exists, scheduled export does not.
+- ~~**Placement of two small insurance policies.**~~ **Half of this is now built.** The LLM spend
+  guardrail shipped on 2026-08-30, ahead of any ranking and by decision rather than by rank, along
+  with per-call cost capture and a spend dashboard at `/llm/spend` — see `CLAUDE.md` § *What a model
+  call costs* and the status note at the top of `docs/research/11-model-call-cost.md`. **Rank and
+  sequence the roadmap should record that as done rather than rank it**, the same way it is told to
+  treat CI/CD. Profile durability is untouched — ground truth is hand-authored in one Postgres,
+  import exists, scheduled export does not.
 
 ## Out of scope
 

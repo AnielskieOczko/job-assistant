@@ -453,6 +453,59 @@ Environment: `OPENROUTER_API_KEY` / `REQUESTY_API_KEY` for models, `DB_URL` / `D
 `DB_PASSWORD` for Postgres (defaults match `docker-compose.yml`). Local dev uses the compose
 Postgres; deployment targets Neon, which is why the Hikari pool is tiny and tolerant of cold starts.
 
+## What a model call costs
+
+**The provider already tells us, and LangChain4j already hands us the answer.** OpenRouter and
+Requesty both return `usage.cost` inline on every non-streaming completion, with no request flag.
+LangChain4j's parsed types drop it — they are provider-neutral on purpose, so `Usage` has no `cost`
+field for Jackson to fill — but `OpenAiChatResponseMetadata.rawHttpResponse()` is populated
+unconditionally, and `AuditingChatModelListener` has been reading that body since `serving_provider`
+landed. `completionMetadataIn` parses it once for the provider, the generation id, the cost and the
+cached/reasoning token split. It is best-effort throughout: absent is the normal case, and a
+malformed body must never cost the audit row, because a missing cost is worth far less than a
+missing prompt. `docs/research/11-model-call-cost.md` records the verification.
+
+**`llm_call` cannot answer "what have I spent".** `LlmCallRetention` deletes its rows after thirty
+days and `V11` cascade-deletes them with their profile, so `sum(cost_usd)` over it is a
+thirty-day, surviving-personas-only figure that would render under a label saying "total". The
+total therefore lives in `llm_spend_daily` (`V25`), a bucket per day/task/profile/model written in
+the same transaction as each audit row and never purged. **Nothing on the read side may consult
+`llm_call`** — an integration test deletes every row and asserts the lifetime total is unchanged.
+
+Three properties of that table are decisions, not details:
+
+- **No `profile_id`, no cascade.** It is the one profile-derived table that deliberately outlives
+  `V11`'s erasure rule. Deleting a persona does not un-spend the money, and a row of counters holds
+  no identifier to erase. The per-call rows, which hold prompt text, are still erased.
+- **Accrued, not derived** — the mirror image of `market_occurrences`, which is *set* from the
+  corpus precisely because a re-poll re-observes the same offers. A model call happens exactly once
+  and can never be re-observed, so incrementing is correct here, and after a purge it is the only
+  operation still possible.
+- **`priced_calls` is the denominator.** A provider reporting no price still produces a row.
+  `$0.40` over 100 calls and `$0.40` over the 60 that were priced are a floor and a total, and only
+  one of them is what the label says. Every surface renders the pair.
+
+**The spend cap is an `OutboundPromptInspector`** (`BudgetGuardInspector`), which is that
+interface's stated purpose and the one seam every model call passes through — a check at each
+pipeline entry point would be three call sites for a fourth caller to forget. It ignores the prompt
+entirely and sums the period out of the rollup. It is accurate to within one call by construction,
+since a price is only known once the answer is back; overshooting by one call is the honest cost of
+refusing to estimate prices before the fact. Both limits default to unset.
+
+`llm_call.subject_kind`/`subject_id` name the offer that caused a call (`LlmCallScope.SUBJECT_OFFER`),
+so an application can be priced end to end — analysis, both documents, and any `JsonOutputGuardrail`
+repair in between, which shows up as more rows than the pipeline has steps. That pair carries **no
+foreign key**, unlike `profile_id`: cost history must survive the deletion of the analysis it paid
+for, and a constraint naming another module's table would be the first half of a dependency this
+module does not have.
+
+`GET /api/llm/spend/account` asks OpenRouter what the key actually spent, via `GET /api/v1/key` —
+`/credits` and `/activity` need a *management* key and answer 403 to an inference key. It carries
+the API key and nothing else, so it sits outside the second rule rather than being an exception to
+it. It is its own endpoint because a dashboard must render when a third party is down, and the two
+figures are shown side by side because **the gap is the feature**: ours is an undercount by
+construction.
+
 ## Writing an AI service
 
 Declare the interface in the module that owns the concept (`analysis` owns extraction, `document`
