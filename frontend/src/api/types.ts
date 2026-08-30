@@ -647,7 +647,7 @@ export interface GeneratedDocument {
 
 /* ---------------------------------------------------------------------- llm */
 
-export const LLM_TASKS = ['EXTRACTION', 'NARRATIVE', 'DOCUMENT'] as const
+export const LLM_TASKS = ['EXTRACTION', 'NARRATIVE', 'DOCUMENT', 'TRIAGE'] as const
 export type LlmTaskName = (typeof LLM_TASKS)[number]
 
 export interface LlmCall {
@@ -658,10 +658,28 @@ export interface LlmCall {
   modelName: string | null
   /** Upstream provider behind a router (OpenRouter reports one); null for direct providers. */
   servingProvider: string | null
+  /** The provider's own generation id — the join key to their billing dashboard. */
+  providerCallId: string | null
+  /**
+   * What the account was charged, in the provider's billing unit.
+   *
+   * `null` is not `0`. It means the provider reported no price at all (a local model), which is
+   * why every total built from these carries how many of its calls were priced.
+   */
+  costUsd: number | null
   inputTokens: number | null
   outputTokens: number | null
+  /** The part of `inputTokens` served from a prompt cache, and billed at a discount. */
+  cachedInputTokens: number | null
+  /** The part of `outputTokens` spent reasoning — paid for, and absent from the response text. */
+  reasoningOutputTokens: number | null
+  /** Anything but `STOP` is worth a look; `LENGTH` means a truncated answer you still paid for. */
+  finishReason: string | null
   latencyMs: number | null
   error: string | null
+  /** What caused the call, as an opaque label — `'OFFER'` today. */
+  subjectKind: string | null
+  subjectId: number | null
   createdAt: string
 }
 

@@ -8,6 +8,7 @@ import com.jankowski.rafal.jobassistant.catalog.SkillCatalog
 import com.jankowski.rafal.jobassistant.llm.AiServiceFactory
 import com.jankowski.rafal.jobassistant.llm.ChatModelRegistry
 import com.jankowski.rafal.jobassistant.llm.LlmCallScope
+import com.jankowski.rafal.jobassistant.llm.LlmCallScope.SUBJECT_OFFER
 import com.jankowski.rafal.jobassistant.llm.LlmTask
 import com.jankowski.rafal.jobassistant.offer.OfferService
 import com.jankowski.rafal.jobassistant.privacy.OfferTextScrubber
@@ -48,9 +49,15 @@ internal class AnalysisRunner(
         try {
             // The scope opens here, on the pool thread that goes on to make both model calls, so
             // their audit rows carry the profile and are erased along with it.
-            val profileId = analyses.findById(analysisId).map { it.profileId }.orElse(null)
-            if (profileId == null) execute(analysisId)
-            else LlmCallScope.forProfile(profileId) { execute(analysisId) }
+            //
+            // The offer is the subject rather than this analysis: the question worth being able to
+            // answer is what an application cost end to end, and its analysis and its two
+            // generated documents are the same spend on the same offer.
+            val row = analyses.findById(analysisId).orElse(null)
+            if (row == null) execute(analysisId)
+            else LlmCallScope.forProfile(row.profileId, SUBJECT_OFFER, row.jobOfferId) {
+                execute(analysisId)
+            }
         } catch (failure: Exception) {
             log.warn("Analysis {} failed", analysisId, failure)
             markFailed(analysisId, failure)

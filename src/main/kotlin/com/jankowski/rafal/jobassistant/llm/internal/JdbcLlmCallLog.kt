@@ -35,17 +35,28 @@ internal class JdbcLlmCallLog(private val jdbc: JdbcClient) : LlmCallLog {
         modelProfile = getString("model_profile"),
         modelName = getString("model_name"),
         servingProvider = getString("serving_provider"),
+        providerCallId = getString("provider_call_id"),
+        costUsd = getBigDecimal("cost_usd"),
         inputTokens = getObject("input_tokens") as Int?,
         outputTokens = getObject("output_tokens") as Int?,
+        cachedInputTokens = getObject("cached_input_tokens") as Int?,
+        reasoningOutputTokens = getObject("reasoning_output_tokens") as Int?,
+        finishReason = getString("finish_reason"),
         latencyMs = getObject("latency_ms") as Long?,
         error = getString("error"),
+        subjectKind = getString("subject_kind"),
+        // A nullable bigint read as getLong is 0, not null - JdbcClient carries none of Spring
+        // Data's converters.
+        subjectId = getLong("subject_id").takeUnless { wasNull() },
         createdAt = getTimestamp("created_at").toInstant(),
     )
 
     private companion object {
         const val SUMMARY_COLUMNS = """
-            select id, task, model_profile, model_name, serving_provider, input_tokens,
-                   output_tokens, latency_ms, error, created_at
+            select id, task, model_profile, model_name, serving_provider, provider_call_id,
+                   cost_usd, input_tokens, output_tokens, cached_input_tokens,
+                   reasoning_output_tokens, finish_reason, latency_ms, error, subject_kind,
+                   subject_id, created_at
             from llm_call
         """
     }

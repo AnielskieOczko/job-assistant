@@ -15,7 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
-import { formatDateTime, formatDuration } from '@/lib/format'
+import { formatCallCost, formatDateTime, formatDuration } from '@/lib/format'
 
 export function LlmCallsPage() {
   const [limit, setLimit] = useState(50)
@@ -32,7 +32,7 @@ export function LlmCallsPage() {
     <>
       <PageHeader
         title="Model calls"
-        description="Every call is recorded with its prompt, raw response, token usage and latency. When a generated artifact reads badly, this is how you tell whether the prompt, the model or the profile is at fault."
+        description="Every call is recorded with its prompt, raw response, token usage, cost and latency. When a generated artifact reads badly, this is how you tell whether the prompt, the model or the profile is at fault."
         actions={
           <div className="flex items-center gap-2">
             <Select value={String(limit)} onValueChange={(v) => setLimit(Number(v))}>
@@ -62,6 +62,7 @@ export function LlmCallsPage() {
                 <TableHead className="w-32">Task</TableHead>
                 <TableHead>Model</TableHead>
                 <TableHead className="w-32 text-right">Tokens in/out</TableHead>
+                <TableHead className="w-24 text-right">Cost</TableHead>
                 <TableHead className="w-24 text-right">Latency</TableHead>
                 <TableHead className="w-20"></TableHead>
               </TableRow>
@@ -86,11 +87,19 @@ export function LlmCallsPage() {
                     {call.error ? (
                       <span className="ml-2 text-xs text-red-600">failed</span>
                     ) : null}
+                    {/* STOP is the ordinary ending and saying so on every row would be noise.
+                        LENGTH is the one worth seeing: a truncated answer you were charged for. */}
+                    {call.finishReason && call.finishReason !== 'STOP' ? (
+                      <span className="ml-2 text-xs text-amber-600">{call.finishReason}</span>
+                    ) : null}
                   </TableCell>
-                  <TableCell className="text-right font-mono text-xs text-muted-foreground">
+                  <TableCell className="text-right font-mono text-xs tabular-nums text-muted-foreground">
                     {call.inputTokens ?? '—'} / {call.outputTokens ?? '—'}
                   </TableCell>
-                  <TableCell className="text-right font-mono text-xs text-muted-foreground">
+                  <TableCell className="text-right font-mono text-xs tabular-nums">
+                    {formatCallCost(call.costUsd)}
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-xs tabular-nums text-muted-foreground">
                     {formatDuration(call.latencyMs)}
                   </TableCell>
                   <TableCell className="text-right">
@@ -105,7 +114,7 @@ export function LlmCallsPage() {
               ))}
               {rows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
+                  <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
                     No model calls recorded yet.
                   </TableCell>
                 </TableRow>
