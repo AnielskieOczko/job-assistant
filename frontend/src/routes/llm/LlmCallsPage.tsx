@@ -104,7 +104,7 @@ export function LlmCallsPage() {
                   </TableCell>
                   <TableCell className="text-right">
                     <Link
-                      to={`/llm/${call.id}`}
+                      to={`/llm/calls/${call.id}`}
                       className="text-sm underline underline-offset-2 hover:text-foreground"
                     >
                       Open

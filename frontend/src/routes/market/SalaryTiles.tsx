@@ -1,5 +1,5 @@
 import type { SalaryGroup, SalaryReport } from '@/api/types'
-import { StatTile } from './StatTile'
+import { StatTile } from '@/components/StatTile'
 import { byOffers, employmentLabel, formatBand, percent, plural } from './format'
 
 /** Contract types shown as tiles of their own. The rest are named as a residual, never pooled. */
