@@ -37,4 +37,5 @@ export const keys = {
   llmCalls: (limit: number) => ['llm', 'calls', limit] as const,
   llmCall: (id: number) => ['llm', 'call', id] as const,
   llmSpend: (days: number, bucket: SpendBucket) => ['llm', 'spend', days, bucket] as const,
+  llmAccount: ['llm', 'account'] as const,
 }

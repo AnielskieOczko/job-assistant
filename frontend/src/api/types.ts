@@ -767,6 +767,28 @@ export interface SpendReport {
   windowTotal: SpendTotal
 }
 
+/**
+ * What the provider says the key has spent, as opposed to what this application recorded.
+ *
+ * Shown beside our own total, because **the gap is the point**: our figure is an undercount by
+ * construction — nothing from before cost capture existed, and nothing spent on the same key by
+ * anything else. `available: false` with a reason is the ordinary answer for a local model, and
+ * must read as "not applicable" rather than as a broken dashboard.
+ */
+export interface ProviderAccount {
+  modelProfile: string | null
+  usageUsd: number | null
+  usageTodayUsd: number | null
+  usageMonthUsd: number | null
+  /** Null means unlimited, not zero. */
+  limitUsd: number | null
+  limitRemainingUsd: number | null
+  /** When the figure was actually read, which is not when it was served. */
+  checkedAt: string | null
+  unavailableReason: string | null
+  available: boolean
+}
+
 /* -------------------------------------------------------------------- market */
 
 /**

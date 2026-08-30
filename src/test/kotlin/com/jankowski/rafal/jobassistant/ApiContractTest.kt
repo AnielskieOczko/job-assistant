@@ -18,6 +18,7 @@ import com.jankowski.rafal.jobassistant.document.DocumentType
 import com.jankowski.rafal.jobassistant.document.GeneratedDocument
 import com.jankowski.rafal.jobassistant.llm.BudgetStatus
 import com.jankowski.rafal.jobassistant.llm.LlmCall
+import com.jankowski.rafal.jobassistant.llm.ProviderAccount
 import com.jankowski.rafal.jobassistant.llm.SpendBucket
 import com.jankowski.rafal.jobassistant.llm.SpendGroup
 import com.jankowski.rafal.jobassistant.llm.SpendPoint
@@ -381,6 +382,15 @@ class ApiContractTest {
                 assertKeys(
                     total, "costUsd", "calls", "pricedCalls", "failedCalls", "inputTokens",
                     "outputTokens", "cachedInputTokens", "reasoningOutputTokens",
+                )
+            },
+            {
+                // `available` is a computed getter, so it is serialized and the frontend depends
+                // on it - exactly the kind of key that disappears unnoticed.
+                assertKeys(
+                    ProviderAccount.unavailable("no provider"),
+                    "modelProfile", "usageUsd", "usageTodayUsd", "usageMonthUsd", "limitUsd",
+                    "limitRemainingUsd", "checkedAt", "unavailableReason", "available",
                 )
             },
         )

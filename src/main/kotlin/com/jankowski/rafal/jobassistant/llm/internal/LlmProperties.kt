@@ -17,6 +17,7 @@ data class LlmProperties(
     val tasks: Map<LlmTask, String> = emptyMap(),
     val audit: AuditProperties = AuditProperties(),
     val budget: BudgetProperties = BudgetProperties(),
+    val account: AccountProperties = AccountProperties(),
 ) {
     fun profileNameFor(task: LlmTask): String =
         tasks[task] ?: throw IllegalStateException(
@@ -50,6 +51,17 @@ data class AuditProperties(
 data class BudgetProperties(
     val dailyUsd: BigDecimal? = null,
     val monthlyUsd: BigDecimal? = null,
+)
+
+/**
+ * How long the provider's own spend figure is reused before being fetched again.
+ *
+ * It moves in cents per day while a dashboard refreshes every few seconds, so caching it is the
+ * difference between one outbound request against a billing endpoint and hundreds. [Duration.ZERO]
+ * fetches every time.
+ */
+data class AccountProperties(
+    val cacheTtl: Duration = Duration.ofMinutes(5),
 )
 
 data class ModelProfile(

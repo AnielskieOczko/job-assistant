@@ -10,13 +10,19 @@ import org.springframework.test.context.ActiveProfiles
  * Requires a running Docker daemon. Tests that only exercise pure logic (the skill diff, the
  * CV invariant) must NOT use this — they belong in the fast tier with no container at all.
  *
- * Every model is a [ScriptedChatModel] and the market ingestion client is a
- * [ScriptedSolidJobsClient], so no integration test can reach a real third party whether or not an
- * API key, or a network, happens to be present.
+ * Every model is a [ScriptedChatModel], the market ingestion client is a
+ * [ScriptedSolidJobsClient] and the provider billing lookup is a
+ * [ScriptedProviderAccountClient], so no integration test can reach a real third party whether or
+ * not an API key, or a network, happens to be present.
  */
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.RUNTIME)
 @SpringBootTest
-@Import(TestcontainersConfiguration::class, StubLlmConfiguration::class, StubMarketConfiguration::class)
+@Import(
+    TestcontainersConfiguration::class,
+    StubLlmConfiguration::class,
+    StubMarketConfiguration::class,
+    StubProviderAccountConfiguration::class,
+)
 @ActiveProfiles("test")
 annotation class IntegrationTest
