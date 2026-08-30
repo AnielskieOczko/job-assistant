@@ -28,6 +28,10 @@ IRREPLACEABLE_TABLES=(
 )
 
 die() { printf 'error: %s\n' "$*" >&2; exit 1; }
+
+# These scripts run unattended from launchd, where a bare non-zero exit leaves nothing but an exit
+# code in `launchctl list`. Naming the line that failed costs one trap.
+trap 'status=$?; printf "error: %s failed at line %s (exit %s)\n" "${BASH_SOURCE[0]}" "$LINENO" "$status" >&2' ERR
 note() { printf '  %s\n' "$*" >&2; }
 step() { printf '\n== %s\n' "$*" >&2; }
 

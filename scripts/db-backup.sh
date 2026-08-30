@@ -53,14 +53,24 @@ fi
 retention="${BACKUP_RETENTION_DAYS:-30}"
 keep="${BACKUP_KEEP_MINIMUM:-7}"
 step "Pruning dumps older than ${retention}d (always keeping the newest ${keep})"
-for dir in "$BACKUP_DIR" ${BACKUP_MIRROR:+"$BACKUP_MIRROR"}; do
-  # ls -t is newest-first, so tail -n +N is everything outside the protected window.
-  ls -t "$dir"/jobassistant-*.dump 2>/dev/null | tail -n "+$((keep + 1))" | while read -r old; do
-    if [ -n "$(find "$old" -mtime "+$retention" -print -maxdepth 0 2>/dev/null)" ]; then
+
+prune() {
+  local dir="$1" old
+  local -a dumps=()
+  # Collected through process substitution rather than a pipeline: `set -o pipefail` plus a `while
+  # read` that reaches EOF makes an empty result look like a failure, which is the normal case here.
+  while IFS= read -r old; do dumps+=("$old"); done < <(ls -t "$dir"/jobassistant-*.dump 2>/dev/null)
+  [ "${#dumps[@]}" -gt "$keep" ] || return 0
+  for old in "${dumps[@]:$keep}"; do
+    # -maxdepth before the test, which BSD find requires; -mtime +N is "older than N days".
+    if [ -n "$(find "$old" -maxdepth 0 -mtime "+$retention" -print 2>/dev/null)" ]; then
       rm -f "$old" "$old.counts"
       note "removed $(basename "$old")"
     fi
   done
-done
+}
+
+prune "$BACKUP_DIR"
+[ -z "${BACKUP_MIRROR:-}" ] || prune "$BACKUP_MIRROR"
 
 printf '\n%s\n' "$target"
