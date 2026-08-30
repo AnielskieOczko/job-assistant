@@ -1,0 +1,24 @@
+# Production environment: the database holding the hand-authored profile and the real application
+# history. Activated only by an explicit SPRING_PROFILES_ACTIVE=prod - application.yaml defaults to
+# dev precisely so this file is never reached by accident. Operated via docs/operations.md.
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5433/jobassistant}
+    username: ${DB_USER:jobassistant}
+    # Deliberately no default. Every other property here could be wrong and still start; this one
+    # cannot, so a prod launch that forgot to source .env.prod fails at startup instead of falling
+    # through to the dev credentials and writing into the wrong database.
+    password: ${DB_PASSWORD}
+
+server:
+  # 8090 rather than 8080 so prod and a dev run can be up at the same time without a port clash,
+  # and so a browser tab pointed at one is never silently served by the other.
+  port: 8090
+
+logging:
+  level:
+    com.jankowski.rafal.jobassistant: INFO
+
+job-assistant:
+  market:
+    enabled: true

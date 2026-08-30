@@ -1,23 +1,33 @@
-# Local development database. Production/staging uses Neon (serverless Postgres).
+# Development database. Disposable by design: dropping this volume costs nothing but the time to
+# re-run migrations and scripts/seed-dev.sh. The production database is a separate container in
+# docker-compose.prod.yml with a separate volume - see docs/operations.md.
+#
+# Named explicitly rather than derived from the directory, so this project and job-assistant-prod
+# stay two deployments no matter what the checkout is called.
+name: job-assistant-dev
+
 services:
   postgres:
     image: postgres:18-alpine
-    container_name: job-assistant-db
+    container_name: job-assistant-dev-db
     environment:
-      POSTGRES_DB: jobassistant
+      POSTGRES_DB: jobassistant_dev
       POSTGRES_USER: jobassistant
       POSTGRES_PASSWORD: jobassistant
     ports:
-      - "5432:5432"
+      # Bound to loopback, like the application itself (Decision 12). The default "5432:5432" form
+      # publishes on every interface, which put the database on the local network while the app it
+      # serves was careful not to be.
+      - "127.0.0.1:5432:5432"
     volumes:
       # Postgres 18+ wants a single mount at /var/lib/postgresql, not .../data — the older path
       # makes the image refuse to start with an "unused mount/volume" error.
-      - job-assistant-pgdata:/var/lib/postgresql
+      - job-assistant-dev-pgdata:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U jobassistant -d jobassistant"]
+      test: ["CMD-SHELL", "pg_isready -U jobassistant -d jobassistant_dev"]
       interval: 5s
       timeout: 5s
       retries: 10
 
 volumes:
-  job-assistant-pgdata:
+  job-assistant-dev-pgdata:

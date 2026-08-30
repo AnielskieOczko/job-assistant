@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Monthly restore drill. The nightly dump proves a file was written; this proves it comes back.
+
+     Runs the installed copy under ~/Library/Application Support - see the backup agent's note. -->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.jobassistant.verify-restore</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>__AGENT_HOME__/scripts/db-verify-restore.sh</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>__AGENT_HOME__</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Day</key><integer>1</integer>
+        <key>Hour</key><integer>4</integer>
+        <key>Minute</key><integer>0</integer>
+    </dict>
+    <key>RunAtLoad</key>
+    <false/>
+    <key>StandardOutPath</key>
+    <string>__LOGDIR__/launchd-verify.log</string>
+    <key>StandardErrorPath</key>
+    <string>__LOGDIR__/launchd-verify.log</string>
+</dict>
+</plist>

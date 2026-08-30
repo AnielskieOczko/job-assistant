@@ -1,0 +1,41 @@
+# Production database. Holds the hand-authored profile and the real application history, neither of
+# which any migration or seed can rebuild. Started explicitly:
+#
+#   docker compose -f docker-compose.prod.yml up -d
+#
+# It is deliberately not part of the default compose project, so `docker compose up` in this
+# directory brings up dev and only dev.
+#
+# The explicit project name is load-bearing. Compose derives the project from the directory name,
+# so without this both files describe a `postgres` service in the same project - and bringing prod
+# up would recreate the dev container as this one, rather than starting a second database.
+name: job-assistant-prod
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: job-assistant-prod-db
+    environment:
+      POSTGRES_DB: jobassistant
+      POSTGRES_USER: jobassistant
+      # No default. Sourced from .env.prod, like the application's own DB_PASSWORD.
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required - source .env.prod first}
+    ports:
+      # 5433, so a connection string meant for dev cannot reach this database.
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - job-assistant-prod-pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jobassistant -d jobassistant"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  job-assistant-prod-pgdata:
+    # external means compose neither creates nor destroys it: `down -v` reports that it is external
+    # and leaves it alone, which is the single guardrail standing between one mistyped command and
+    # the loss of every row that was typed in by hand. Created once:
+    #
+    #   docker volume create job-assistant-prod-pgdata
+    external: true

@@ -85,10 +85,10 @@ after — `git checkout -b <branch>` carries uncommitted changes across.
 ## Commands
 
 ```bash
-docker compose up -d          # local Postgres (required for integration tests)
+docker compose up -d          # local dev Postgres (required for integration tests)
 ./mvnw clean install          # build + fast test tier
 ./mvnw test                   # fast tier only
-./mvnw spring-boot:run        # run against local Postgres on :8080 (loopback only)
+./mvnw spring-boot:run        # dev profile, :8080 (loopback only), dev database
 ./mvnw test -Dtest=ClassName  # single test class
 
 cd frontend && npm ci && npm run dev   # Vite on :5173, proxies /api to :8080
@@ -98,6 +98,50 @@ cd frontend && npm ci && npm run dev   # Vite on :5173, proxies /api to :8080
 
 `./mvnw test` is unchanged by the frontend and never invokes npm. A plain `./mvnw package`
 produces a jar with **no** UI — any build meant to run standalone needs `-Pfrontend`.
+
+## Environments
+
+There are two, and they share no data. **`docs/operations.md` is the runbook** — read it before
+touching anything that starts a process or moves a row.
+
+| | dev | prod |
+|---|---|---|
+| Start | `./mvnw spring-boot:run` | `scripts/run-prod.sh` |
+| Spring profile | `dev` (the default) | `prod`, explicit only |
+| App | `127.0.0.1:8080` | `127.0.0.1:8090` |
+| Database | `:5432/jobassistant_dev` | `:5433/jobassistant` |
+| Compose | `docker-compose.yml` | `docker-compose.prod.yml` |
+| Market poll | off | on, daily |
+| Data | disposable; `scripts/seed-dev.sh` refills it | the hand-authored profile, and the real application history |
+
+The split exists because the profile is ground truth that no migration and no re-poll can rebuild.
+Three mechanisms keep a development mistake away from it, and all three are load-bearing:
+
+- **`spring.profiles.default: dev`.** Reaching production takes an explicit
+  `--spring.profiles.active=prod`; nothing gets there by forgetting something.
+- **`application-prod.yaml` gives `DB_PASSWORD` no default.** Every other property could be wrong
+  and still start; this one stops a prod launch that never sourced `.env.prod`, rather than letting
+  it fall through to the dev credentials and write into the wrong database. Do not add a default.
+  `ProductionEnvironmentCheck` makes that failure legible: Boot's `Binder` *ignores* an unresolvable
+  placeholder rather than throwing, so the raw symptom is a 30-second pool timeout that looks
+  nothing like its cause.
+- **The prod volume is declared `external: true`,** so `docker compose ... down -v` will not remove
+  it. That declaration is the guardrail, not a formality.
+- **Each compose file names its own project** (`job-assistant-dev` / `job-assistant-prod`). Both
+  describe a service called `postgres`, and compose otherwise derives the project from the
+  directory — so without those names, bringing prod up *recreates the dev container* rather than
+  starting a second database.
+
+The ports and database names are asymmetric on purpose — dev is `5432`/`jobassistant_dev`, prod is
+`5433`/`jobassistant` — so a half-applied change misses rather than lands on the wrong data.
+`EnvironmentConfigurationTest` pins exactly these properties in the fast tier, because their drift
+is the one kind that is completely silent at runtime.
+
+Backups are `scripts/db-backup.sh` (nightly via launchd, and before every prod start, since
+start-up is when Flyway runs) into a directory **outside this repository** — a dump carries the
+name, email and phone, and this repository is public. Each dump carries a `.counts` sidecar so
+`scripts/db-verify-restore.sh` can check a restore against what the dump was supposed to hold; it
+runs monthly, because a backup that has never been restored is a file, not a backup.
 
 Test tiers are Maven profiles, not `-Dgroups`: JUnit applies exclusions before inclusions, so the
 groups have to be swapped rather than added to.

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Nightly production dump.
+
+     Installed by scripts/install-launchd.sh, which substitutes __AGENT_HOME__ and __LOGDIR__. The
+     agent runs a *copy* of the scripts under ~/Library/Application Support, not the ones in the
+     repository: a launchd job gets no TCC permission for /Volumes, so a plist pointing into a
+     checkout on a secondary disk fails with "Operation not permitted". -->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.jobassistant.backup</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>__AGENT_HOME__/scripts/db-backup.sh</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>__AGENT_HOME__</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <!-- A GUI launchd agent inherits a minimal PATH that does not include docker. -->
+        <key>PATH</key>
+        <string>/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key><integer>3</integer>
+        <key>Minute</key><integer>0</integer>
+    </dict>
+    <!-- The Mac is asleep at 03:00 more often than not; this runs the missed job on wake instead of
+         skipping the night. -->
+    <key>RunAtLoad</key>
+    <false/>
+    <key>StandardOutPath</key>
+    <string>__LOGDIR__/launchd-backup.log</string>
+    <key>StandardErrorPath</key>
+    <string>__LOGDIR__/launchd-backup.log</string>
+</dict>
+</plist>

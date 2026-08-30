@@ -1,0 +1,24 @@
+# Development environment. Disposable data: the dev database is expected to be dropped and
+# re-created, and docs/fixtures/dev-profile.json is what refills it. Nothing here may point at a
+# database that holds real work - see application-prod.yaml and docs/operations.md.
+spring:
+  datasource:
+    # Port 5432 and the _dev suffix are both load-bearing. Prod listens on 5433 with an unsuffixed
+    # database name, so a config mistake in either direction misses rather than lands.
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/jobassistant_dev}
+    username: ${DB_USER:jobassistant}
+    password: ${DB_PASSWORD:jobassistant}
+
+server:
+  # Unchanged from before the dev/prod split, so frontend/vite.config.ts proxies here with no edit.
+  port: 8080
+
+logging:
+  level:
+    com.jankowski.rafal.jobassistant: DEBUG
+
+job-assistant:
+  market:
+    # The corpus belongs to prod. A dev run polling solid.jobs would spend a third party's capacity
+    # to fill a database that is about to be dropped. POST /api/market/ingest still works by hand.
+    enabled: false
