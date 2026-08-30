@@ -16,7 +16,15 @@ import com.jankowski.rafal.jobassistant.catalog.UnmatchedTerm
 import com.jankowski.rafal.jobassistant.catalog.UnmatchedTermStatus
 import com.jankowski.rafal.jobassistant.document.DocumentType
 import com.jankowski.rafal.jobassistant.document.GeneratedDocument
+import com.jankowski.rafal.jobassistant.llm.BudgetStatus
 import com.jankowski.rafal.jobassistant.llm.LlmCall
+import com.jankowski.rafal.jobassistant.llm.SpendBucket
+import com.jankowski.rafal.jobassistant.llm.SpendGroup
+import com.jankowski.rafal.jobassistant.llm.SpendPoint
+import com.jankowski.rafal.jobassistant.llm.SpendReport
+import com.jankowski.rafal.jobassistant.llm.SpendSeries
+import com.jankowski.rafal.jobassistant.llm.SpendSummary
+import com.jankowski.rafal.jobassistant.llm.SpendTotal
 import com.jankowski.rafal.jobassistant.market.CorpusSummary
 import com.jankowski.rafal.jobassistant.market.IngestionReport
 import com.jankowski.rafal.jobassistant.market.IngestionSchedule
@@ -318,6 +326,65 @@ class ApiContractTest {
             )
         },
     )
+
+    @Test
+    fun `llm spend wire formats`() {
+        val total = SpendTotal(
+            costUsd = BigDecimal("0.12345678"), calls = 10, pricedCalls = 9, failedCalls = 1,
+            inputTokens = 100, outputTokens = 50, cachedInputTokens = 20,
+            reasoningOutputTokens = 5,
+        )
+        val report = SpendReport(
+            summary = SpendSummary(
+                today = total, last7Days = total, last30Days = total, lifetime = total,
+                recordedSince = LocalDate.EPOCH,
+                budget = BudgetStatus(
+                    dailyLimitUsd = BigDecimal("1.00"), dailySpentUsd = BigDecimal("0.12"),
+                    monthlyLimitUsd = null, monthlySpentUsd = BigDecimal("0.12"),
+                    exhausted = false,
+                ),
+            ),
+            series = SpendSeries(
+                bucket = SpendBucket.DAY, from = LocalDate.EPOCH, to = LocalDate.EPOCH,
+                points = listOf(SpendPoint(LocalDate.EPOCH, total)),
+            ),
+            windowDays = 30,
+            byTask = listOf(SpendGroup("EXTRACTION", total)),
+            byModel = emptyList(),
+            byProfile = emptyList(),
+            windowTotal = total,
+        )
+
+        assertAll(
+            {
+                assertKeys(
+                    report, "summary", "series", "windowDays", "byTask", "byModel", "byProfile",
+                    "windowTotal",
+                )
+            },
+            {
+                assertKeys(
+                    report.summary, "today", "last7Days", "last30Days", "lifetime",
+                    "recordedSince", "budget",
+                )
+            },
+            {
+                assertKeys(
+                    report.summary.budget, "dailyLimitUsd", "dailySpentUsd", "monthlyLimitUsd",
+                    "monthlySpentUsd", "exhausted",
+                )
+            },
+            { assertKeys(report.series, "bucket", "from", "to", "points") },
+            { assertKeys(report.series.points.single(), "periodStart", "total") },
+            { assertKeys(report.byTask.single(), "key", "total") },
+            {
+                assertKeys(
+                    total, "costUsd", "calls", "pricedCalls", "failedCalls", "inputTokens",
+                    "outputTokens", "cachedInputTokens", "reasoningOutputTokens",
+                )
+            },
+        )
+    }
 
     @Test
     fun `market dashboard wire formats`() {

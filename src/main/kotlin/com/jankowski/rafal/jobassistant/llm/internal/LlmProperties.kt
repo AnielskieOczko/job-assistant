@@ -2,6 +2,7 @@ package com.jankowski.rafal.jobassistant.llm.internal
 
 import com.jankowski.rafal.jobassistant.llm.LlmTask
 import org.springframework.boot.context.properties.ConfigurationProperties
+import java.math.BigDecimal
 import java.time.Duration
 
 /**
@@ -15,6 +16,7 @@ data class LlmProperties(
     val profiles: Map<String, ModelProfile> = emptyMap(),
     val tasks: Map<LlmTask, String> = emptyMap(),
     val audit: AuditProperties = AuditProperties(),
+    val budget: BudgetProperties = BudgetProperties(),
 ) {
     fun profileNameFor(task: LlmTask): String =
         tasks[task] ?: throw IllegalStateException(
@@ -33,6 +35,21 @@ data class LlmProperties(
 /** How long a copy of a prompt is kept. [Duration.ZERO] keeps them forever. */
 data class AuditProperties(
     val retention: Duration = Duration.ofDays(30),
+)
+
+/**
+ * Spending caps, in the provider's billing unit.
+ *
+ * Both default to null, which means no cap: switching this on has to be a decision, because a
+ * limit guessed on the reader's behalf would refuse work for a reason nobody chose. A limit is a
+ * hard refusal rather than a warning - see `BudgetGuardInspector`.
+ *
+ * Periods are UTC days and UTC calendar months, matching the rollup and the providers' own
+ * dashboards, so a figure here and a figure there describe the same window.
+ */
+data class BudgetProperties(
+    val dailyUsd: BigDecimal? = null,
+    val monthlyUsd: BigDecimal? = null,
 )
 
 data class ModelProfile(

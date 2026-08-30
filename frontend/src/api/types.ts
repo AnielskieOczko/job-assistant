@@ -689,6 +689,84 @@ export interface LlmCallDetail {
   responseText: string | null
 }
 
+/**
+ * Spend over some slice, and the counts that say how much of it is measured.
+ *
+ * `pricedCalls` below `calls` means `costUsd` is a **floor**, not a total: the remaining calls went
+ * to a provider that reported no price at all. Rendering the money without that pair is the mistake
+ * this shape exists to make awkward.
+ */
+export interface SpendTotal {
+  costUsd: number
+  calls: number
+  pricedCalls: number
+  failedCalls: number
+  inputTokens: number
+  outputTokens: number
+  /** Part of `inputTokens`, billed at a discount. A cache that stopped working shows up here. */
+  cachedInputTokens: number
+  /** Part of `outputTokens`. Paid for, and never visible in any response text. */
+  reasoningOutputTokens: number
+}
+
+/** A null limit is no cap at all, not a cap of zero. */
+export interface BudgetStatus {
+  dailyLimitUsd: number | null
+  dailySpentUsd: number
+  monthlyLimitUsd: number | null
+  monthlySpentUsd: number
+  /** A cap is set and already reached, so the next model call will be refused. */
+  exhausted: boolean
+}
+
+export interface SpendSummary {
+  today: SpendTotal
+  last7Days: SpendTotal
+  last30Days: SpendTotal
+  lifetime: SpendTotal
+  /**
+   * The first day the rollup holds — `YYYY-MM-DD`.
+   *
+   * "Lifetime" means since this day. Spend before cost capture existed was never recorded and
+   * cannot be recovered, and saying so is the difference between a total and an understatement.
+   */
+  recordedSince: string | null
+  budget: BudgetStatus
+}
+
+export const SPEND_BUCKETS = ['DAY', 'WEEK', 'MONTH'] as const
+export type SpendBucket = (typeof SPEND_BUCKETS)[number]
+
+export interface SpendPoint {
+  /** `YYYY-MM-DD` — the first day of the bucket. */
+  periodStart: string
+  total: SpendTotal
+}
+
+/** Empty buckets are present and zero, so a quiet fortnight cannot compress the axis. */
+export interface SpendSeries {
+  bucket: SpendBucket
+  from: string
+  to: string
+  points: SpendPoint[]
+}
+
+export interface SpendGroup {
+  key: string
+  total: SpendTotal
+}
+
+export interface SpendReport {
+  summary: SpendSummary
+  series: SpendSeries
+  windowDays: number
+  byTask: SpendGroup[]
+  byModel: SpendGroup[]
+  byProfile: SpendGroup[]
+  /** Spend inside `windowDays` — the denominator for every share the breakdowns imply. */
+  windowTotal: SpendTotal
+}
+
 /* -------------------------------------------------------------------- market */
 
 /**
