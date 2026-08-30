@@ -1,10 +1,13 @@
 spring:
   application:
     name: job-assistant
+  profiles:
+    # Which database this process writes to lives in application-dev.yaml / application-prod.yaml,
+    # and nothing here supplies a fallback. Defaulting to dev is what makes a bare
+    # `./mvnw spring-boot:run` incapable of reaching the production data: reaching it takes an
+    # explicit SPRING_PROFILES_ACTIVE=prod. See docs/operations.md.
+    default: dev
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/jobassistant}
-    username: ${DB_USER:jobassistant}
-    password: ${DB_PASSWORD:jobassistant}
     hikari:
       # Neon scales compute to zero after 5 min idle, so keep the pool small and
       # tolerant of a cold start on the first request.
@@ -15,14 +18,19 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+    # Both are already the Flyway 10 defaults. Written out for the same reason every llm profile
+    # states log-requests: false - there is now a database whose loss is not recoverable from the
+    # repository, so turning either off should be a visible diff rather than an invisible default.
+    clean-disabled: true
+    validate-on-migrate: true
   threads:
     virtual:
       enabled: true
 
 server:
-  # Decision 12: single-user MVP, bound to loopback only.
+  # Decision 12: single-user MVP, bound to loopback only. The port is per-environment so dev and
+  # prod can run side by side; see application-dev.yaml / application-prod.yaml.
   address: 127.0.0.1
-  port: 8080
 
 management:
   endpoints:
@@ -30,17 +38,16 @@ management:
       exposure:
         include: health,info,metrics
 
-logging:
-  level:
-    com.jankowski.rafal.jobassistant: DEBUG
-
 job-assistant:
   market:
     # The ingested market corpus behind the offer market dashboard. Structured salary, skills and
     # experience level arrive as data, so ingestion involves no model and cannot hallucinate.
     #
-    # enabled gates the scheduled poll only - POST /api/market/ingest works either way.
-    enabled: true
+    # enabled gates the scheduled poll only - POST /api/market/ingest works either way. It is set
+    # per environment (on in prod, off in dev: the corpus belongs to prod and one poll from a dev
+    # run would spend someone else's capacity to fill a database nobody reads). No value here on
+    # purpose - MarketIngestionScheduler is @ConditionalOnProperty(matchIfMissing = true), so a
+    # profile that forgets it polls, and the profiles are where that must be visible.
     # Daily. The whole IT division is three requests against a published 300/minute limit, and the
     # source caches hourly, so polling harder would buy nothing and spend someone else's capacity.
     cron: "0 20 4 * * *"

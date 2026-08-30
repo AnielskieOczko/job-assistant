@@ -1,0 +1,132 @@
+{
+  "_comment": [
+    "Synthetic profile for the development environment. Load it with scripts/seed-dev.sh.",
+    "",
+    "Every identifier here is invented and the .invalid TLD is reserved by RFC 2606, so nothing in",
+    "this file can reach a real person even if a dev run generates a document and mails it.",
+    "",
+    "Two properties are deliberate and worth keeping if you edit it. Every skill name is a",
+    "canonical catalog name, because import rejects rather than drops what it cannot resolve. And",
+    "the profile omits Kubernetes, Kafka and Terraform, so an offer asking for them gives CvTailor",
+    "a real opportunity to invent and CvInvariant something to catch - the same reason",
+    "src/test/resources/eval/profile.json omits them.",
+    "",
+    "Unknown keys are ignored on import, which is why this comment can live in the document."
+  ],
+  "details": {
+    "fullName": "Dev Tester",
+    "headline": "Backend Developer (development fixture)",
+    "email": "dev@example.invalid",
+    "phone": "+00 000 000 000",
+    "location": "Nowhere",
+    "summary": "A synthetic profile used to exercise the application against a non-empty database. Not a real person and not a real career.",
+    "careerGoal": "To remain fictional while making the dev environment behave like the real one."
+  },
+  "links": [
+    { "label": "GitHub", "url": "https://github.example.invalid/dev-tester" }
+  ],
+  "skills": [
+    { "skill": "Java", "proficiency": "PROFICIENT", "yearsOfExperience": 6, "lastUsedYear": 2026 },
+    { "skill": "Kotlin", "proficiency": "WORKING", "yearsOfExperience": 2, "lastUsedYear": 2026 },
+    { "skill": "Spring Boot", "proficiency": "PROFICIENT", "yearsOfExperience": 5, "lastUsedYear": 2026 },
+    { "skill": "PostgreSQL", "proficiency": "WORKING", "yearsOfExperience": 5, "lastUsedYear": 2026 },
+    { "skill": "SQL", "proficiency": "PROFICIENT", "yearsOfExperience": 6, "lastUsedYear": 2026 },
+    { "skill": "Docker", "proficiency": "WORKING", "yearsOfExperience": 4, "lastUsedYear": 2026 },
+    { "skill": "Git", "proficiency": "PROFICIENT", "yearsOfExperience": 6, "lastUsedYear": 2026 },
+    { "skill": "Maven", "proficiency": "WORKING", "yearsOfExperience": 5, "lastUsedYear": 2026 },
+    { "skill": "JUnit", "proficiency": "WORKING", "yearsOfExperience": 5, "lastUsedYear": 2026 },
+    { "skill": "REST", "proficiency": "PROFICIENT", "yearsOfExperience": 6, "lastUsedYear": 2026 },
+    { "skill": "GitHub Actions", "proficiency": "WORKING", "yearsOfExperience": 3, "lastUsedYear": 2026 },
+    { "skill": "Scrum", "proficiency": "WORKING", "yearsOfExperience": 4, "lastUsedYear": 2026 },
+    { "skill": "Communication", "proficiency": "PROFICIENT", "lastUsedYear": 2026 }
+  ],
+  "experiences": [
+    {
+      "company": "Fictional Systems",
+      "roleTitle": "Backend Developer",
+      "location": "Remote",
+      "startedOn": "2022-03-01",
+      "endedOn": null,
+      "summary": "Invented role on an invented order-management service.",
+      "bullets": [
+        {
+          "text": "Built and maintained REST endpoints for an order service handling around 40 requests per second at peak.",
+          "skills": ["Java", "Spring Boot", "REST"]
+        },
+        {
+          "text": "Moved the reporting queries off table scans and onto covering indexes, cutting the nightly batch from 50 minutes to 6.",
+          "skills": ["PostgreSQL", "SQL"]
+        },
+        {
+          "text": "Introduced a containerised local stack so a new developer could run the full system on their first morning.",
+          "skills": ["Docker"]
+        },
+        {
+          "text": "Set up the pull-request pipeline that runs the test suite on every branch and blocks merges on a red build.",
+          "skills": ["GitHub Actions", "Git", "JUnit"]
+        }
+      ]
+    },
+    {
+      "company": "Imaginary Software House",
+      "roleTitle": "Junior Java Developer",
+      "location": "Nowhere",
+      "startedOn": "2020-01-15",
+      "endedOn": "2022-02-28",
+      "summary": "Invented first role, on invented internal tooling.",
+      "bullets": [
+        {
+          "text": "Maintained an internal billing tool and wrote the regression tests it had been missing for two years.",
+          "skills": ["Java", "JUnit", "Maven"]
+        },
+        {
+          "text": "Ran the team's sprint reviews with the two stakeholder departments that used the tool daily.",
+          "skills": ["Scrum", "Communication"]
+        }
+      ]
+    }
+  ],
+  "education": [
+    {
+      "institution": "University of Elsewhere",
+      "degree": "BSc",
+      "fieldOfStudy": "Computer Science",
+      "startedOn": "2016-10-01",
+      "endedOn": "2019-06-30"
+    }
+  ],
+  "credentials": [
+    {
+      "title": "Fictional Java Fundamentals",
+      "issuer": "Example Academy",
+      "kind": "COURSE",
+      "issuedOn": "2021-05-01"
+    }
+  ],
+  "projects": [
+    {
+      "name": "Example Side Project",
+      "url": "https://github.example.invalid/dev-tester/example",
+      "description": "An invented side project, present so the projects section of a generated CV is never empty in dev.",
+      "startedOn": "2024-01-01",
+      "endedOn": null,
+      "skills": ["Kotlin", "Spring Boot"],
+      "bullets": [
+        {
+          "text": "Wrote a small Kotlin service that ingests a public API on a schedule and stores it for querying.",
+          "skills": ["Kotlin", "Spring Boot"]
+        }
+      ]
+    }
+  ],
+  "consentClauses": [
+    {
+      "language": "English",
+      "text": "I consent to the processing of my personal data for the purposes of this and future recruitment processes. (Development fixture text - not legal wording.)"
+    }
+  ],
+  "languages": [
+    { "language": "English", "level": "C1" },
+    { "language": "Polish", "level": "NATIVE" }
+  ]
+}
