@@ -23,6 +23,11 @@ import org.springframework.web.bind.annotation.RestController
 /**
  * Reading and writing the contents of one profile.
  *
+ * The routes stay written out one by one: this is the file that documents the API, and a generic
+ * route would hide the paths behind a table. What each one does *not* spell out any more is how the
+ * write happens - it names the collection from [ProfileCollections] and hands it to
+ * [ProfileWriteService], which implements add, update, delete and reorder once for all nine.
+ *
  * Every mutation answers with the whole [CandidateProfile] rather than the entity it touched. The
  * profile is small, single-user-per-persona and always rendered as a whole, so this saves the client
  * reassembling one from a patch response and leaves it with a single query key to invalidate.
@@ -32,6 +37,7 @@ import org.springframework.web.bind.annotation.RestController
 internal class ProfileController(
     private val profiles: ProfileService,
     private val writes: ProfileWriteService,
+    private val collections: ProfileCollections,
 ) {
 
     @GetMapping
@@ -52,58 +58,63 @@ internal class ProfileController(
     @PostMapping("/links")
     @ResponseStatus(HttpStatus.CREATED)
     fun addLink(@PathVariable profileId: Long, @Valid @RequestBody request: LinkRequest) =
-        writes.addLink(profileId, request)
+        writes.add(collections.links, CollectionOwner.Profile(profileId), request)
 
     @PutMapping("/links/order")
     fun reorderLinks(@PathVariable profileId: Long, @Valid @RequestBody request: ReorderRequest) =
-        writes.reorderLinks(profileId, request.ids)
+        writes.reorder(collections.links, CollectionOwner.Profile(profileId), request.ids)
 
     @PutMapping("/links/{id}")
     fun updateLink(@PathVariable profileId: Long, @PathVariable id: Long, @Valid @RequestBody request: LinkRequest) =
-        writes.updateLink(profileId, id, request)
+        writes.update(collections.links, profileId, id, request)
 
     @DeleteMapping("/links/{id}")
-    fun deleteLink(@PathVariable profileId: Long, @PathVariable id: Long) = writes.deleteLink(profileId, id)
+    fun deleteLink(@PathVariable profileId: Long, @PathVariable id: Long) =
+        writes.delete(collections.links, profileId, id)
 
     // ----------------------------------------------------------------- skills
 
     @PostMapping("/skills")
     @ResponseStatus(HttpStatus.CREATED)
     fun addSkill(@PathVariable profileId: Long, @Valid @RequestBody request: SkillRequest) =
-        writes.addSkill(profileId, request)
+        writes.add(collections.skills, CollectionOwner.Profile(profileId), request)
 
     @PutMapping("/skills/order")
     fun reorderSkills(@PathVariable profileId: Long, @Valid @RequestBody request: ReorderRequest) =
-        writes.reorderSkills(profileId, request.ids)
+        writes.reorder(collections.skills, CollectionOwner.Profile(profileId), request.ids)
 
     @PutMapping("/skills/{id}")
-    fun updateSkill(@PathVariable profileId: Long, @PathVariable id: Long, @Valid @RequestBody request: SkillUpdateRequest) =
-        writes.updateSkill(profileId, id, request)
+    fun updateSkill(
+        @PathVariable profileId: Long,
+        @PathVariable id: Long,
+        @Valid @RequestBody request: SkillUpdateRequest,
+    ) = writes.update(collections.skills, profileId, id, request)
 
     @DeleteMapping("/skills/{id}")
-    fun deleteSkill(@PathVariable profileId: Long, @PathVariable id: Long) = writes.deleteSkill(profileId, id)
+    fun deleteSkill(@PathVariable profileId: Long, @PathVariable id: Long) =
+        writes.delete(collections.skills, profileId, id)
 
     // ------------------------------------------------------------ experiences
 
     @PostMapping("/experiences")
     @ResponseStatus(HttpStatus.CREATED)
     fun addExperience(@PathVariable profileId: Long, @Valid @RequestBody request: ExperienceRequest) =
-        writes.addExperience(profileId, request)
+        writes.add(collections.experiences, CollectionOwner.Profile(profileId), request)
 
     @PutMapping("/experiences/order")
     fun reorderExperiences(@PathVariable profileId: Long, @Valid @RequestBody request: ReorderRequest) =
-        writes.reorderExperiences(profileId, request.ids)
+        writes.reorder(collections.experiences, CollectionOwner.Profile(profileId), request.ids)
 
     @PutMapping("/experiences/{id}")
     fun updateExperience(
         @PathVariable profileId: Long,
         @PathVariable id: Long,
         @Valid @RequestBody request: ExperienceRequest,
-    ) = writes.updateExperience(profileId, id, request)
+    ) = writes.update(collections.experiences, profileId, id, request)
 
     @DeleteMapping("/experiences/{id}")
     fun deleteExperience(@PathVariable profileId: Long, @PathVariable id: Long) =
-        writes.deleteExperience(profileId, id)
+        writes.delete(collections.experiences, profileId, id)
 
     // ---------------------------------------------------------------- bullets
 
@@ -113,87 +124,89 @@ internal class ProfileController(
         @PathVariable profileId: Long,
         @PathVariable experienceId: Long,
         @Valid @RequestBody request: BulletRequest,
-    ) = writes.addBullet(profileId, experienceId, request)
+    ) = writes.add(collections.bullets, CollectionOwner.Experience(profileId, experienceId), request)
 
     @PutMapping("/experiences/{experienceId}/bullets/order")
     fun reorderBullets(
         @PathVariable profileId: Long,
         @PathVariable experienceId: Long,
         @Valid @RequestBody request: ReorderRequest,
-    ) = writes.reorderBullets(profileId, experienceId, request.ids)
+    ) = writes.reorder(collections.bullets, CollectionOwner.Experience(profileId, experienceId), request.ids)
 
+    /** A bullet is edited and deleted by id alone: which of its two kinds of owner it has is settled. */
     @PutMapping("/bullets/{id}")
     fun updateBullet(@PathVariable profileId: Long, @PathVariable id: Long, @Valid @RequestBody request: BulletRequest) =
-        writes.updateBullet(profileId, id, request)
+        writes.update(collections.bullets, profileId, id, request)
 
     @DeleteMapping("/bullets/{id}")
-    fun deleteBullet(@PathVariable profileId: Long, @PathVariable id: Long) = writes.deleteBullet(profileId, id)
+    fun deleteBullet(@PathVariable profileId: Long, @PathVariable id: Long) =
+        writes.delete(collections.bullets, profileId, id)
 
     // -------------------------------------------------------------- education
 
     @PostMapping("/education")
     @ResponseStatus(HttpStatus.CREATED)
     fun addEducation(@PathVariable profileId: Long, @Valid @RequestBody request: EducationRequest) =
-        writes.addEducation(profileId, request)
+        writes.add(collections.education, CollectionOwner.Profile(profileId), request)
 
     @PutMapping("/education/order")
     fun reorderEducation(@PathVariable profileId: Long, @Valid @RequestBody request: ReorderRequest) =
-        writes.reorderEducation(profileId, request.ids)
+        writes.reorder(collections.education, CollectionOwner.Profile(profileId), request.ids)
 
     @PutMapping("/education/{id}")
     fun updateEducation(
         @PathVariable profileId: Long,
         @PathVariable id: Long,
         @Valid @RequestBody request: EducationRequest,
-    ) = writes.updateEducation(profileId, id, request)
+    ) = writes.update(collections.education, profileId, id, request)
 
     @DeleteMapping("/education/{id}")
     fun deleteEducation(@PathVariable profileId: Long, @PathVariable id: Long) =
-        writes.deleteEducation(profileId, id)
+        writes.delete(collections.education, profileId, id)
 
     // ------------------------------------------------------------ credentials
 
     @PostMapping("/credentials")
     @ResponseStatus(HttpStatus.CREATED)
     fun addCredential(@PathVariable profileId: Long, @Valid @RequestBody request: CredentialRequest) =
-        writes.addCredential(profileId, request)
+        writes.add(collections.credentials, CollectionOwner.Profile(profileId), request)
 
     @PutMapping("/credentials/order")
     fun reorderCredentials(@PathVariable profileId: Long, @Valid @RequestBody request: ReorderRequest) =
-        writes.reorderCredentials(profileId, request.ids)
+        writes.reorder(collections.credentials, CollectionOwner.Profile(profileId), request.ids)
 
     @PutMapping("/credentials/{id}")
     fun updateCredential(
         @PathVariable profileId: Long,
         @PathVariable id: Long,
         @Valid @RequestBody request: CredentialRequest,
-    ) = writes.updateCredential(profileId, id, request)
+    ) = writes.update(collections.credentials, profileId, id, request)
 
     @DeleteMapping("/credentials/{id}")
     fun deleteCredential(@PathVariable profileId: Long, @PathVariable id: Long) =
-        writes.deleteCredential(profileId, id)
+        writes.delete(collections.credentials, profileId, id)
 
     // --------------------------------------------------------------- projects
 
     @PostMapping("/projects")
     @ResponseStatus(HttpStatus.CREATED)
     fun addProject(@PathVariable profileId: Long, @Valid @RequestBody request: ProjectRequest) =
-        writes.addProject(profileId, request)
+        writes.add(collections.projects, CollectionOwner.Profile(profileId), request)
 
     @PutMapping("/projects/order")
     fun reorderProjects(@PathVariable profileId: Long, @Valid @RequestBody request: ReorderRequest) =
-        writes.reorderProjects(profileId, request.ids)
+        writes.reorder(collections.projects, CollectionOwner.Profile(profileId), request.ids)
 
     @PutMapping("/projects/{id}")
     fun updateProject(
         @PathVariable profileId: Long,
         @PathVariable id: Long,
         @Valid @RequestBody request: ProjectRequest,
-    ) = writes.updateProject(profileId, id, request)
+    ) = writes.update(collections.projects, profileId, id, request)
 
     @DeleteMapping("/projects/{id}")
     fun deleteProject(@PathVariable profileId: Long, @PathVariable id: Long) =
-        writes.deleteProject(profileId, id)
+        writes.delete(collections.projects, profileId, id)
 
     @PostMapping("/projects/{projectId}/bullets")
     @ResponseStatus(HttpStatus.CREATED)
@@ -201,54 +214,54 @@ internal class ProfileController(
         @PathVariable profileId: Long,
         @PathVariable projectId: Long,
         @Valid @RequestBody request: BulletRequest,
-    ) = writes.addProjectBullet(profileId, projectId, request)
+    ) = writes.add(collections.bullets, CollectionOwner.Project(profileId, projectId), request)
 
     @PutMapping("/projects/{projectId}/bullets/order")
     fun reorderProjectBullets(
         @PathVariable profileId: Long,
         @PathVariable projectId: Long,
         @Valid @RequestBody request: ReorderRequest,
-    ) = writes.reorderProjectBullets(profileId, projectId, request.ids)
+    ) = writes.reorder(collections.bullets, CollectionOwner.Project(profileId, projectId), request.ids)
 
     // ------------------------------------------------------- consent clauses
 
     @PostMapping("/consent-clauses")
     @ResponseStatus(HttpStatus.CREATED)
     fun addConsentClause(@PathVariable profileId: Long, @Valid @RequestBody request: ConsentClauseRequest) =
-        writes.addConsentClause(profileId, request)
+        writes.add(collections.consentClauses, CollectionOwner.Profile(profileId), request)
 
     @PutMapping("/consent-clauses/{id}")
     fun updateConsentClause(
         @PathVariable profileId: Long,
         @PathVariable id: Long,
         @Valid @RequestBody request: ConsentClauseRequest,
-    ) = writes.updateConsentClause(profileId, id, request)
+    ) = writes.update(collections.consentClauses, profileId, id, request)
 
     @DeleteMapping("/consent-clauses/{id}")
     fun deleteConsentClause(@PathVariable profileId: Long, @PathVariable id: Long) =
-        writes.deleteConsentClause(profileId, id)
+        writes.delete(collections.consentClauses, profileId, id)
 
     // -------------------------------------------------------------- languages
 
     @PostMapping("/languages")
     @ResponseStatus(HttpStatus.CREATED)
     fun addLanguage(@PathVariable profileId: Long, @Valid @RequestBody request: LanguageRequest) =
-        writes.addLanguage(profileId, request)
+        writes.add(collections.languages, CollectionOwner.Profile(profileId), request)
 
     @PutMapping("/languages/order")
     fun reorderLanguages(@PathVariable profileId: Long, @Valid @RequestBody request: ReorderRequest) =
-        writes.reorderLanguages(profileId, request.ids)
+        writes.reorder(collections.languages, CollectionOwner.Profile(profileId), request.ids)
 
     @PutMapping("/languages/{id}")
     fun updateLanguage(
         @PathVariable profileId: Long,
         @PathVariable id: Long,
         @Valid @RequestBody request: LanguageRequest,
-    ) = writes.updateLanguage(profileId, id, request)
+    ) = writes.update(collections.languages, profileId, id, request)
 
     @DeleteMapping("/languages/{id}")
     fun deleteLanguage(@PathVariable profileId: Long, @PathVariable id: Long) =
-        writes.deleteLanguage(profileId, id)
+        writes.delete(collections.languages, profileId, id)
 
     // ----------------------------------------------------------------- errors
 

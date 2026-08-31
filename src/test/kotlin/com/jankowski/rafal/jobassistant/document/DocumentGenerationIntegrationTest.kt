@@ -16,6 +16,8 @@ import com.jankowski.rafal.jobassistant.profile.SkillImport
 import com.jankowski.rafal.jobassistant.profile.internal.ConsentClauseRequest
 import com.jankowski.rafal.jobassistant.profile.internal.DetailsRequest
 import com.jankowski.rafal.jobassistant.profile.internal.ProfileManagementService
+import com.jankowski.rafal.jobassistant.profile.internal.CollectionOwner
+import com.jankowski.rafal.jobassistant.profile.internal.ProfileCollections
 import com.jankowski.rafal.jobassistant.profile.internal.ProfileWriteService
 import com.jankowski.rafal.jobassistant.support.IntegrationTest
 import com.jankowski.rafal.jobassistant.support.ScriptedModels
@@ -44,6 +46,7 @@ internal class DocumentGenerationIntegrationTest(
     @Autowired private val profiles: ProfileService,
     @Autowired private val management: ProfileManagementService,
     @Autowired private val writes: ProfileWriteService,
+    @Autowired private val collections: ProfileCollections,
     @Autowired private val models: ScriptedModels,
     @Autowired private val jdbc: JdbcClient,
 ) {
@@ -116,6 +119,9 @@ internal class DocumentGenerationIntegrationTest(
     }
 
     private fun scriptCv(json: String) = models[LlmTask.DOCUMENT].enqueue(json)
+
+    private fun addConsentClause(request: ConsentClauseRequest) =
+        writes.add(collections.consentClauses, CollectionOwner.Profile(profileId), request)
 
     private val honestCv
         get() = """
@@ -409,8 +415,7 @@ internal class DocumentGenerationIntegrationTest(
 
     @Test
     fun `a CV renders the matching consent clause with the company substituted`() {
-        writes.addConsentClause(
-            profileId,
+        addConsentClause(
             ConsentClauseRequest(language = "English", text = "I consent to processing of my data by {{company}}."),
         )
         scriptCv(honestCv)
@@ -423,7 +428,7 @@ internal class DocumentGenerationIntegrationTest(
 
     @Test
     fun `a CV omits the consent clause and records null when no clause matches the language`() {
-        writes.addConsentClause(profileId, ConsentClauseRequest(language = "Polish", text = "Zgoda."))
+        addConsentClause(ConsentClauseRequest(language = "Polish", text = "Zgoda."))
         scriptCv(honestCv)
 
         val document = documents.generate(offerId, profileId, DocumentType.CV, "English")
@@ -434,7 +439,7 @@ internal class DocumentGenerationIntegrationTest(
 
     @Test
     fun `a cover letter never carries a consent clause`() {
-        writes.addConsentClause(profileId, ConsentClauseRequest(language = "English", text = "I consent."))
+        addConsentClause(ConsentClauseRequest(language = "English", text = "I consent."))
         models[LlmTask.DOCUMENT].enqueue("""{"paragraphs":["I build Kotlin services."]}""")
 
         val document = documents.generate(offerId, profileId, DocumentType.COVER_LETTER, "English")
@@ -450,8 +455,7 @@ internal class DocumentGenerationIntegrationTest(
      */
     @Test
     fun `a consent clause naming a skill the profile lacks fails the generation`() {
-        writes.addConsentClause(
-            profileId,
+        addConsentClause(
             ConsentClauseRequest(language = "English", text = "Processed using our Kubernetes-based systems."),
         )
         scriptCv(honestCv)
@@ -465,8 +469,7 @@ internal class DocumentGenerationIntegrationTest(
 
     @Test
     fun `an offer with no company name leaves the placeholder unsubstituted rather than inventing one`() {
-        writes.addConsentClause(
-            profileId,
+        addConsentClause(
             ConsentClauseRequest(language = "English", text = "I consent to processing by {{company}}."),
         )
         val blankCompanyOfferId = offers.paste("A role with an unresolved employer name. Kotlin required.").offer.id
