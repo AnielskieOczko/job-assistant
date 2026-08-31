@@ -15,6 +15,11 @@ walks the whole HTTP flow end to end, `docs/profile-format.md` documents the pro
 `docs/frontend.md` covers the UI. Decisions already taken for work not yet started live in
 `docs/roadmap.md`; `docs/adr/` records the ones that were hard to reverse.
 
+`docs/architecture-review-2026-08.md` is a dated snapshot review of where the codebase is *shallow* —
+five deepening candidates, plus three things that look like candidates and are deliberately left
+alone. It is an input to a conversation, not a decision: nothing in it has been agreed, and anything
+acted on should move to `docs/roadmap.md` or an ADR as it is settled.
+
 ## What is being decided right now
 
 The next phase of the application is being planned as a wayfinder map, and
