@@ -398,7 +398,15 @@ generated documents. A market offer is a row in a sample — there are thousands
 together would put thousands of `SAVED` applications in the offer list and silently change what
 `AggregateGapReport.analysedOffers` counts. Saving one for real is an explicit copy.
 
-`market` depends on `catalog` only. It must **not** depend on `analysis`: the market-side measure is
+`market` depends on `catalog` and — on the read side only — `profile`. Ingestion touches neither the
+candidate nor a persona: it resolves skill names through `catalog` and nothing else. The `profile`
+edge belongs to `MarketInsightsService` alone, which overlays the candidate's `SkillCoverage` onto
+the demand table so a row can read MET, PARTIAL or MISSING; an absent persona yields
+`SkillCoverage.EMPTY` rather than an error, because a corpus with no profile behind it still has a
+meaningful demand table. Keep the edge that narrow — the moment ingestion needs a profile, the
+corpus has stopped being a sample and started being about one person.
+
+It must **not** depend on `analysis`: the market-side measure is
 plain `SkillCoverage` over an offer's listed skills, deliberately a different number from
 `matchScore`, because solid.jobs's only importance signal is a `NiceToHave` value on the skill *level*
 field and it appears on 3.4% of mentions. Reusing `matchScore` would mean two numbers with one name.

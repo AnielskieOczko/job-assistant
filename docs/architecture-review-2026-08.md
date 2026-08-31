@@ -19,8 +19,8 @@ candidate contradicts something already settled — a stated convention, an ADR 
 
 ## The module graph as it stands
 
-Derived from actual imports rather than from `CLAUDE.md`. One edge is new and undocumented — it is
-candidate 3.
+Derived from actual imports rather than from `CLAUDE.md`. The dashed `market -> profile` edge was
+undocumented when this review was written; candidate 3 explains it, and `CLAUDE.md` now describes it.
 
 ```mermaid
 graph TD
@@ -52,7 +52,7 @@ graph TD
   triage --> llm
   triage --> market
   market --> catalog
-  market -.->|undocumented| profile
+  market -.->|read side only| profile
 ```
 
 `catalog`, `llm` and `offer` still depend on nothing, which was the point of ADR-0003.
@@ -186,15 +186,16 @@ reasoning applies to a narrative that cost real money to produce.
 **Strength: strong.** Files: `analysis/internal/RequirementMatcher.kt`,
 `market/internal/MarketInsightsService.kt`, `triage/internal/TriageQueueService.kt`.
 
-### Documentation drift, found while reading imports
+### Documentation drift — found while reading imports, fixed in the commit that added this file
 
-`CLAUDE.md` states *"`market` depends on `catalog` only."* It no longer does:
+`CLAUDE.md` stated *"`market` depends on `catalog` only."* It no longer did:
 `market/internal/MarketInsightsService.kt:15` imports `profile.ProfileService`. The edge is
 legitimate — the demand table overlays the candidate's coverage — but it arrived without the
 sentence that justifies it, and `ModularityTest` cannot catch it, because Modulith forbids reaching
 into another module's `internal` package rather than adding a public edge.
 
-**This half should be fixed immediately and independently of everything else below.**
+That paragraph now states the real dependency set and confines the `profile` edge to the read side.
+The rest of this candidate — the duplicated ranking below — is still open.
 
 ### Problem
 
@@ -348,8 +349,7 @@ Then, in order:
 
 1. **Candidate 1** — the highest leverage of the five, but the largest. Worth doing before the next
    profile aggregate, not after.
-2. **Candidate 3** — do the documentation half immediately regardless; the `market → profile` edge
-   needs its justifying sentence in `CLAUDE.md`. The `ProfileCoverage` seam can follow.
+2. **Candidate 3** — the documentation half is already done; the `ProfileCoverage` seam is what remains.
 3. **Candidate 5** — cheap, and it stops the frontend's untested half from growing further.
 4. **Candidate 4** — the biggest line-count win, but it reopens a stated convention. Decide the
    convention first.
