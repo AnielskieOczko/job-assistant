@@ -670,6 +670,27 @@ message must name, CRUD over ids. Deleting a declared skill is the same rule fro
 returns 409 with `blockingBullets`; there is **no** FK between `profile_skill` and
 `experience_bullet_skill`, so nothing else enforces it.
 
+**The nine collections are one concept, written once.** Links, skills, experiences, bullets,
+education, credentials, projects, consent clauses and languages are all instances of *an ordered,
+profile-owned collection whose writes bump the profile revision and answer with the whole profile*.
+`ProfileWriteService` implements `add` / `update` / `delete` / `reorder` for all of them; a
+`ProfileCollection` descriptor in `ProfileCollections` supplies only what differs — the repository,
+the `display_order` table, how a request becomes a row, and the hooks carrying that entity's own
+refusals. **`ProfileCollections` is the inventory**: what the profile contains is that file's list
+of nine, and a tenth is a descriptor plus its routes rather than another copy of four methods.
+
+Three things follow that are easy to undo by accident. `CollectionOwner` is what a collection's
+rows hang from — the profile for eight of them, a work experience or a project for bullets, whose
+`display_order` restarts inside each owner. The table and owner-column names are interpolated into
+SQL and must stay literals declared on the descriptor, never values reachable from a request. And
+which hook a rule sits in decides whether 404 or 409 wins when an unknown id arrives with an invalid
+body: `checkUpdate` runs before the lookup and answers 409, `onUpdate` after it and answers 404.
+Collections currently disagree about that, and the hooks preserve each one's existing answer rather
+than quietly unifying them.
+
+`putDetails` is deliberately outside the mechanism: it is an upsert of a single row, with no id, no
+ordering and nothing to name in a 404.
+
 **`ExperienceBullet.id` must survive edits that are not its own.** `CvTailor` selects bullets by id
 and `CvSelection.from` drops ids the profile lacks — that is the anti-fabrication mechanism. Spring
 Data JDBC deletes and reinserts a whole `@MappedCollection` on every save of its owner, so
