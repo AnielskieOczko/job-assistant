@@ -38,7 +38,24 @@ internal class JdbcDocumentService(
 
     private val log = LoggerFactory.getLogger(JdbcDocumentService::class.java)
 
-    @Transactional
+    /**
+     * Deliberately **not** `@Transactional`.
+     *
+     * It used to be, and the annotation spanned the model call below: a transaction was opened,
+     * then held for however long the provider took to answer - twice that when `JsonOutputGuardrail`
+     * has to reprompt. The Hikari pool is three connections, kept small because deployment targets
+     * Neon, so two generations and one analysis was the whole pool blocked on OpenRouter rather than
+     * on Postgres.
+     *
+     * Nothing is lost by removing it. The three reads need no shared snapshot - the analysis is
+     * required to be DONE, and a DONE analysis is immutable - and there is exactly one write, which
+     * the repository already performs atomically. A transaction only buys something where two writes
+     * must agree, which is why `analysis` gained a journal here and `document` did not: wrapping a
+     * single insert in a bean of its own would be a shallow module bought with an indirection.
+     *
+     * The ordering below is what actually protects the output: `enforceNoFabrication` runs before
+     * the save, so a refused document stores nothing whether or not a transaction is open.
+     */
     override fun generate(offerId: Long, profileId: Long, type: DocumentType, language: String): GeneratedDocument {
         val offer = offers.findById(offerId) ?: throw NoSuchElementException("No job offer $offerId")
         val profile = profiles.require(profileId)

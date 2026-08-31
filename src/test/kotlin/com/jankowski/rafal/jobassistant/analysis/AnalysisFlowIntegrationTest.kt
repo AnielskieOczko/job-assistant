@@ -459,6 +459,29 @@ internal class AnalysisFlowIntegrationTest(
         assertTrue(assertNotNull(report.error).contains("provider exploded"))
     }
 
+    /**
+     * A run that dies during narration keeps what it had already worked out, so the tokens spent on
+     * extraction are not thrown away with the failure.
+     *
+     * Note what this does **not** show: nothing a scripted model can do fails *between* the two
+     * writes inside `saveFindings`, so this passes whether or not those writes share a transaction.
+     * That property is unobservable from here and is covered by `AnalysisJournalIntegrationTest`.
+     */
+    @Test
+    fun `findings written before a failure survive it`() {
+        models[LlmTask.EXTRACTION].enqueue(extraction)
+        models[LlmTask.NARRATIVE].enqueueFailure(RuntimeException("narrator exploded"))
+
+        val report = runAnalysis()
+
+        assertEquals(AnalysisState.FAILED, report.state)
+        assertTrue(assertNotNull(report.error).contains("narrator exploded"))
+        assertEquals(5, report.requirements.size)
+        assertEquals(1, report.languageRequirements.size)
+        // The run never reached the narrator, so there is nothing to plan from.
+        assertTrue(report.learningPlan.isEmpty())
+    }
+
     @Test
     fun `analysing against a profile with no details fails fast instead of queueing doomed work`() {
         val empty = management.create("Empty").id

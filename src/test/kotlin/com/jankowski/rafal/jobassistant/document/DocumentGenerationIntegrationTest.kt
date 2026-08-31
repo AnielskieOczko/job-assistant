@@ -196,6 +196,13 @@ internal class DocumentGenerationIntegrationTest(
         assertThrows<FabricatedClaimException> { documents.generate(offerId, profileId, DocumentType.CV) }
     }
 
+    /**
+     * Asserted against the table as well as through [DocumentService.latest], because `generate` is
+     * no longer `@Transactional` and this is the property that had to survive removing it. Nothing
+     * rolls a refusal back now: what keeps the row from existing is that `enforceNoFabrication` runs
+     * before the save, and a count over the whole table is what shows it — `latest` filters by
+     * profile and type, so it would answer null for a row written under either.
+     */
     @Test
     fun `a refused document is not persisted`() {
         scriptCv(
@@ -208,6 +215,11 @@ internal class DocumentGenerationIntegrationTest(
         runCatching { documents.generate(offerId, profileId, DocumentType.CV) }
 
         assertEquals(null, documents.latest(offerId, DocumentType.CV))
+        assertEquals(
+            0,
+            jdbc.sql("select count(*) from generated_document").query(Int::class.java).single(),
+            "a refused generation must leave no row at all, drop counters included",
+        )
     }
 
     @Test
