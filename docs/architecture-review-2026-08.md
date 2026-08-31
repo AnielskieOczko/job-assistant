@@ -9,6 +9,18 @@ This is a review, not a decision. Nothing here has been agreed; `docs/roadmap.md
 already taken live, and this file is an input to a conversation rather than a record of one. Where a
 candidate contradicts something already settled — a stated convention, an ADR — it says so.
 
+Every candidate now has a spec on the issue tracker, carrying the user stories, implementation
+decisions and testing decisions this file deliberately does not. **GitHub is canonical; this file is
+the reasoning behind the specs, not their current state.** When the two disagree, GitHub is right.
+
+| Candidate | Issue | Note |
+|---|---|---|
+| 1 — the profile collection | [#65](https://github.com/AnielskieOczko/job-assistant/issues/65) | Highest leverage, largest job |
+| 2 — the journal seam | [#64](https://github.com/AnielskieOczko/job-assistant/issues/64) | **Start here** |
+| 3 — one home for coverage | [#66](https://github.com/AnielskieOczko/job-assistant/issues/66) | Documentation half already shipped in `fa61180` |
+| 4 — the wire contract | [#68](https://github.com/AnielskieOczko/job-assistant/issues/68) | Gated on a convention decision; do not start cold |
+| 5 — a frontend test seam | [#67](https://github.com/AnielskieOczko/job-assistant/issues/67) | Cheapest; independent of the rest |
+
 | | |
 |---|---|
 | Kotlin sources | 128 files, 10,724 lines |
