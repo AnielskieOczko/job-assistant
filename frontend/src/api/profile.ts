@@ -48,6 +48,27 @@ const remove = (path: string) => request<CandidateProfile>(path, { method: 'DELE
 export const putDetails = (profileId: number, body: DetailsRequest) =>
   put(`/api/profiles/${profileId}/details`, body)
 
+/**
+ * The one upload in the application. Sent as multipart rather than base64 in the details body: a
+ * photo does not belong in a form the UI submits on every edit. The server sniffs the real media
+ * type from the bytes, so a mislabelled file is refused (415) rather than stored wrong.
+ */
+export const putPortrait = (profileId: number, file: File) => {
+  const body = new FormData()
+  body.append('file', file)
+  return request<CandidateProfile>(`/api/profiles/${profileId}/portrait`, { method: 'PUT', body })
+}
+
+export const deletePortrait = (profileId: number) => remove(`/api/profiles/${profileId}/portrait`)
+
+/**
+ * The image itself is never in the profile document - only `hasPortrait` is - so it is fetched by
+ * URL. The revision is a cache-buster: the endpoint sends no-store, but a replaced photo must not
+ * survive in the img element's own memory cache either.
+ */
+export const portraitUrl = (profileId: number, revision: number) =>
+  `/api/profiles/${profileId}/portrait?v=${revision}`
+
 export const addLink = (profileId: number, body: LinkRequest) => post(`/api/profiles/${profileId}/links`, body)
 export const updateLink = (profileId: number, id: number, body: LinkRequest) =>
   put(`/api/profiles/${profileId}/links/${id}`, body)

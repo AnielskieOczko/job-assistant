@@ -96,7 +96,9 @@ async function send(path: string, init?: RequestInit): Promise<unknown> {
     ...init,
     headers: {
       Accept: 'application/json',
-      ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+      // FormData sets its own multipart Content-Type, including the boundary the browser
+      // generates - overriding it here would make the server unable to parse the parts.
+      ...(init?.body && !(init.body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}),
       ...init?.headers,
     },
   })
