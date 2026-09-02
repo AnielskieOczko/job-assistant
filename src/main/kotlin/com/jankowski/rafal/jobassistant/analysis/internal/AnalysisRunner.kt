@@ -11,6 +11,7 @@ import com.jankowski.rafal.jobassistant.llm.LlmTask
 import com.jankowski.rafal.jobassistant.offer.OfferService
 import com.jankowski.rafal.jobassistant.privacy.OfferTextScrubber
 import com.jankowski.rafal.jobassistant.profile.LanguageLevel
+import com.jankowski.rafal.jobassistant.profile.ProfileCoverage
 import com.jankowski.rafal.jobassistant.profile.ProfileService
 import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.Async
@@ -35,6 +36,7 @@ internal class AnalysisRunner(
     private val journal: AnalysisJournal,
     private val offers: OfferService,
     private val profiles: ProfileService,
+    private val coverages: ProfileCoverage,
     private val catalog: SkillCatalog,
     private val aiServices: AiServiceFactory,
 ) {
@@ -102,7 +104,10 @@ internal class AnalysisRunner(
         journal.transition(analysisId, AnalysisState.MATCHING)
 
         val resolved = resolveRequirements(extracted)
-        val coverage = catalog.coverageFor(profile.heldSkillIds)
+        // Coverage of the profile object already in hand, never of a second read: this run stamped
+        // its revision above, and an edit landing in between would otherwise score it against a
+        // profile it never saw.
+        val coverage = coverages.of(profile)
         val evidence = EvidenceDescriber(profile, coverage, catalog)
         val matched = RequirementMatcher.match(resolved, coverage, evidence::describe)
         val score = RequirementMatcher.score(matched)

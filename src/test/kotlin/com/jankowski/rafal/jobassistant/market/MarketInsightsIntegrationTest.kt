@@ -152,6 +152,24 @@ class MarketInsightsIntegrationTest {
     }
 
     @Test
+    fun `the dashboard renders with no persona behind it, reporting an honest all-MISSING table`() {
+        // A profile row with no details reads as absent - the same shape a fresh install has before
+        // anyone has filled anything in. The table is still worth serving: every row MISSING is a
+        // true statement about a candidate who has declared nothing, not a placeholder.
+        val emptyProfile = jdbc.sql("insert into profile (name) values (:name) returning id")
+            .param("name", "No Details ${System.nanoTime()}")
+            .query { rs, _ -> rs.getLong("id") }
+            .single()
+        offer(skills = listOf("Java", "Spring"))
+
+        val demand = insights.demand(emptyProfile)
+
+        assertThat(demand.entries).isNotEmpty
+        assertThat(demand.entries).allMatch { it.status == CoverageStatus.MISSING }
+        assertThat(demand.unmetSkillsInScope).isEqualTo(demand.skillsInScope)
+    }
+
+    @Test
     fun `a demand entry carries the held skill that earned a MET, so the verdict can be explained`() {
         // Spring Boot IMPLIES Spring in the seed relation graph, so holding one covers the other.
         hold("Spring Boot")

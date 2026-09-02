@@ -57,6 +57,30 @@ class SkillCoverageTest {
         assertNull(coverage.coveringSkillFor(99L))
     }
 
+    /**
+     * Stated against a shuffled list rather than [CoverageStatus.entries] in order, so that
+     * reordering the enum's declaration cannot make this pass vacuously. That is the failure the
+     * ordering exists to prevent: the declaration order happens to agree with the ranking today,
+     * and a reader tidying the enum would otherwise invert the market dashboard silently.
+     */
+    @Test
+    fun `the unmet ordering leads with MISSING and ends with MET`() {
+        val shuffled = listOf(CoverageStatus.MET, CoverageStatus.MISSING, CoverageStatus.PARTIAL)
+
+        assertEquals(
+            listOf(CoverageStatus.MISSING, CoverageStatus.PARTIAL, CoverageStatus.MET),
+            shuffled.sortedWith(CoverageStatus.UNMET_FIRST),
+        )
+    }
+
+    @Test
+    fun `every status has a distinct rank, so the ordering is total`() {
+        assertEquals(
+            CoverageStatus.entries.size,
+            CoverageStatus.entries.map { it.unmetRank }.distinct().size,
+        )
+    }
+
     @Test
     fun `derived sets stay in step with the provenance maps`() {
         assertEquals(setOf(2L), coverage.impliedCovered)
