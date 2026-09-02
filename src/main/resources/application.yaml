@@ -23,6 +23,13 @@ spring:
     # repository, so turning either off should be a visible diff rather than an invisible default.
     clean-disabled: true
     validate-on-migrate: true
+  servlet:
+    multipart:
+      # The one upload this application accepts is a profile portrait, rendered at 23 x 28 mm.
+      # Bounded here so the container refuses an oversized file while it is still arriving, rather
+      # than buffering all of it and then having the handler reject it.
+      max-file-size: 2MB
+      max-request-size: 2MB
   threads:
     virtual:
       enabled: true

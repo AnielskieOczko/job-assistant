@@ -5,7 +5,9 @@ import com.jankowski.rafal.jobassistant.profile.ProfileImport
 import com.jankowski.rafal.jobassistant.profile.ProfileImportException
 import com.jankowski.rafal.jobassistant.profile.ProfileService
 import jakarta.validation.Valid
+import org.springframework.http.CacheControl
 import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
 import org.springframework.http.ProblemDetail
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.MethodArgumentNotValidException
@@ -17,8 +19,11 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestPart
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.multipart.MaxUploadSizeExceededException
+import org.springframework.web.multipart.MultipartFile
 
 /**
  * Reading and writing the contents of one profile.
@@ -38,6 +43,7 @@ internal class ProfileController(
     private val profiles: ProfileService,
     private val writes: ProfileWriteService,
     private val collections: ProfileCollections,
+    private val portraits: ProfilePortraits,
 ) {
 
     @GetMapping
@@ -52,6 +58,61 @@ internal class ProfileController(
     @PutMapping("/details")
     fun putDetails(@PathVariable profileId: Long, @Valid @RequestBody request: DetailsRequest): CandidateProfile =
         writes.putDetails(profileId, request)
+
+    // --------------------------------------------------------------- portrait
+
+    /**
+     * The only binary this application accepts. Multipart rather than base64 inside
+     * [DetailsRequest], which is otherwise a form: an image does not belong in a body the UI
+     * submits on every keystroke-sized edit, and `putDetails` is an upsert with no room for a
+     * second concern.
+     *
+     * Answers with the whole profile like every other mutation, so the client sees `hasPortrait`
+     * flip without a second request. The stored media type is sniffed from the bytes; the part's
+     * own `Content-Type` is the client's claim and is ignored.
+     */
+    @PutMapping("/portrait", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
+    fun putPortrait(@PathVariable profileId: Long, @RequestPart("file") file: MultipartFile): CandidateProfile {
+        requireDetails(profileId)
+        portraits.save(profileId, file.bytes)
+        return profiles.require(profileId)
+    }
+
+    /**
+     * Serves the image to the UI. Deliberately not cached: a replaced portrait must not keep
+     * rendering from a browser cache, and the profile revision gives the client a cache-buster if
+     * it ever wants one.
+     */
+    @GetMapping("/portrait")
+    fun getPortrait(@PathVariable profileId: Long): ResponseEntity<ByteArray> {
+        val portrait = portraits.read(profileId)
+            ?: throw UnknownProfileEntityException("Profile $profileId has no portrait.")
+
+        return ResponseEntity.ok()
+            .contentType(MediaType.parseMediaType(portrait.mediaType))
+            .cacheControl(CacheControl.noStore())
+            .body(portrait.bytes)
+    }
+
+    @DeleteMapping("/portrait")
+    fun deletePortrait(@PathVariable profileId: Long): CandidateProfile {
+        requireDetails(profileId)
+        if (!portraits.delete(profileId)) {
+            throw UnknownProfileEntityException("Profile $profileId has no portrait.")
+        }
+        return profiles.require(profileId)
+    }
+
+    /**
+     * A portrait hangs off the profile row, but every write here answers with the whole profile -
+     * which does not exist until its details do. Checking first turns "no such profile" into the
+     * same 404 every other route gives, rather than a foreign key violation or a 500 from
+     * [ProfileService.require].
+     */
+    private fun requireDetails(profileId: Long) {
+        profiles.current(profileId)
+            ?: throw UnknownProfileEntityException("No profile $profileId, or it has no details yet.")
+    }
 
     // ------------------------------------------------------------------ links
 
@@ -298,6 +359,29 @@ internal class ProfileController(
             title = "Not on this profile"
         }
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(problem)
+    }
+
+    /** The upload was not an image we store. 415 rather than 400: the body is the problem. */
+    @ExceptionHandler(UnsupportedPortraitException::class)
+    fun handleUnsupportedPortrait(exception: UnsupportedPortraitException): ResponseEntity<ProblemDetail> {
+        val problem = ProblemDetail.forStatusAndDetail(HttpStatus.UNSUPPORTED_MEDIA_TYPE, exception.message!!)
+            .apply { title = "Portrait rejected" }
+        return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE).body(problem)
+    }
+
+    /**
+     * Thrown by the container before the bytes are fully read, which is the point of setting a
+     * multipart limit at all - the alternative is buffering an arbitrarily large upload and only
+     * then deciding it was too big.
+     */
+    @ExceptionHandler(MaxUploadSizeExceededException::class)
+    fun handleOversizedUpload(): ResponseEntity<ProblemDetail> {
+        val problem = ProblemDetail.forStatusAndDetail(
+            HttpStatus.PAYLOAD_TOO_LARGE,
+            "That image is larger than this application stores. The CV renders it at 23 x 28 mm, " +
+                "so anything beyond a couple of megabytes is detail the page cannot show.",
+        ).apply { title = "Portrait too large" }
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(problem)
     }
 
     @ExceptionHandler(MethodArgumentNotValidException::class)

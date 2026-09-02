@@ -47,6 +47,22 @@ curl -X POST localhost:8080/api/catalog/skills -H 'Content-Type: application/jso
 
 See `docs/profile-format.md` for the document format.
 
+### The portrait
+
+The one binary this application accepts, and the one endpoint that neither sends nor receives JSON.
+It is optional everywhere: with no photo the CV header renders exactly as it did before the feature
+existed.
+
+```bash
+curl -X PUT localhost:8080/api/profiles/1/portrait -F file=@photo.jpg   # 415 if not a JPEG/PNG/WebP
+curl localhost:8080/api/profiles/1/portrait -o photo.jpg               # 404 when there is none
+curl -X DELETE localhost:8080/api/profiles/1/portrait
+```
+
+The media type is read from the bytes rather than the request, both writes answer with the whole
+profile (whose `hasPortrait` is the only trace of the image in JSON), and both bump the profile
+revision — a stored CV built before the photo has been overtaken by it.
+
 ### Managing profiles themselves
 
 ```bash

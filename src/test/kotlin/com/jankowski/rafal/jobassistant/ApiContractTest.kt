@@ -239,7 +239,7 @@ class ApiContractTest {
                         consentClauses = emptyList(), languages = emptyList(),
                     ),
                     "details", "links", "skills", "experiences", "education", "credentials", "projects",
-                    "consentClauses", "languages", "revision",
+                    "consentClauses", "languages", "hasPortrait", "revision",
                     // Computed; `bullets` duplicates experiences[].bullets and the UI ignores it.
                     "heldSkillIds", "bullets",
                 )

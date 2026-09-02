@@ -32,6 +32,15 @@ interface ProfileService {
     fun replace(profileId: Long, import: ProfileImport): CandidateProfile
 
     /**
+     * The profile's photograph, or null when it has none.
+     *
+     * Separate from [current] because [CandidateProfile] is what prompt builders read and must
+     * never carry the bytes. Only two callers have any business here: the CV renderer, which
+     * inlines it *after* the model has answered, and the endpoint that serves it to the UI.
+     */
+    fun portrait(profileId: Long): ProfilePortrait?
+
+    /**
      * Counts writes to the given profile. An analysis or a generated document records the value it
      * was produced from, which is the only way to tell output that still reflects the profile from
      * output that has been overtaken by an edit.

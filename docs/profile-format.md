@@ -22,6 +22,24 @@ entity id, which strands the bullet ids that previously generated CVs and analys
 their stored text but start reading as stale. The UI confirms this before replacing an existing
 profile.
 
+## The portrait is not part of this document
+
+A profile may carry one optional photograph, and it lives outside the JSON on purpose. The document
+is text you can read, diff and keep in version control; a base64 image inside it would be neither.
+
+- Upload it with `PUT /api/profiles/{id}/portrait` as multipart (`file`), remove it with `DELETE` on
+  the same path, and fetch it with `GET`. The accepted formats are JPEG, PNG and WebP, capped at
+  2 MB, and the type is **sniffed from the bytes** — a mislabelled file is refused with 415 rather
+  than stored under the wrong media type.
+- The profile JSON carries `hasPortrait: true|false` and never the image. That is deliberate:
+  `CandidateProfile` is also what every prompt builder reads, and a boolean cannot leak a face.
+- **An import does not touch the portrait.** Import is a full replace of the *document*, and the
+  photograph is not in it, so a re-import keeps the photo that was already there. Deleting the
+  profile does delete it, by database cascade — a portrait is a direct identifier, so erasure has to
+  be guaranteed rather than remembered.
+- It never reaches a model. Like the candidate's name, it is added by the renderer from the
+  database after the model has answered, and inlined into the CV as a `data:` URI.
+
 ## Skill names
 
 `skills[].skill`, `experiences[].bullets[].skills[]`, `projects[].skills[]` and
