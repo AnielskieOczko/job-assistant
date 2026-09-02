@@ -24,11 +24,10 @@ internal data class CvSelection(
         val positionOf = bulletOrder.withIndex().associate { (index, id) -> id to index }
         val selected = bulletOrder.toSet()
 
-        val roles = profile.experiences.mapNotNull { experience ->
-            val bullets = experience.bullets
+        val roles = profile.experiences.map { experience ->
+            val rendered = experience.bullets
                 .filter { it.id in selected }
                 .sortedBy { positionOf[it.id] }
-                .map { rewrittenText[it.id] ?: it.text }
 
             // A role with no surviving bullets still appears: an unexplained employment gap reads
             // worse than a role with only a heading.
@@ -36,7 +35,10 @@ internal data class CvSelection(
                 company = experience.company,
                 roleTitle = experience.roleTitle,
                 period = DocumentViews.period(experience.startedOn, experience.endedOn),
-                bullets = bullets,
+                bullets = rendered.map { rewrittenText[it.id] ?: it.text },
+                // Over the rendered bullets, not the role's whole list: a badge is a claim, and it
+                // must not outlive the evidence tailoring chose to drop.
+                skills = DocumentViews.badgeSkills(rendered, catalog),
             )
         }
 
@@ -46,7 +48,7 @@ internal data class CvSelection(
             summaryLine = summaryLine ?: profile.details.summary,
             contacts = DocumentViews.contactsOf(profile),
             links = profile.links,
-            skills = skillNames,
+            skillGroups = DocumentViews.skillGroups(skillNames, catalog),
             experiences = roles,
             education = profile.education.map {
                 CvEducationView(
@@ -62,14 +64,16 @@ internal data class CvSelection(
                 )
             },
             projects = profile.projects.map { project ->
+                val rendered = project.bullets
+                    .filter { it.id in selected }
+                    .sortedBy { positionOf[it.id] }
+
                 CvProjectView(
                     name = project.name,
                     url = project.url,
                     period = DocumentViews.period(project.startedOn, project.endedOn),
-                    bullets = project.bullets
-                        .filter { it.id in selected }
-                        .sortedBy { positionOf[it.id] }
-                        .map { rewrittenText[it.id] ?: it.text },
+                    bullets = rendered.map { rewrittenText[it.id] ?: it.text },
+                    skills = DocumentViews.badgeSkills(rendered, catalog),
                 )
             },
             languages = profile.languages.map { "${it.language} (${it.level})" },

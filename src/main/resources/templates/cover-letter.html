@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <title th:text="${letter.fullName} + ' — Cover letter'">Cover letter</title>
+    <!--/* Embedded IBM Plex, latin + latin-ext. A Polish cover letter falls back mid-word without
+           it, exactly as a Polish CV does; the layout here is deliberately left alone. */-->
+    <style th:replace="~{fragments/fonts :: embedded}"></style>
     <style>
         :root { --ink: #16191d; --muted: #5b6672; --accent: #1f5f8b; }
 
@@ -12,7 +15,7 @@
 
         body {
             margin: 0;
-            font-family: "Inter", "Helvetica Neue", "Segoe UI", Roboto, "DejaVu Sans", Arial, sans-serif;
+            font-family: PlexSans, "Segoe UI", sans-serif;
             font-size: 10.8pt;
             line-height: 1.6;
             color: var(--ink);
