@@ -1,5 +1,8 @@
 import path from 'node:path'
-import { defineConfig } from 'vite'
+// `vitest/config` re-exports Vite's own `defineConfig` with the `test` block typed, so the
+// test run reuses this file's resolution — the `@/` alias above included — rather than
+// maintaining a second one that could drift from it.
+import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
@@ -30,6 +33,14 @@ export default defineConfig({
       '/actuator': { target: BACKEND, changeOrigin: false },
     },
   },
+  test: {
+    // Everything under test is a pure function: no DOM, no rendering, no jsdom to configure.
+    environment: 'node',
+    // The date formatters read the ambient zone, so a run in Warsaw and a run on a UTC CI box
+    // would disagree about which day an ISO instant falls on. Pin it rather than assert loosely.
+    env: { TZ: 'UTC' },
+  },
+
   build: {
     // Lands in the Spring resource tree so `-Pfrontend package` ships the SPA in the jar.
     outDir: path.resolve(import.meta.dirname, '../src/main/resources/static'),

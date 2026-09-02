@@ -97,6 +97,7 @@ docker compose up -d          # local dev Postgres (required for integration tes
 ./mvnw test -Dtest=ClassName  # single test class
 
 cd frontend && npm ci && npm run dev   # Vite on :5173, proxies /api to :8080
+cd frontend && npm test                # Vitest, pure functions only, no browser
 ./mvnw -Pfrontend spring-boot:run      # build the SPA and serve everything from :8080
 ./mvnw -Pfrontend clean package        # jar with the SPA inside
 ```
@@ -592,6 +593,17 @@ prompt, response, token usage and latency.
   Kotlin, change that file in the same commit. `ApiContractTest` pins the JSON key set of every
   DTO that crosses the wire and fails the fast tier if you forget. Watch for Kotlin's `is` prefix
   surviving serialization: `WorkExperience.isCurrent` is emitted as `isCurrent`, not `current`.
+- **The frontend suite is Vitest, `node` environment, pure functions only.** It reads
+  `vite.config.ts` — so the `@/` alias and everything else resolve as the app does — and runs as
+  `npm test` in the `frontend` CI job after `oxlint` and `tsc -b`. Test files sit beside their
+  subject as `*.test.ts`; nothing imports them, so `vite build` output is byte-identical with them
+  present. There is **no jsdom, no React Testing Library and no component rendering**: a suite that
+  finishes in under a second is one nobody skips, and everything currently tested was extracted out
+  of a component precisely so it could be called directly. Put new logic where it can be, and add
+  the assertions in the same commit. `docs/frontend.md` has the detail. The reorder helpers in
+  `routes/profile/mutations.ts` are the ones carrying a real invariant — a reorder request must name
+  every id exactly once or the backend answers 409 — so their tests assert the permutation property,
+  not just the resulting order.
 - HTTP-level assertions (status codes, `ProblemDetail` extension names) go in a test that builds
   `MockMvc` from the `WebApplicationContext` — Boot 4 moved the MockMvc autoconfiguration out of
   `spring-boot-test-autoconfigure`, so `@AutoConfigureMockMvc` is not on the classpath.
