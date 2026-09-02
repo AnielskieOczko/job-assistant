@@ -23,7 +23,7 @@ type Sort = { column: Column; descending: boolean }
  * Where a coverage verdict sits when the table is sorted by it.
  *
  * Spelled out rather than taken from the order the statuses happen to be declared in, for the
- * reason `MarketInsightsService.unmetRank` gives on the server side: reordering that enum for
+ * reason `CoverageStatus.unmetRank` gives on the server side: reordering that enum for
  * readability would silently invert what this column means, with no test naming the connection.
  */
 const UNMET_RANK: Record<DemandEntry['status'], number> = { MISSING: 0, PARTIAL: 1, MET: 2 }
