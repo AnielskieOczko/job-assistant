@@ -5,8 +5,10 @@ import com.jankowski.rafal.jobassistant.catalog.SkillCategory
 import com.jankowski.rafal.jobassistant.profile.CandidateProfile
 import com.jankowski.rafal.jobassistant.profile.ExperienceBullet
 import com.jankowski.rafal.jobassistant.profile.ProfileLink
+import com.jankowski.rafal.jobassistant.profile.ProfilePortrait
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.util.Base64
 
 internal data class CvView(
     val fullName: String,
@@ -24,6 +26,20 @@ internal data class CvView(
     val credentials: List<CvCredentialView>,
     val projects: List<CvProjectView>,
     val languages: List<String>,
+    /**
+     * The candidate's photograph as a `data:` URI, or null when there is none.
+     *
+     * A URI rather than a URL, and inlined rather than linked, for the reason the fonts are:
+     * `PlaywrightDocumentRenderer` calls `setContent` with no base URL, so `/api/profiles/1/portrait`
+     * has no origin to be relative to and would render as a broken image.
+     *
+     * It is added here by the renderer, after the model has answered - a portrait is a direct
+     * identifier and follows the rule the candidate's name already follows.
+     *
+     * Deliberately without a default: nullable *and* defaulted is how a caller silently forgets to
+     * pass it, which is exactly what happened while this was being written.
+     */
+    val portrait: String?,
 )
 
 internal data class CvSkillGroupView(val category: String, val names: List<String>)
@@ -123,6 +139,11 @@ internal object DocumentViews {
         bullets.flatMap { it.skillIds }
             .distinct()
             .mapNotNull { catalog.findById(it)?.name }
+
+    /** `data:image/jpeg;base64,...` - see [CvView.portrait] for why this is not a URL. */
+    fun portraitDataUri(portrait: ProfilePortrait?): String? = portrait?.let {
+        "data:${it.mediaType};base64," + Base64.getEncoder().encodeToString(it.bytes)
+    }
 
     fun contactsOf(profile: CandidateProfile): List<String> = listOfNotNull(
         profile.details.email,

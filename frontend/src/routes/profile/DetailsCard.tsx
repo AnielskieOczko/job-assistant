@@ -1,6 +1,8 @@
-import { useState } from 'react'
-import { Link as LinkIcon, Mail, MapPin, Pencil, Phone, Plus } from 'lucide-react'
-import { addLink, deleteLink, putDetails, reorderLinks, updateLink } from '@/api/profile'
+import { useRef, useState } from 'react'
+import { Link as LinkIcon, Mail, MapPin, Pencil, Phone, Plus, User } from 'lucide-react'
+import {
+  addLink, deletePortrait, deleteLink, portraitUrl, putDetails, putPortrait, reorderLinks, updateLink,
+} from '@/api/profile'
 import type { CandidateProfile, DetailsRequest, LinkRequest, ProfileLink } from '@/api/types'
 
 /** lucide-react ships no brand marks, so GitHub/LinkedIn are hand-drawn rather than a new dependency. */
@@ -58,7 +60,8 @@ export function DetailsCard({ profileId, profile }: { profileId: number; profile
     <Card>
       <CardContent className="pt-6">
         <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
+          <PortraitControl profileId={profileId} profile={profile} />
+          <div className="min-w-0 flex-1">
             <h2 className="font-heading text-xl font-semibold">{details.fullName}</h2>
             {details.headline ? <p className="text-muted-foreground">{details.headline}</p> : null}
             <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1.5 text-sm text-muted-foreground">
@@ -156,6 +159,81 @@ export function DetailsCard({ profileId, profile }: { profileId: number; profile
         }}
       />
     </Card>
+  )
+}
+
+/**
+ * The profile photo, which is optional everywhere: the CV header reserves no space for one, so an
+ * empty slot here is a real state rather than a missing value.
+ *
+ * The image is fetched by URL rather than read out of the profile - the profile document carries
+ * `hasPortrait` and never the bytes, because it is also what the prompt builders read.
+ */
+function PortraitControl({ profileId, profile }: { profileId: number; profile: CandidateProfile }) {
+  const picker = useRef<HTMLInputElement>(null)
+
+  const upload = useProfileEdit(profileId, (file: File) => putPortrait(profileId, file), 'Photo saved')
+  const remove = useProfileEdit(profileId, () => deletePortrait(profileId), 'Photo removed')
+
+  return (
+    <div className="shrink-0">
+      <input
+        ref={picker}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0]
+          // Cleared so choosing the same file twice still fires a change event.
+          e.target.value = ''
+          if (file) upload.mutate(file)
+        }}
+      />
+
+      {profile.hasPortrait ? (
+        <img
+          src={portraitUrl(profileId, profile.revision)}
+          alt={`Portrait of ${profile.details.fullName}`}
+          className="size-20 rounded-md border object-cover"
+        />
+      ) : (
+        <button
+          type="button"
+          onClick={() => picker.current?.click()}
+          disabled={upload.isPending}
+          className="flex size-20 flex-col items-center justify-center gap-1 rounded-md border border-dashed text-muted-foreground hover:bg-accent"
+        >
+          <User className="size-5" />
+          <span className="text-[10px] leading-none">Add photo</span>
+        </button>
+      )}
+
+      {profile.hasPortrait ? (
+        <div className="mt-1 flex justify-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 px-1.5 text-xs"
+            disabled={upload.isPending}
+            onClick={() => picker.current?.click()}
+          >
+            Replace
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 px-1.5 text-xs"
+            disabled={remove.isPending}
+            onClick={() => remove.mutate(undefined)}
+          >
+            Remove
+          </Button>
+        </div>
+      ) : null}
+
+      {upload.isError ? <ApiErrorAlert error={upload.error} /> : null}
+      {remove.isError ? <ApiErrorAlert error={remove.error} /> : null}
+    </div>
   )
 }
 

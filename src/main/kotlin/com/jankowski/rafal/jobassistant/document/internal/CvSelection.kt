@@ -2,6 +2,7 @@ package com.jankowski.rafal.jobassistant.document.internal
 
 import com.jankowski.rafal.jobassistant.catalog.SkillCatalog
 import com.jankowski.rafal.jobassistant.profile.CandidateProfile
+import com.jankowski.rafal.jobassistant.profile.ProfilePortrait
 
 /**
  * The model's tailoring choices, filtered down to what the profile can actually back.
@@ -20,7 +21,7 @@ internal data class CvSelection(
     val droppedSkillNames: List<String>,
 ) {
 
-    fun toView(profile: CandidateProfile, catalog: SkillCatalog): CvView {
+    fun toView(profile: CandidateProfile, catalog: SkillCatalog, portrait: ProfilePortrait? = null): CvView {
         val positionOf = bulletOrder.withIndex().associate { (index, id) -> id to index }
         val selected = bulletOrder.toSet()
 
@@ -77,6 +78,7 @@ internal data class CvSelection(
                 )
             },
             languages = profile.languages.map { "${it.language} (${it.level})" },
+            portrait = DocumentViews.portraitDataUri(portrait),
         )
     }
 

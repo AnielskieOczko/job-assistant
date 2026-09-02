@@ -78,7 +78,7 @@ internal class JdbcDocumentService(
         // worth being able to ask.
         val built = LlmCallScope.forProfile(profileId, SUBJECT_OFFER, offerId) {
             when (type) {
-                DocumentType.CV -> buildCv(profile, report, roleTitle, company, language, offer.company)
+                DocumentType.CV -> buildCv(profile, profileId, report, roleTitle, company, language, offer.company)
                 DocumentType.COVER_LETTER -> buildCoverLetter(profile, report, roleTitle, company, language)
             }
         }
@@ -129,6 +129,7 @@ internal class JdbcDocumentService(
 
     private fun buildCv(
         profile: CandidateProfile,
+        profileId: Long,
         report: AnalysisReport,
         roleTitle: String,
         company: String,
@@ -152,7 +153,9 @@ internal class JdbcDocumentService(
             html = render(
                 "cv",
                 mapOf(
-                    "cv" to selection.toView(profile, catalog),
+                    // Read after the model has answered, never before: a portrait is a direct
+                    // identifier, and nothing that reaches a prompt has ever seen it.
+                    "cv" to selection.toView(profile, catalog, profiles.portrait(profileId)),
                     "langCode" to langCode(language),
                     "consentClause" to (consentText ?: ""),
                 )

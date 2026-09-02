@@ -444,6 +444,11 @@ export interface CandidateProfile {
   consentClauses: ConsentClause[]
   languages: LanguageSkill[]
   /**
+   * Whether a portrait is stored - never the image itself. Fetch the bytes from
+   * `GET /api/profiles/{id}/portrait`; the profile document deliberately never carries them.
+   */
+  hasPortrait: boolean
+  /**
    * Bumped by every write to the profile. Compare against an analysis's or a document's
    * `profileRevision` to tell output that still reflects the profile from output an edit has
    * overtaken.

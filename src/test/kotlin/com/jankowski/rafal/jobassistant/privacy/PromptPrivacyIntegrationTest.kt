@@ -31,6 +31,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.jdbc.core.simple.JdbcClient
 import java.time.Duration
 import java.time.LocalDate
+import java.util.Base64
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -114,6 +115,9 @@ internal class PromptPrivacyIntegrationTest(
             """.trimIndent()
         ).offer.id
     }
+
+    /** Enough of a PNG for the media-type sniffing; the payload after it is the sentinel. */
+    private val PNG_HEADER = byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A)
 
     private fun runAnalysis(): Long {
         models[LlmTask.EXTRACTION].enqueue(
@@ -246,6 +250,43 @@ internal class PromptPrivacyIntegrationTest(
 
         assertTrue(document.html.contains(SENTINEL_CONSENT_MARKER), "the CV lost its consent clause")
         assertNoIdentifiersIn(everythingSentToModels())
+    }
+
+    /**
+     * A portrait is a direct identifier - a face is as identifying as a name - so it follows the
+     * same route: stored in the database, absent from every prompt, and inlined by the renderer
+     * after the model has answered.
+     *
+     * The honest assertion is on both halves. That the image reaches the document proves the
+     * feature works; that no prompt grew by a single base64 character proves it took the long way
+     * round. `CandidateProfile` carries only `hasPortrait`, which is what makes this true by
+     * construction rather than by discipline.
+     */
+    @Test
+    fun `the rendered CV carries the portrait the model never saw`() {
+        val portrait = PNG_HEADER + "ZZQXPORTRAIT".toByteArray()
+        jdbc.sql("insert into profile_portrait (profile_id, media_type, bytes) values (:id, 'image/png', :bytes)")
+            .param("id", profileId)
+            .param("bytes", portrait)
+            .update()
+
+        runAnalysis()
+        models[LlmTask.DOCUMENT].enqueue(
+            """
+            {"summaryLine":"Backend engineer.","skillNames":["Kotlin"],
+             "bullets":[{"bulletId":$kotlinBulletId,"text":"Built payment services in Kotlin."}]}
+            """.trimIndent()
+        )
+
+        val document = documents.generate(offerId, profileId, DocumentType.CV)
+
+        val encoded = Base64.getEncoder().encodeToString(portrait)
+        assertTrue(document.html.contains("data:image/png;base64,$encoded"), "the CV lost its portrait")
+
+        val sent = everythingSentToModels()
+        assertFalse(sent.contains(encoded), "the portrait reached a model")
+        assertFalse(sent.contains("ZZQXPORTRAIT"), "the portrait reached a model")
+        assertNoIdentifiersIn(sent)
     }
 
     @Test

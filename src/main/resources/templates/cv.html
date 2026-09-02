@@ -45,9 +45,8 @@
         h1, h2, h3 { font-weight: inherit; }
 
         /* The portrait is optional by construction: no image, no second column, no gap left
-           behind. Nothing stores one yet - the slot is here so adding it is a column rather than
-           a redesign, and because a portrait is a direct identifier it will arrive from the
-           database at render time, never through a prompt. */
+           behind. It is a direct identifier, so it arrives from the database at render time and
+           has never been near a prompt. */
         .head { display: grid; grid-template-columns: 1fr; gap: 0; }
         .head.has-photo { grid-template-columns: 1fr 23mm; gap: 0 7mm; align-items: start; }
         .head .meta { grid-column: 1 / -1; }
@@ -150,12 +149,15 @@
     </style>
 </head>
 <body>
-<div class="head">
+<div class="head" th:classappend="${cv.portrait} ? 'has-photo' : ''">
     <div>
         <h1 class="name" th:text="${cv.fullName}">Name</h1>
         <p class="headline" th:if="${cv.headline}" th:text="${cv.headline}">Headline</p>
         <p class="summary" th:if="${cv.summaryLine}" th:text="${cv.summaryLine}">Summary</p>
     </div>
+    <!--/* A data: URI, inlined by the renderer after the model answered. No photo, no second grid
+           column, no gap left behind - see the .head rules above. */-->
+    <img class="portrait" th:if="${cv.portrait}" th:src="${cv.portrait}" alt="">
     <p class="meta">
         <span th:each="contact, it : ${cv.contacts}"
               th:text="${(it.first ? '' : '   ·   ') + contact}">contact</span>

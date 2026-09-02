@@ -18,6 +18,14 @@ data class CandidateProfile(
     val consentClauses: List<ConsentClause>,
     val languages: List<LanguageSkill>,
     /**
+     * Whether a photograph is stored for this profile - never the photograph itself.
+     *
+     * A portrait is a direct identifier, and this is the type every prompt builder reads. A boolean
+     * cannot leak a face, and the bytes are fetched separately by the two callers entitled to them;
+     * see [ProfilePortrait].
+     */
+    val hasPortrait: Boolean = false,
+    /**
      * Write counter for the whole profile. Output derived from the profile records the value it was
      * built from, so a CV or an analysis that an edit has overtaken can be flagged as stale rather
      * than presented as current.

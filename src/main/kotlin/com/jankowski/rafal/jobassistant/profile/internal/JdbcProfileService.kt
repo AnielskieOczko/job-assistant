@@ -15,6 +15,7 @@ import com.jankowski.rafal.jobassistant.profile.ProfileImport
 import com.jankowski.rafal.jobassistant.profile.ProfileIdentity
 import com.jankowski.rafal.jobassistant.profile.ProfileImportException
 import com.jankowski.rafal.jobassistant.profile.ProfileLink
+import com.jankowski.rafal.jobassistant.profile.ProfilePortrait
 import com.jankowski.rafal.jobassistant.profile.ProfileService
 import com.jankowski.rafal.jobassistant.profile.ProfileSkill
 import com.jankowski.rafal.jobassistant.profile.Project
@@ -35,6 +36,7 @@ internal class JdbcProfileService(
     private val projects: ProjectRepository,
     private val consentClauses: ConsentClauseRepository,
     private val languages: LanguageSkillRepository,
+    private val portraits: ProfilePortraits,
     private val jdbc: JdbcClient,
 ) : ProfileService {
 
@@ -59,6 +61,9 @@ internal class JdbcProfileService(
             },
             consentClauses = consentClauses.findAllOrdered(profileId).map { it.toDomain() },
             languages = languages.findAllOrdered(profileId).map { it.toDomain() },
+            // Whether, never what: the bytes are read separately by the two callers entitled to
+            // them, because this type is what every prompt builder sees.
+            hasPortrait = portraits.exists(profileId),
             revision = readRevision(profileId),
         )
     }
@@ -68,6 +73,9 @@ internal class JdbcProfileService(
             "No profile $profileId, or it has no details yet. PUT /api/profiles/$profileId/details, " +
                 "or POST a document to /api/profiles/$profileId/import."
         )
+
+    @Transactional(readOnly = true)
+    override fun portrait(profileId: Long): ProfilePortrait? = portraits.read(profileId)
 
     @Transactional(readOnly = true)
     override fun revision(profileId: Long): Long = readRevision(profileId)

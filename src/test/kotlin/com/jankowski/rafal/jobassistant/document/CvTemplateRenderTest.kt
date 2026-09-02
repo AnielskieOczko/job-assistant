@@ -19,9 +19,14 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.thymeleaf.TemplateEngine
 import org.thymeleaf.context.Context
+import java.awt.Color
+import java.awt.image.BufferedImage
+import java.io.ByteArrayOutputStream
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.Base64
 import java.util.Locale
+import javax.imageio.ImageIO
 import kotlin.test.assertTrue
 
 /**
@@ -42,7 +47,7 @@ internal class CvTemplateRenderTest(
 
     private val badgeSkills = listOf("Kotlin", "Spring Boot", "PostgreSQL", "Kafka", "Testcontainers")
 
-    private val view = CvView(
+    private fun view(portrait: String? = null) = CvView(
         fullName = "Rafał Jankowski",
         headline = "Backend Engineer · JVM",
         summaryLine = "Backend engineer building payment systems in Kotlin and Spring Boot, " +
@@ -85,15 +90,18 @@ internal class CvTemplateRenderTest(
             )
         ),
         languages = listOf("Polski (native)", "Angielski (C1)", "Niemiecki (B1)"),
+        portrait = portrait,
     )
 
-    private val html: String
-        get() = templates.process(
+    private val html: String get() = htmlWith(null)
+
+    private fun htmlWith(portrait: String?): String =
+        templates.process(
             "cv",
             Context(
                 Locale.ENGLISH,
                 mapOf(
-                    "cv" to view,
+                    "cv" to view(portrait),
                     "langCode" to "pl",
                     "consentClause" to "Wyrażam zgodę na przetwarzanie moich danych osobowych.",
                 ),
@@ -127,6 +135,56 @@ internal class CvTemplateRenderTest(
     }
 
     /**
+     * The portrait is optional *by construction*: with no photo there is no image element and no
+     * second grid column, so the header occupies exactly the space it did before the feature
+     * existed. That is what the layout was designed for, and it is only true if nothing renders.
+     */
+    @Test
+    fun `a portrait adds a column when present and nothing at all when absent`() {
+        val dataUri = "data:image/png;base64,iVBORw0KGgo="
+
+        // The class attribute on the element, not the stylesheet: `.head.has-photo` is declared in
+        // the CSS either way, so searching the whole document for the name proves nothing.
+        val withPhoto = htmlWith(dataUri)
+        assertTrue("class=\"head has-photo\"" in withPhoto, "the header did not switch to its two-column form")
+        assertTrue(dataUri in withPhoto, "the portrait did not reach the document")
+
+        val without = html
+        assertTrue("class=\"head has-photo\"" !in without, "the header reserved a column for an absent photo")
+        assertTrue("<img" !in without, "an image element rendered with no portrait to show")
+    }
+
+    /**
+     * A `data:` URI rather than a path, for the reason the fonts are embedded:
+     * `PlaywrightDocumentRenderer` calls `setContent` with no base URL, so `/api/profiles/1/portrait`
+     * would render as a broken image in the PDF - and only in the PDF, which is the worst place to
+     * find out.
+     */
+    @Test
+    fun `the portrait is inlined rather than linked`() {
+        val rendered = htmlWith("data:image/png;base64,iVBORw0KGgo=")
+
+        assertTrue("src=\"data:image/png;base64," in rendered, "the portrait is not inlined")
+        assertTrue("/api/profiles/" !in rendered, "the document links out to an endpoint it cannot reach")
+    }
+
+    /**
+     * A real image rather than a truncated header, so the preview shows what a photo costs the
+     * page. Generated rather than committed: a portrait fixture in the repository would be a
+     * binary nobody can review in a diff.
+     */
+    private fun samplePortrait(): String {
+        val image = BufferedImage(240, 300, BufferedImage.TYPE_INT_RGB)
+        image.createGraphics().apply {
+            paint = Color(0x8A, 0x92, 0x9C)
+            fillRect(0, 0, 240, 300)
+            dispose()
+        }
+        val bytes = ByteArrayOutputStream().also { ImageIO.write(image, "png", it) }.toByteArray()
+        return "data:image/png;base64," + Base64.getEncoder().encodeToString(bytes)
+    }
+
+    /**
      * Writes a preview beside the PDF so the layout can be looked at rather than only opened.
      *
      * A4 is 794 x 1123 CSS px, and the width is not a detail: an early prototype previewed at
@@ -136,27 +194,35 @@ internal class CvTemplateRenderTest(
     fun `writes a print-width preview and a PDF to target for inspection`() {
         val out = Path.of("target", "cv-preview")
         Files.createDirectories(out)
-        Files.write(out.resolve("cv.pdf"), renderer.toPdf(html))
+
+        // Both header forms, because the photo's cost in vertical space is the thing #14 weighed
+        // and the thing a later change is most likely to spoil.
+        val variants = mapOf("cv" to html, "cv-portrait" to htmlWith(samplePortrait()))
+        variants.forEach { (name, source) -> Files.write(out.resolve("$name.pdf"), renderer.toPdf(source)) }
 
         Playwright.create().use { playwright ->
             playwright.chromium().launch().use { browser ->
                 browser.newContext(
                     Browser.NewContextOptions().setViewportSize(794, 1123).setDeviceScaleFactor(2.0)
                 ).use { context ->
-                    context.newPage().use { page ->
-                        page.setContent(html)
-                        page.waitForLoadState()
-                        page.screenshot(
-                            Page.ScreenshotOptions()
-                                .setPath(out.resolve("cv.png"))
-                                .setFullPage(true)
-                                .setType(ScreenshotType.PNG)
-                        )
+                    variants.forEach { (name, source) ->
+                        context.newPage().use { page ->
+                            page.setContent(source)
+                            page.waitForLoadState()
+                            page.screenshot(
+                                Page.ScreenshotOptions()
+                                    .setPath(out.resolve("$name.png"))
+                                    .setFullPage(true)
+                                    .setType(ScreenshotType.PNG)
+                            )
+                        }
                     }
                 }
             }
         }
 
-        assertTrue(Files.size(out.resolve("cv.png")) > 10_000, "preview image is suspiciously small")
+        variants.keys.forEach {
+            assertTrue(Files.size(out.resolve("$it.png")) > 10_000, "$it preview is suspiciously small")
+        }
     }
 }
