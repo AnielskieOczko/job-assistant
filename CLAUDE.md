@@ -664,6 +664,17 @@ is `CvSelection`'s rule restated for presentation. Badges are real `<span>` text
 `::before` content, because `CvInvariant` scans `HtmlText.visibleText`: a skill name that exists
 only in CSS is a claim the fabrication guard cannot see.
 
+**A portrait is a direct identifier and takes the same route as the name.** `profile_portrait` is
+its own table keyed by `profile_id`, so the blob stays out of `profile_details` — which every
+profile read and every CRUD response loads — and cascades away with the persona. `CandidateProfile`
+exposes only `hasPortrait`, because that type is what prompt builders read and a boolean cannot leak
+a face. The renderer inlines it as a `data:` URI *after* the model has answered, for the same reason
+the fonts are embedded: `setContent` has no base URL, so `/api/profiles/1/portrait` would render as
+a broken image in the PDF and nowhere else. `ProfilePortraitHttpTest` pins the endpoints and the
+cascade; `PromptPrivacyIntegrationTest` asserts no prompt grows by a byte when a portrait exists.
+The upload is the application's only multipart endpoint, bounded in `application.yaml`, and its
+media type is sniffed from the bytes rather than trusted from the request.
+
 **The cover letter prompt must never invite naming an absent technology**, even in an honest
 negative ("I have not used Kubernetes"). The invariant has no notion of negation, so such a letter
 is rejected outright — the prompt and the guard have to agree.
