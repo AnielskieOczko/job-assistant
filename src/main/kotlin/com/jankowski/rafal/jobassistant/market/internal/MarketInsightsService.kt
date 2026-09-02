@@ -2,7 +2,6 @@ package com.jankowski.rafal.jobassistant.market.internal
 
 import com.jankowski.rafal.jobassistant.catalog.CoverageStatus
 import com.jankowski.rafal.jobassistant.catalog.SkillCatalog
-import com.jankowski.rafal.jobassistant.catalog.SkillCoverage
 import com.jankowski.rafal.jobassistant.market.DemandEntry
 import com.jankowski.rafal.jobassistant.market.DemandRanking
 import com.jankowski.rafal.jobassistant.market.DemandReport
@@ -12,7 +11,7 @@ import com.jankowski.rafal.jobassistant.market.MarketOfferSummary
 import com.jankowski.rafal.jobassistant.market.MarketScopeReport
 import com.jankowski.rafal.jobassistant.market.SalaryBand
 import com.jankowski.rafal.jobassistant.market.SalaryReport
-import com.jankowski.rafal.jobassistant.profile.ProfileService
+import com.jankowski.rafal.jobassistant.profile.ProfileCoverage
 import org.springframework.stereotype.Service
 
 /**
@@ -28,7 +27,7 @@ internal class MarketInsightsService(
     private val statistics: MarketStatisticsRepository,
     private val scopeResolver: MarketScopeResolver,
     private val catalog: SkillCatalog,
-    private val profiles: ProfileService,
+    private val coverages: ProfileCoverage,
 ) : MarketInsights {
 
     override fun scope(): MarketScopeReport = scopeReport(scopeResolver.resolve())
@@ -54,7 +53,7 @@ internal class MarketInsightsService(
             return DemandReport(emptyList(), report, skillsInScope = 0, unmetSkillsInScope = 0, ranking, limit)
         }
 
-        val coverage = coverageFor(profileId)
+        val coverage = coverages.of(profileId)
         val totals = statistics.demandTotals(scope.ids)
         val levels = statistics.demandLevels(scope.ids).groupBy { it.skillId }
         // Every skill named on the page in one lookup: the ones the corpus asks for, plus the held
@@ -122,7 +121,7 @@ internal class MarketInsightsService(
         // The covered count is over held-or-reachable skills, not held ones, so an offer asking for
         // Spring against a profile holding Spring Boot reads as covered here exactly as it does in
         // the demand table. Passing only the directly-held set would make the two disagree.
-        val coverage = coverageFor(profileId)
+        val coverage = coverages.of(profileId)
         val reachable = coverage.held + coverage.impliedCovered + coverage.relatedCovered
 
         val rows = statistics.offerPage(scope.ids, reachable, inScopeOnly, limit, offset)
@@ -174,47 +173,20 @@ internal class MarketInsightsService(
     }
 
     /**
-     * The profile's coverage, or none at all.
-     *
-     * A corpus with no profile behind it still has a meaningful demand table -- every row reads
-     * MISSING, which is true rather than a placeholder -- so an absent profile returns empty
-     * coverage instead of failing the request. [ProfileService.defaultProfileId] throws when no
-     * persona exists at all, which is a legitimate state on a fresh install rather than an error
-     * worth propagating to a dashboard.
-     */
-    private fun coverageFor(profileId: Long?): SkillCoverage {
-        val id = profileId ?: runCatching { profiles.defaultProfileId() }.getOrNull() ?: return SkillCoverage.EMPTY
-        val profile = profiles.current(id) ?: return SkillCoverage.EMPTY
-        return catalog.coverageFor(profile.heldSkillIds)
-    }
-
-    /**
      * What the table leads with.
      *
-     * [DemandRanking.UNMET] puts MISSING above PARTIAL above MET, because a table led by Java --
-     * held, and asked for by 165 offers -- is a true table that answers nothing. The final
-     * tie-break on the name is not decoration: without a total order two skills with equal counts
-     * could swap between requests, and a page boundary would show one twice and the other never.
+     * [DemandRanking.UNMET] leads with what the candidate lacks, in the order [CoverageStatus]
+     * declares once for every surface that ranks this way. The final tie-break on the name is this
+     * comparator's own job and is not decoration: without a total order two skills with equal
+     * counts could swap between requests, and a page boundary would show one twice and the other
+     * never.
      */
     private fun comparatorFor(ranking: DemandRanking): Comparator<DemandEntry> = when (ranking) {
-        DemandRanking.UNMET -> compareBy<DemandEntry> { unmetRank(it.status) }
+        DemandRanking.UNMET -> compareBy<DemandEntry, CoverageStatus>(CoverageStatus.UNMET_FIRST) { it.status }
             .thenByDescending { it.offers }
             .thenBy { it.skillName }
 
         DemandRanking.TOTAL -> compareByDescending<DemandEntry> { it.offers }
             .thenBy { it.skillName }
-    }
-
-    /**
-     * Written out rather than taken from [CoverageStatus.ordinal].
-     *
-     * The declaration order of that enum happens to give the right answer today, which is exactly
-     * why it should not be depended on: reordering it for readability would silently invert the
-     * dashboard's default ranking with no test naming the connection.
-     */
-    private fun unmetRank(status: CoverageStatus): Int = when (status) {
-        CoverageStatus.MISSING -> 0
-        CoverageStatus.PARTIAL -> 1
-        CoverageStatus.MET -> 2
     }
 }

@@ -347,6 +347,26 @@ of a verdict: held **or** IMPLIES-reachable is `MET`, RELATED-reachable is `PART
 is `MISSING`. It carries provenance (`impliedBy` / `relatedBy`), not just a status, so the report
 can say "you have Quarkus, they want Spring Boot" instead of showing an unexplained amber light.
 
+**"What does the candidate have" is asked through `ProfileCoverage`, in `profile`.** `analysis`,
+`market` and anything after them need the same expansion, and each used to resolve it itself. It
+lives in `profile` rather than `catalog` because `catalog` depends on nothing and must keep
+depending on nothing — that is why `triage` exists (ADR-0003) — whereas `profile → catalog` already
+exists, so this is a new type on an old edge. Two rules sit on it. **An absent profile yields
+`SkillCoverage.EMPTY`, never an exception**: a fresh install still has a meaningful demand table,
+every row of which reads MISSING, which is true rather than a placeholder — that rule was a private
+method of the market dashboard and is now stated and tested once. And **a caller that already holds
+a `CandidateProfile` passes it**, rather than an id: an analysis stamps `profile_revision` from the
+object it read, and computing coverage from a second, later read would score the run against a
+profile it never saw.
+
+**The unmet ordering — MISSING, then PARTIAL, then MET — is `CoverageStatus.UNMET_FIRST`,** not
+`CoverageStatus.ordinal`. The declaration order happens to agree with it today, which is exactly why
+depending on it is a trap: reordering the enum for readability would silently invert the market
+dashboard's default ranking. `SkillCoverageTest` asserts the order against a shuffled list, so a
+reorder fails a test rather than a screen. A ranking built on it still needs its own final tie-break
+on a name or an id — without a *total* order, two equal entries can swap between requests and a page
+boundary shows one twice and the other never.
+
 ## The analysis pipeline
 
 `AnalysisRunner` runs one job end to end on the `analysisExecutor` pool: extract → match →
@@ -400,10 +420,11 @@ together would put thousands of `SAVED` applications in the offer list and silen
 
 `market` depends on `catalog` and — on the read side only — `profile`. Ingestion touches neither the
 candidate nor a persona: it resolves skill names through `catalog` and nothing else. The `profile`
-edge belongs to `MarketInsightsService` alone, which overlays the candidate's `SkillCoverage` onto
-the demand table so a row can read MET, PARTIAL or MISSING; an absent persona yields
-`SkillCoverage.EMPTY` rather than an error, because a corpus with no profile behind it still has a
-meaningful demand table. Keep the edge that narrow — the moment ingestion needs a profile, the
+edge belongs to `MarketInsightsService` alone, and is `ProfileCoverage` rather than the whole of
+`ProfileService` — the dashboard overlays the candidate's `SkillCoverage` onto the demand table so a
+row can read MET, PARTIAL or MISSING, and that is the only question it asks. An absent persona
+yields `SkillCoverage.EMPTY` rather than an error, because a corpus with no profile behind it still
+has a meaningful demand table. Keep the edge that narrow — the moment ingestion needs a profile, the
 corpus has stopped being a sample and started being about one person.
 
 It must **not** depend on `analysis`: the market-side measure is
