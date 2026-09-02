@@ -10,6 +10,7 @@ import com.jankowski.rafal.jobassistant.profile.CandidateProfile
 import com.jankowski.rafal.jobassistant.profile.ExperienceBullet
 import com.jankowski.rafal.jobassistant.profile.Proficiency
 import com.jankowski.rafal.jobassistant.profile.ProfileDetails
+import com.jankowski.rafal.jobassistant.profile.Project
 import com.jankowski.rafal.jobassistant.profile.ProfileSkill
 import com.jankowski.rafal.jobassistant.profile.WorkExperience
 import org.junit.jupiter.api.Test
@@ -141,5 +142,80 @@ class CvSelectionTest {
         // The bullet the profile cannot back and the skill it does not hold are both counted.
         assertEquals(listOf(99L), selection.droppedBulletIds)
         assertEquals(listOf("Terraform"), selection.droppedSkillNames)
+    }
+
+    @Test
+    fun `a role's badges name only the skills its rendered bullets evidence`() {
+        // The model keeps both skills but only the Spring Boot bullet, so the Kotlin bullet - the
+        // only evidence for Kotlin in this role - is dropped.
+        val tailored = TailoredCv(
+            summaryLine = "Backend engineer",
+            skillNames = listOf("Kotlin", "Spring Boot"),
+            bullets = listOf(TailoredBullet(secondBullet.id, "Halved p99 latency")),
+        )
+
+        val view = CvSelection.from(tailored, profile, catalog).toView(profile, catalog)
+
+        // A badge is a claim about a job. Kotlin is still honestly held - it stays in the skills
+        // rail - but nothing on this role's rendered lines backs it, so the badge row must not.
+        assertEquals(listOf("Spring Boot"), view.experiences.single().skills)
+        assertEquals(listOf("Kotlin"), view.skillGroups.first { it.category == "LANGUAGE" }.names)
+    }
+
+    @Test
+    fun `badges are the union of the rendered bullets, in first-appearance order`() {
+        val tailored = TailoredCv(
+            summaryLine = "Backend engineer",
+            skillNames = listOf("Kotlin", "Spring Boot"),
+            bullets = listOf(
+                TailoredBullet(secondBullet.id, "Halved p99 latency"),
+                TailoredBullet(firstBullet.id, "Shipped the payments service"),
+            ),
+        )
+
+        val view = CvSelection.from(tailored, profile, catalog).toView(profile, catalog)
+
+        // Reordered by the tailoring, so the badges follow the rendered order rather than the
+        // profile's: the technology the leading bullet rests on leads.
+        assertEquals(listOf("Spring Boot", "Kotlin"), view.experiences.single().skills)
+    }
+
+    @Test
+    fun `a project's badges follow the same rule as a role's`() {
+        val kotlinBullet = ExperienceBullet(20, "Wrote the parser", setOf(kotlinSkill.id))
+        val springBullet = ExperienceBullet(21, "Exposed it over HTTP", setOf(springBoot.id))
+        val withProject = profile.copy(
+            experiences = emptyList(),
+            projects = listOf(
+                Project(id = 1, name = "Side Project", bullets = listOf(kotlinBullet, springBullet))
+            ),
+        )
+
+        val tailored = TailoredCv(
+            summaryLine = "Backend engineer",
+            skillNames = listOf("Kotlin"),
+            bullets = listOf(TailoredBullet(kotlinBullet.id, "Wrote the parser")),
+        )
+
+        val view = CvSelection.from(tailored, withProject, catalog).toView(withProject, catalog)
+
+        assertEquals(listOf("Kotlin"), view.projects.single().skills)
+    }
+
+    @Test
+    fun `skills are grouped into catalog categories, most concrete first`() {
+        val tailored = TailoredCv(
+            summaryLine = "Backend engineer",
+            skillNames = listOf("Spring Boot", "Kotlin"),
+            bullets = listOf(TailoredBullet(firstBullet.id, "Shipped the payments service")),
+        )
+
+        val view = CvSelection.from(tailored, profile, catalog).toView(profile, catalog)
+
+        // The order is the CV's own, declared in DocumentViews - not the order the model listed
+        // the skills in, and not SkillCategory.ordinal.
+        assertEquals(listOf("LANGUAGE", "FRAMEWORK"), view.skillGroups.map { it.category })
+        assertEquals(listOf("Kotlin"), view.skillGroups[0].names)
+        assertEquals(listOf("Spring Boot"), view.skillGroups[1].names)
     }
 }

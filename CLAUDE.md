@@ -652,6 +652,18 @@ first sign tailoring has started guessing. Query the distribution, don't read ro
 select type, count(*), avg(dropped_skill_count) from generated_document group by type;
 ```
 
+**The CV layout is "Register", chosen in issue #14 and folded into `cv.html` in #73.** Three of its
+rules are load-bearing rather than decorative. Fonts are **base64-embedded with the `latin-ext`
+subset** in `templates/fragments/fonts.html`: Chromium embeds whatever it resolved *at render time*,
+`PlaywrightDocumentRenderer` calls `setContent` with no base URL so a relative `url(...)` cannot
+resolve at all, and `latin` alone carries no ł, ą, ę, ś or ż — a Polish CV falls back mid-word
+without it. Skills are grouped by `SkillCategory` in an order declared in `DocumentViews`, never
+`SkillCategory.ordinal`. And a role's **skill badges are the union over the bullets that actually
+render** — a skill whose only evidence tailoring dropped must not survive into the badge row, which
+is `CvSelection`'s rule restated for presentation. Badges are real `<span>` text nodes and never
+`::before` content, because `CvInvariant` scans `HtmlText.visibleText`: a skill name that exists
+only in CSS is a claim the fabrication guard cannot see.
+
 **The cover letter prompt must never invite naming an absent technology**, even in an honest
 negative ("I have not used Kubernetes"). The invariant has no notion of negation, so such a letter
 is rejected outright — the prompt and the guard have to agree.

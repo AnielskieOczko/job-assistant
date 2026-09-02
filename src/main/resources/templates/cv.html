@@ -3,102 +3,146 @@
 <head>
     <meta charset="UTF-8">
     <title th:text="${cv.fullName} + ' — CV'">CV</title>
+    <!--/* Embedded IBM Plex, latin + latin-ext. See the fragment for why it cannot be a link. */-->
+    <style th:replace="~{fragments/fonts :: embedded}"></style>
     <style>
-        /* Chromium renders this, so modern CSS is available. Single-column body keeps it
-           parseable by applicant tracking systems. */
+        /* "Register", chosen in issue #14 over two rival layouts and folded in from the prototypes
+           under docs/prototypes/cv. Single column throughout: the rejected two-column layout put a
+           genuinely separate reading order in a sidebar, which is what an ATS parses worst.
+
+           Chromium renders this, so modern CSS is available. */
         :root {
-            --ink: #16191d;
-            --muted: #5b6672;
-            --rule: #dfe4ea;
-            --accent: #1f5f8b;
-            --chip: #eef3f7;
+            --ink: #16181d;
+            --muted: #6b7178;
+            --rule: #c9ced6;
+            --chip: #eef0f3;
+            --chip-ink: #3d444c;
+            --pad: 13mm;
         }
 
-        @page {
-            size: A4;
-            margin: 14mm 14mm 16mm;
-        }
+        /* Margins live in the body padding, not in @page, so the header rule can be measured
+           against the same box as everything else. */
+        @page { size: A4; margin: 0; }
 
-        * { box-sizing: border-box; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
         html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
         body {
-            margin: 0;
-            font-family: "Inter", "Helvetica Neue", "Segoe UI", Roboto, "DejaVu Sans", Arial, sans-serif;
-            font-size: 10.2pt;
-            line-height: 1.45;
+            font-family: PlexSans, "Segoe UI", sans-serif;
+            font-feature-settings: 'kern' 1;
+            text-rendering: geometricPrecision;
+            font-size: 9.2pt;
+            line-height: 1.38;
             color: var(--ink);
             background: #fff;
+            padding: var(--pad) var(--pad) 9mm;
         }
 
-        header { border-bottom: 2px solid var(--accent); padding-bottom: 10px; margin-bottom: 16px; }
+        a { color: inherit; text-decoration: none; }
+        li { list-style: none; }
+        p { orphans: 2; widows: 2; }
+        h1, h2, h3 { font-weight: inherit; }
 
-        h1 {
-            margin: 0 0 2px;
-            font-size: 21pt;
-            font-weight: 650;
-            letter-spacing: -0.015em;
+        /* The portrait is optional by construction: no image, no second column, no gap left
+           behind. Nothing stores one yet - the slot is here so adding it is a column rather than
+           a redesign, and because a portrait is a direct identifier it will arrive from the
+           database at render time, never through a prompt. */
+        .head { display: grid; grid-template-columns: 1fr; gap: 0; }
+        .head.has-photo { grid-template-columns: 1fr 23mm; gap: 0 7mm; align-items: start; }
+        .head .meta { grid-column: 1 / -1; }
+        .portrait { width: 23mm; height: 28mm; object-fit: cover; border-radius: 2px; display: block; }
+
+        .name {
+            font-family: PlexCond;
+            font-weight: 600;
+            font-size: 28pt;
+            line-height: 0.95;
+            letter-spacing: -0.012em;
         }
 
-        .headline { margin: 0 0 8px; color: var(--accent); font-size: 11pt; font-weight: 550; }
+        .headline { font-size: 11pt; margin-top: 5px; }
 
-        .contacts {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 4px 14px;
-            font-size: 9pt;
+        /* The summary sits inside the header grid so a portrait shares its height rather than
+           setting it alone; without this a photo costs most of a page on its own. */
+        .summary { font-size: 9.6pt; margin-top: 8px; }
+
+        .meta {
+            font-family: PlexMono;
+            font-size: 7.4pt;
             color: var(--muted);
+            margin-top: 8px;
+            letter-spacing: -0.01em;
         }
 
-        .contacts a { color: inherit; text-decoration: none; }
+        .hr { height: 2.4px; background: var(--ink); margin: 10px 0 9px; }
 
-        .summary { margin: 0 0 18px; font-size: 10.4pt; }
-
-        section { margin-bottom: 16px; }
+        section { margin-bottom: 7px; }
 
         h2 {
-            margin: 0 0 8px;
-            font-size: 8.6pt;
-            font-weight: 700;
-            letter-spacing: 0.12em;
+            font-family: PlexMono;
+            font-size: 7.4pt;
+            font-weight: 500;
+            letter-spacing: 0.19em;
             text-transform: uppercase;
             color: var(--muted);
+            padding-bottom: 3px;
+            border-bottom: 1px solid var(--rule);
+            margin-bottom: 8px;
+            /* A section heading alone at the foot of a page reads as a section with no content. */
+            break-after: avoid;
         }
 
-        .skills { display: flex; flex-wrap: wrap; gap: 5px; }
+        /* The category rail: the catalog's own taxonomy doing the sorting a recruiter would
+           otherwise do by eye. */
+        .cat { display: grid; grid-template-columns: 22mm 1fr; gap: 1px 6mm; margin-bottom: 1px; }
+        .cat dt {
+            font-family: PlexMono;
+            font-size: 7pt;
+            letter-spacing: 0.09em;
+            color: var(--muted);
+            padding-top: 1.4px;
+        }
+        .cat dd { font-size: 9.2pt; line-height: 1.32; }
 
-        .chip {
+        .role { display: grid; grid-template-columns: 33mm 1fr; gap: 0 5mm; margin-bottom: 6px; break-inside: avoid; }
+        .when {
+            font-family: PlexMono;
+            font-size: 7.4pt;
+            color: var(--muted);
+            padding-top: 2.6px;
+            line-height: 1.6;
+            white-space: nowrap;
+        }
+        .role-title { font-weight: 600; font-size: 10.6pt; }
+        .company { font-size: 10.6pt; }
+        .url { display: block; margin-top: 2px; font-family: PlexMono; font-size: 7.2pt; color: var(--muted); }
+
+        .bullets { margin-top: 4px; }
+        .bullets li { padding-left: 11px; text-indent: -11px; margin-bottom: 1px; }
+        .bullets li::before { content: "–  "; color: var(--muted); }
+
+        /* One badge row per job, not per task. Real text nodes, never ::before content:
+           CvInvariant scans HtmlText.visibleText, and a skill name that exists only in CSS is a
+           skill the fabrication guard cannot see. */
+        .stack { margin-top: 3px; display: flex; flex-wrap: wrap; gap: 2.5px; }
+        .stack span {
+            font-family: PlexMono;
+            font-size: 6.9pt;
+            letter-spacing: 0.03em;
+            color: var(--chip-ink);
             background: var(--chip);
-            border-radius: 3px;
-            padding: 2.5px 7px;
-            font-size: 9pt;
+            padding: 1.3px 5px;
+            border-radius: 2px;
             white-space: nowrap;
         }
 
-        .role { margin-bottom: 12px; break-inside: avoid; }
+        .edu-row { display: grid; grid-template-columns: 33mm 1fr; gap: 0 5mm; margin-bottom: 2px; break-inside: avoid; }
+        .edu-row .when { padding-top: 0.6px; line-height: 1.38; }
 
-        .role-head {
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            gap: 12px;
-        }
+        .langs { font-size: 9.5pt; }
 
-        .role-title { font-weight: 620; }
-        .role-company { color: var(--accent); }
-        .role-period { color: var(--muted); font-size: 9pt; white-space: nowrap; }
-        .role a { display: inline-block; margin-top: 4px; color: var(--accent); font-size: 9pt; text-decoration: none; }
-
-        ul { margin: 5px 0 0; padding-left: 16px; }
-        li { margin-bottom: 3px; }
-
-        .education-item { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
-        .education-item .muted { color: var(--muted); font-size: 9pt; white-space: nowrap; }
-
-        .languages { display: flex; flex-wrap: wrap; gap: 4px 16px; }
-
-        .consent { font-size: 8pt; color: var(--muted); }
+        .consent { font-family: PlexMono; font-size: 6.6pt; line-height: 1.35; color: var(--muted); }
 
         /* Whatever section renders last must not carry trailing margin onto a page that was
            otherwise full - see issue #52. */
@@ -106,76 +150,84 @@
     </style>
 </head>
 <body>
-<header>
-    <h1 th:text="${cv.fullName}">Name</h1>
-    <p class="headline" th:if="${cv.headline}" th:text="${cv.headline}">Headline</p>
-    <div class="contacts">
-        <span th:each="contact : ${cv.contacts}" th:text="${contact}">contact</span>
-        <a th:each="link : ${cv.links}" th:href="${link.url}" th:text="${link.label}">link</a>
+<div class="head">
+    <div>
+        <h1 class="name" th:text="${cv.fullName}">Name</h1>
+        <p class="headline" th:if="${cv.headline}" th:text="${cv.headline}">Headline</p>
+        <p class="summary" th:if="${cv.summaryLine}" th:text="${cv.summaryLine}">Summary</p>
     </div>
-</header>
+    <p class="meta">
+        <span th:each="contact, it : ${cv.contacts}"
+              th:text="${(it.first ? '' : '   ·   ') + contact}">contact</span>
+        <a th:each="link, it : ${cv.links}" th:href="${link.url}"
+           th:text="${(it.first and #lists.isEmpty(cv.contacts) ? '' : '   ·   ') + link.label}">link</a>
+    </p>
+</div>
+<div class="hr"></div>
 
-<p class="summary" th:if="${cv.summaryLine}" th:text="${cv.summaryLine}">Summary</p>
-
-<section th:if="${!cv.skills.isEmpty()}">
+<section th:if="${!cv.skillGroups.isEmpty()}">
     <h2>Skills</h2>
-    <div class="skills">
-        <span class="chip" th:each="skill : ${cv.skills}" th:text="${skill}">skill</span>
-    </div>
+    <dl class="cat">
+        <th:block th:each="group : ${cv.skillGroups}">
+            <dt th:text="${group.category}">LANGUAGE</dt>
+            <dd th:text="${#strings.listJoin(group.names, ' · ')}">Kotlin · Java</dd>
+        </th:block>
+    </dl>
 </section>
 
 <section th:if="${!cv.experiences.isEmpty()}">
     <h2>Experience</h2>
     <div class="role" th:each="role : ${cv.experiences}">
-        <div class="role-head">
-            <div>
-                <span class="role-title" th:text="${role.roleTitle}">Role</span>
-                <span> · </span>
-                <span class="role-company" th:text="${role.company}">Company</span>
+        <div class="when" th:text="${role.period}">Mar 2021 — present</div>
+        <div>
+            <div class="role-title" th:text="${role.roleTitle}">Role</div>
+            <div class="company" th:text="${role.company}">Company</div>
+            <ul class="bullets" th:if="${!role.bullets.isEmpty()}">
+                <li th:each="bullet : ${role.bullets}" th:text="${bullet}">bullet</li>
+            </ul>
+            <div class="stack" th:if="${!role.skills.isEmpty()}">
+                <span th:each="skill : ${role.skills}" th:text="${skill}">Kotlin</span>
             </div>
-            <span class="role-period" th:text="${role.period}">2021 — present</span>
         </div>
-        <ul th:if="${!role.bullets.isEmpty()}">
-            <li th:each="bullet : ${role.bullets}" th:text="${bullet}">bullet</li>
-        </ul>
     </div>
 </section>
 
 <section th:if="${!cv.projects.isEmpty()}">
     <h2>Projects</h2>
     <div class="role" th:each="project : ${cv.projects}">
-        <div class="role-head">
-            <span class="role-title" th:text="${project.name}">Project</span>
-            <span class="role-period" th:text="${project.period}">2023</span>
+        <div class="when" th:text="${project.period}">2023</div>
+        <div>
+            <div class="role-title" th:text="${project.name}">Project</div>
+            <a class="url" th:if="${project.url}" th:href="${project.url}" th:text="${project.url}">link</a>
+            <ul class="bullets" th:if="${!project.bullets.isEmpty()}">
+                <li th:each="bullet : ${project.bullets}" th:text="${bullet}">bullet</li>
+            </ul>
+            <div class="stack" th:if="${!project.skills.isEmpty()}">
+                <span th:each="skill : ${project.skills}" th:text="${skill}">Kotlin</span>
+            </div>
         </div>
-        <ul th:if="${!project.bullets.isEmpty()}">
-            <li th:each="bullet : ${project.bullets}" th:text="${bullet}">bullet</li>
-        </ul>
-        <a th:if="${project.url}" th:href="${project.url}" th:text="${project.url}">link</a>
     </div>
 </section>
 
 <section th:if="${!cv.education.isEmpty()}">
     <h2>Education</h2>
-    <div class="education-item" th:each="item : ${cv.education}">
+    <div class="edu-row" th:each="item : ${cv.education}">
+        <span class="when" th:text="${item.period}">2014 — 2018</span>
         <span th:text="${item.summary}">Degree</span>
-        <span class="muted" th:text="${item.period}">2014 — 2018</span>
     </div>
 </section>
 
 <section th:if="${!cv.credentials.isEmpty()}">
     <h2>Credentials</h2>
-    <div class="education-item" th:each="item : ${cv.credentials}">
+    <div class="edu-row" th:each="item : ${cv.credentials}">
+        <span class="when" th:text="${item.period}">Issued Jan 2024</span>
         <span th:text="${item.title + ' — ' + item.issuer}">Title — Issuer</span>
-        <span class="muted" th:text="${item.period}">Issued Jan 2024</span>
     </div>
 </section>
 
 <section th:if="${!cv.languages.isEmpty()}">
     <h2>Languages</h2>
-    <div class="languages">
-        <span th:each="language : ${cv.languages}" th:text="${language}">English (C1)</span>
-    </div>
+    <p class="langs" th:text="${#strings.listJoin(cv.languages, ' · ')}">English (C1)</p>
 </section>
 
 <!-- Deliberately the last section on the page - see issue #52. Rendered from the database, never

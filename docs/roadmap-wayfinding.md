@@ -24,7 +24,8 @@ which can be run in parallel because they only gather facts.
 
 **Every leaf is now closed.** The three research tickets, the CV prototype, both grillings and the
 alert-email task are all resolved, and their findings are checked in under `docs/research/` — except
-the CV prototype, which lives on branch `prototype/cv-layouts`.
+the CV prototype, whose output is now the production template itself (issue #73); the throwaway
+layouts it was judged from have been deleted, and `prototype/cv-layouts` is merged history.
 
 **[Rank and sequence the roadmap](https://github.com/AnielskieOczko/job-assistant/issues/15) is the
 only unblocked ticket, and it is the one this map exists to reach.** Resolving it rewrites
@@ -187,7 +188,8 @@ under **`docs/research/`**.
   page is a hero figure, a KPI row, exactly one emphasis bar chart, and the priced-gap table.
 
 - **[What should a tailored CV look like?](https://github.com/AnielskieOczko/job-assistant/issues/14)**
-  → prototypes on branch `prototype/cv-layouts`, under `docs/prototypes/cv/`. **Register** wins:
+  → **Register** wins — since issue #73 it *is* `src/main/resources/templates/cv.html`, and the
+  throwaway layouts it was chosen against have been deleted:
   single column, skills sorted into `SkillCategory` instead of one undifferentiated chip run, dates
   in a mono rail, an **optional portrait**, and **skill badges per job** — the union of a role's
   bullet skills, taken over the bullets that actually render so a skill whose evidence was dropped
