@@ -37,24 +37,29 @@ deliberately — and to say so here — rather than to quietly promote a single 
 | # | Item | Issue | Feasibility | Complexity | Effort | Value on the axis |
 |---|---|---|---|---|---|---|
 | 1 | Promote a corpus offer into a real offer | [#79](https://github.com/AnielskieOczko/job-assistant/issues/79) | certain | low | ~1 session | **Highest** |
-| 2 | Offer shortlist ranking | [#80](https://github.com/AnielskieOczko/job-assistant/issues/80) | certain | low | ~1 session | **Direct** |
-| 3 | AI-assisted polish of a profile field | [#81](https://github.com/AnielskieOczko/job-assistant/issues/81) | certain | medium | ~2 sessions | **Upstream leverage** |
-| 4 | Generated-document library and reuse | [#82](https://github.com/AnielskieOczko/job-assistant/issues/82) | certain | low–medium | ~1.5 sessions | **Visibility** |
-| 5 | Privacy indicators in the UI | [#83](https://github.com/AnielskieOczko/job-assistant/issues/83) | certain | low–medium | ~1 session | Zero; wins the tiebreak |
-| 6 | The dialog-reseed rule, stated once with a test | [#72](https://github.com/AnielskieOczko/job-assistant/issues/72) | certain | low | ~½ session | Zero, but a real bug |
-| 7 | The wire-contract guard, Path B | [#68](https://github.com/AnielskieOczko/job-assistant/issues/68) | certain | low | ~½ session | Zero; closes a silent hole |
-| 8 | GitHub repository → profile Project import | [#19](https://github.com/AnielskieOczko/job-assistant/issues/19) | thin source data | medium | ~2 sessions | ~Zero |
-| 9 | The remaining profile-UI refactor | [#72](https://github.com/AnielskieOczko/job-assistant/issues/72) | certain | low | ~1 session | Zero |
-| 10 | Host this application | [#62](https://github.com/AnielskieOczko/job-assistant/issues/62) | needs a decision first | high | many sessions | ~Zero; portfolio |
+| 2 | Record which document was sent | [#85](https://github.com/AnielskieOczko/job-assistant/issues/85) | certain | low | ~½ session | **A closing window** |
+| 3 | Offer shortlist ranking | [#80](https://github.com/AnielskieOczko/job-assistant/issues/80) | certain | low | ~1 session | **Direct** |
+| 4 | AI-assisted polish of a profile field | [#81](https://github.com/AnielskieOczko/job-assistant/issues/81) | certain | medium | ~2 sessions | **Upstream leverage** |
+| 5 | Generated-document library and reuse | [#82](https://github.com/AnielskieOczko/job-assistant/issues/82) | certain | low–medium | ~1.5 sessions | **Visibility** |
+| 6 | Privacy indicators in the UI | [#83](https://github.com/AnielskieOczko/job-assistant/issues/83) | certain | low–medium | ~1 session | Zero; wins the tiebreak |
+| 7 | The dialog-reseed rule, stated once with a test | [#72](https://github.com/AnielskieOczko/job-assistant/issues/72) | certain | low | ~½ session | Zero, but a real bug |
+| 8 | The wire-contract guard, Path B | [#68](https://github.com/AnielskieOczko/job-assistant/issues/68) | certain | low | ~½ session | Zero; closes a silent hole |
+| 9 | GitHub repository → profile Project import | [#19](https://github.com/AnielskieOczko/job-assistant/issues/19) | thin source data | medium | ~2 sessions | ~Zero |
+| 10 | The remaining profile-UI refactor | [#72](https://github.com/AnielskieOczko/job-assistant/issues/72) | certain | low | ~1 session | Zero |
+| 11 | Host this application | [#62](https://github.com/AnielskieOczko/job-assistant/issues/62) | needs a decision first | high | many sessions | ~Zero; portfolio |
 
-**The top four are 1–4**, and they are the four with shaping tickets written to be picked up cold.
-Item 5 has a ticket too, because it is a feature that was asked for rather than a line in a list.
+**The top four are 1–4.** Items 1–6 all carry shaping tickets written to be picked up cold; the
+ranking only required the top four to be shaped, and the other two are features that were asked for
+rather than lines in a list.
 
-Two orderings in that table look surprising and are deliberate. **Hosting is last, not fifth** —
+Three orderings in that table look surprising and are deliberate. **Item 2 is ranked out of
+value-for-effort order** — it is second because its cost rises with every application sent without
+it, not because it is the second most valuable thing; see its section below. **Hosting is last, not
+fifth** —
 it is simultaneously the lowest-value item on the axis and by far the most expensive, so
 value-for-effort puts it at the bottom on its own arithmetic; the portfolio tiebreak only separates
-items of comparable cost, and hosting is not comparable to anything else here. And **item 3 outranks
-item 4** even though it is the larger build, because polishing a project description once improves
+items of comparable cost, and hosting is not comparable to anything else here. And **item 4 outranks
+item 5** even though it is the larger build, because polishing a project description once improves
 every CV generated from it afterwards, whereas the library improves one document at a time.
 
 ---
@@ -77,7 +82,35 @@ the paste path that is already there.
   thousands of rows would become thousands of `SAVED` applications and silently change what
   `AggregateGapReport.analysedOffers` counts. Promotion must not reopen that door in miniature.
 
-## 2. Offer shortlist ranking
+## 2. Record which document was sent
+
+**This is ranked out of value-for-effort order, and the reason is the only one of its kind on this
+list: it is the item whose cost rises with every day it is not built.**
+
+`PUT /api/offers/{id}/status` records `status`, `appliedOn` and `notes`, so an offer can be marked
+`APPLIED` with a date. Nothing links an application to the **document that was actually sent**.
+`generated_document` carries `offer_id`, `profile_id`, `analysis_id`, `profile_revision`, both drop
+counts and `consent_clause_language`, and no notion of having been sent — so three CVs generated for
+one offer leave no record of which went out. Free-text `notes` is the only place that fact can
+currently live, and free text is not queryable.
+
+Zero applications have been sent as of 2026-09-03. That is precisely why this is urgent rather than
+why it can wait: **the data that makes outcome calibration worth reading is being defined now.** If
+applications are recorded as `APPLIED` and nothing more, then when the calibration gate opens at 30
+outcomes the only available correlation is `matchScore` against result. Whether a freshly tailored
+CV outperformed a reused one, or whether a polished project description changed anything, would be
+unanswerable — the link was never captured, and unrecorded applications cannot be reconstructed.
+
+It is therefore a **prerequisite of the gated calibration entry**, not a neighbour of it.
+
+- **The link belongs to the application**, which has at most one CV and one cover letter that were
+  sent; a document may exist and never be sent.
+- **Marking sent does not change status, and status does not mark sent.** They are separate facts,
+  and deriving either from the other would fabricate a record.
+- **Optional and reversible.** An application made outside the tool has no document to name, and
+  forcing one would put a false row in the table calibration will eventually read.
+
+## 3. Offer shortlist ranking
 
 `analysis.match_score` is stored on every completed analysis and **nothing in the offer list reads
 it**: `JdbcOfferService.list()` returns offers newest-first, `OfferSummary` carries no score, and
@@ -93,7 +126,7 @@ Two traps, both instances of rules this repository already states:
   not rank as a zero-percent match. The list needs to say how many of its offers are actually
   scored — a ranked list of ten over three analyses is a ranking of three.
 
-## 3. AI-assisted polish of a profile field
+## 4. AI-assisted polish of a profile field
 
 The profile is hand-authored ground truth, and its prose is the input to every CV ever generated
 from it. Improving a project description once improves every tailored CV afterwards. That leverage
@@ -122,7 +155,7 @@ same shape.
 - **A fifth `LlmTask`**, so polish is routable to a cheap model without touching extraction or
   narrative, and so its spend is separable in `llm_spend_daily`.
 
-## 4. Generated-document library and reuse
+## 5. Generated-document library and reuse
 
 Every generated document is reachable **only through the offer that produced it**. There is no
 cross-offer view, which means there is no way to look at what you actually sent an employer. Two
@@ -145,7 +178,7 @@ and one column.
 - **Where it lives:** a top-level `Documents` route beside Offers, Profile and Market, plus a
   *"reuse an existing CV"* action on an offer's Documents tab that opens the same list filtered.
 
-## 5. Privacy indicators in the UI
+## 6. Privacy indicators in the UI
 
 The application has a genuinely strong privacy architecture — ADR-0002, three enforced layers, a
 guard that refuses outgoing prompts — and the UI says nothing about any of it. This scores zero on
@@ -172,20 +205,20 @@ private"* and later sees their employer history in a prompt has been misled by a
   that they are omitted by construction rather than policed.
 - Clicking an indicator names the mechanism — minimize, scrub, or assert — in a sentence.
 
-## 6–9. The tail
+## 7–10. The tail
 
-- **6 — The dialog-reseed rule** (part of [#72](https://github.com/AnielskieOczko/job-assistant/issues/72)).
+- **7 — The dialog-reseed rule** (part of [#72](https://github.com/AnielskieOczko/job-assistant/issues/72)).
   A subtle correctness rule with a non-obvious failure mode — a *discarded* edit reappearing as
   though it had been saved — currently living as three independent copies with no test behind any.
   It ranks above the refactor that surrounds it because it is a bug, and because what it corrupts is
   hand-authored ground truth.
-- **7 — [#68](https://github.com/AnielskieOczko/job-assistant/issues/68) Path B.** `ApiContractTest`
+- **8 — [#68](https://github.com/AnielskieOczko/job-assistant/issues/68) Path B.** `ApiContractTest`
   discovers wire DTOs by scan rather than by 62 hand-written imports. Cheap, and it closes the hole
   that is genuinely silent today: a DTO added without a test entry is unprotected and nothing says
   so. **Path A — generating the TypeScript from an OpenAPI schema — is not ranked here**, because
   it changes a convention `CLAUDE.md` states deliberately; that decision is #68's deliverable, and
   doing Path B after Path A would be wasted work.
-- **8 — [#19](https://github.com/AnielskieOczko/job-assistant/issues/19), the GitHub import.**
+- **9 — [#19](https://github.com/AnielskieOczko/job-assistant/issues/19), the GitHub import.**
   Ranked normally rather than declined, and it lands low. Research #12 found `description` on 5 of
   11 repositories, `topics` on none, `license` on none, and the SBOM endpoint 404ing unpredictably;
   everything richer is a derived signal needing a human review queue before it becomes profile
@@ -193,13 +226,13 @@ private"* and later sees their employer history in a prompt has been misled by a
   on eleven repositories once — which is throughput, and the axis excludes throughput by name. The
   reusable part is the review-queue pattern, not the data. Revisit if the repository count passes
   roughly thirty.
-- **9 — [#72](https://github.com/AnielskieOczko/job-assistant/issues/72), the remaining refactor.**
+- **10 — [#72](https://github.com/AnielskieOczko/job-assistant/issues/72), the remaining refactor.**
   The row-actions and confirm-delete wiring across seven profile cards. It carries its own bar,
   set by the issue and kept here: **it must reduce lines, or it should be closed undone** — measured
   before the PR is opened, not after, because #65 was judged on a line count that turned out to be a
   wash.
 
-## 10. Host this application ([#62](https://github.com/AnielskieOczko/job-assistant/issues/62))
+## 11. Host this application ([#62](https://github.com/AnielskieOczko/job-assistant/issues/62))
 
 Last, for the reason given in the caveat above. #62 carries a full dependency enumeration and a
 free-tier survey current as of 2026-08-31; nothing in it has been decided, and the survey ages
@@ -264,6 +297,12 @@ without its denominator*. Its cheapness is the trap, not the argument.
 **The trigger, so this is falsifiable rather than indefinite:** build it when applications at
 `APPLIED` or beyond with a recorded outcome reach **30**. That number is the one the market
 dashboard already uses, so it is consistent rather than invented.
+
+**Item 2 is this entry's prerequisite, and that is why it is ranked second.** A gate that opens onto
+data nobody captured is not a gate, it is a delay. Reaching thirty outcomes while recording only
+`APPLIED` would make the cheap half of calibration possible and the interesting half permanently
+impossible, because the link between an application and the document it sent cannot be reconstructed
+after the fact.
 
 ## Declined
 

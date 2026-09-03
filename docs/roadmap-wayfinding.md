@@ -14,7 +14,8 @@ ticket under it is resolved, and the last one,
 [Rank and sequence the roadmap](https://github.com/AnielskieOczko/job-assistant/issues/15),
 rewrote `docs/roadmap.md` as its deliverable and filed shaping tickets
 [#79](https://github.com/AnielskieOczko/job-assistant/issues/79)–[#83](https://github.com/AnielskieOczko/job-assistant/issues/83)
-for the top of the new order.
+for the top of the new order, joined shortly after by
+[#85](https://github.com/AnielskieOczko/job-assistant/issues/85).
 
 The three research findings this map produced live under `docs/research/`, one file per ticket, each
 citing a source against every claim. Those remain current and are still worth reading before
