@@ -20,21 +20,28 @@ five deepening candidates, plus three things that look like candidates and are d
 alone. It is an input to a conversation, not a decision: nothing in it has been agreed, and anything
 acted on should move to `docs/roadmap.md` or an ADR as it is settled.
 
-## What is being decided right now
+## What to build next
 
-The next phase of the application is being planned as a wayfinder map, and
-**`docs/roadmap-wayfinding.md` is where a new session picks that up.** Read it before proposing a
-feature: it records what the effort is aiming at, what has already been ruled out and why, and four
-things that look missing but already ship — application lifecycle tracking, the unmatched-term
-triage UI, output-language parameterisation, and cross-offer skill aggregation.
+**`docs/roadmap.md` is the answer, and it is where a new session picks up.** It holds a ranked,
+sequenced roadmap: every item carrying an explicit feasibility, complexity and effort verdict and a
+value statement written against a stated axis, plus what was declined, what is gated on data that
+does not exist yet, and what already shipped. Read it before proposing a feature. The top five items
+each have a shaping ticket on GitHub (#79–#83); where an item has an issue number, **GitHub is
+canonical** and the file is a summary.
 
-The live map is GitHub issue #9 with its child issues; `docs/roadmap-wayfinding.md` is a checked-in
-snapshot of it and says so. Findings from resolved research tickets live in
-`docs/research/`, one file per ticket, each citing a source against every claim. Continue the effort with `/mattpocock-skills:wayfinder 9`, and refresh
-the snapshot in the same commit that resolves a ticket. When the two disagree, GitHub is right.
+The ranking axis is **application quality first, learning direction second, explicitly not
+throughput**, with portfolio value breaking ties. Hosting ranks last under it, deliberately — see
+the caveat in that file before promoting anything past the axis.
 
-`docs/roadmap.md` is a different file with a different job: it holds decisions already taken for
-work not yet started. Rewriting it is the last act of the current map, not an input to it.
+Four things look missing and already ship: application lifecycle tracking, the unmatched-term triage
+UI, output-language parameterisation, and cross-offer skill aggregation. `docs/roadmap.md` lists ten
+more shipped since the ranking was commissioned.
+
+`docs/roadmap-wayfinding.md` is the **finished** wayfinder effort (issue #9, closed 2026-09-03) that
+produced that ranking. It is a record, not a live map, and nothing in it is an instruction — but it
+is where the reasoning lives for what was ruled out and why, so read it before reopening a question
+it settled. Research findings from its resolved tickets are in `docs/research/`, one file per
+ticket, each citing a source against every claim.
 
 ## The rule that governs the whole design
 

@@ -1,53 +1,303 @@
 # Roadmap
 
-Decisions already taken for work not yet started, recorded so the next branch does not relitigate
-them. Everything here was settled alongside `docs/adr/0001-per-entity-profile-crud.md`; the shipped
-branch was deliberately shaped so neither of these becomes a redesign.
+Decisions already taken for work not yet started, ranked and sequenced, recorded so the next branch
+does not relitigate them.
 
-Sequence: profile CRUD (**done**) → multi-profile → user accounts. Each is independently shippable,
-and each earlier step makes the next one mostly mechanical.
+This file is the output of [issue #15](https://github.com/AnielskieOczko/job-assistant/issues/15),
+which closed the roadmap wayfinding effort on 2026-09-03. `docs/roadmap-wayfinding.md` holds the
+reasoning that produced it and is now a record of a finished effort rather than a live map;
+`docs/architecture-review-2026-08.md` is a separate input, a snapshot of where the codebase is
+shallow. **This file is the one that says what to build next.**
 
-## 2. `feat/multi-profile`
+The top five items each have a shaping ticket on GitHub. Where an item has an issue number, GitHub
+is canonical and this file is a summary.
 
-One profile per persona — "Java developer", "application consultant" — because a single profile
-tailors badly to two different kinds of role.
+## The ranking axis
 
-A `profile` root table (`id`, `name`, `is_default`, `revision`), with every profile table
-(`profile_link`, `profile_skill`, `work_experience`, `education`, `language_skill`) gaining a
-`profile_id` foreign key. The `profile_details` singleton and its `check (id = 1)` constraint go
-away, and `revision` moves from `profile_details` onto `profile`.
+Fixed by conversation on 2026-08-26 and unchanged by this ranking:
 
-- **Offers stay unowned by a profile.** An offer is an offer; only the *analysis* is profile-scoped.
-  `analysis` and `generated_document` gain `profile_id`.
-- **Scoping.** `GET /api/offers/{id}/analyses/latest?profileId=` and
-  `GET /api/analyses/aggregate?profileId=`, both defaulting to the default profile. `OfferLayout`
-  gains a profile switcher, and the user picks a profile before running an analysis. Without this,
-  "latest" is ambiguous the moment one offer is analysed against two personas.
-- **Exactly one default.** `create unique index profile_one_default on profile (is_default) where
-  is_default`. Setting a default is a transactional swap. Deleting the default is a 409 unless it is
-  the last profile. The first profile created is the default.
-- **Endpoints** become `/api/profiles/{profileId}/skills/{id}` and so on — a path segment in front
-  of what already exists, plus one file of changes in `frontend/src/api/profile.ts`.
+**The quality of applications first** — better-targeted offers, a CV that survives a recruiter's
+ten-second scan, more interviews per application. **Learning direction second** — the app telling
+the candidate what to learn next. Explicitly **not throughput**: the paste-analyse-generate path is
+already fast, and volume is not the bottleneck in a real job hunt. Portfolio value breaks ties.
 
-### The risk that matters
+### The caveat this ranking had to write down
 
-`CvInvariant`, `RequirementMatcher` and `SkillCoverage` must all read the **selected** profile's
-`heldSkillIds`, never a union across profiles. Otherwise a CV for the consultant persona can claim
-Kubernetes because the developer persona holds it — the exact fabrication the whole design exists to
-prevent, arriving through a new door.
+Hosting scores approximately zero on that axis and therefore ranks last. That is the axis working,
+not failing: a loopback tool on your own machine produces exactly the same CV, the same gap report
+and the same tailored letter as one behind a URL, and nobody gets an interview because the
+application has a hostname. Hosting is justified by portfolio value and by convenience.
 
-This needs a dedicated test with two profiles holding disjoint skills. Care is not sufficient.
+The axis was **not** amended to accommodate it. If the job hunt ends, or if showing the tool to
+someone becomes the point rather than a side effect, that is the moment to revisit the axis
+deliberately — and to say so here — rather than to quietly promote a single item past it.
 
-## 3. `feat/user-accounts`
+## The order
 
-A `User` root (email, username, password) owning profiles, offers and model calls, with `user_id` on
-the owned tables.
+| # | Item | Issue | Feasibility | Complexity | Effort | Value on the axis |
+|---|---|---|---|---|---|---|
+| 1 | Promote a corpus offer into a real offer | [#79](https://github.com/AnielskieOczko/job-assistant/issues/79) | certain | low | ~1 session | **Highest** |
+| 2 | Offer shortlist ranking | [#80](https://github.com/AnielskieOczko/job-assistant/issues/80) | certain | low | ~1 session | **Direct** |
+| 3 | AI-assisted polish of a profile field | [#81](https://github.com/AnielskieOczko/job-assistant/issues/81) | certain | medium | ~2 sessions | **Upstream leverage** |
+| 4 | Generated-document library and reuse | [#82](https://github.com/AnielskieOczko/job-assistant/issues/82) | certain | low–medium | ~1.5 sessions | **Visibility** |
+| 5 | Privacy indicators in the UI | [#83](https://github.com/AnielskieOczko/job-assistant/issues/83) | certain | low–medium | ~1 session | Zero; wins the tiebreak |
+| 6 | The dialog-reseed rule, stated once with a test | [#72](https://github.com/AnielskieOczko/job-assistant/issues/72) | certain | low | ~½ session | Zero, but a real bug |
+| 7 | The wire-contract guard, Path B | [#68](https://github.com/AnielskieOczko/job-assistant/issues/68) | certain | low | ~½ session | Zero; closes a silent hole |
+| 8 | GitHub repository → profile Project import | [#19](https://github.com/AnielskieOczko/job-assistant/issues/19) | thin source data | medium | ~2 sessions | ~Zero |
+| 9 | The remaining profile-UI refactor | [#72](https://github.com/AnielskieOczko/job-assistant/issues/72) | certain | low | ~1 session | Zero |
+| 10 | Host this application | [#62](https://github.com/AnielskieOczko/job-assistant/issues/62) | needs a decision first | high | many sessions | ~Zero; portfolio |
 
-**It ships together with authentication, not before it.** A `user_id` column with no login is a
-value that is always `1`, and a stored password with no auth is a liability that looks like a
-security boundary while enforcing none. Isolation cannot be meaningfully tested until there is a way
-to be a different user. Backfill stays trivial for exactly as long as there is one user, so
-deferring costs almost nothing while doing it early buys nothing that can be verified.
+**The top four are 1–4**, and they are the four with shaping tickets written to be picked up cold.
+Item 5 has a ticket too, because it is a feature that was asked for rather than a line in a list.
 
-This step reverses `CLAUDE.md`'s opening premise — "Single user, no authentication, bound to
-loopback" — and deserves its own ADR at that point rather than arriving as silent drift.
+Two orderings in that table look surprising and are deliberate. **Hosting is last, not fifth** —
+it is simultaneously the lowest-value item on the axis and by far the most expensive, so
+value-for-effort puts it at the bottom on its own arithmetic; the portfolio tiebreak only separates
+items of comparable cost, and hosting is not comparable to anything else here. And **item 3 outranks
+item 4** even though it is the larger build, because polishing a project description once improves
+every CV generated from it afterwards, whereas the library improves one document at a time.
+
+---
+
+## 1. Promote a corpus offer into a real offer
+
+**The market corpus is a thing you look at, not a source you apply from.** 1,505 offers are ingested
+and counted; `CLAUDE.md` specifies the way out — *"Saving one for real is an explicit copy"* — and
+**no code path does it**. There is no endpoint, no service method, nothing. This is the only item on
+the list that converts an already-paid-for corpus into applications, which is the first phrase of
+the ranking axis.
+
+It stays small because the pieces exist: `market_offer` carries full posting prose from solid.jobs,
+and `job_offer` already deduplicates by `contentHash`, so promoting is handing the corpus text to
+the paste path that is already there.
+
+- **Provenance is part of the row, not a comment.** A promoted offer must be distinguishable from a
+  pasted one, or the corpus quietly becomes indistinguishable from the candidate's own reading.
+- **One at a time, by an explicit action.** The reason `market_offer` is not `job_offer` is that
+  thousands of rows would become thousands of `SAVED` applications and silently change what
+  `AggregateGapReport.analysedOffers` counts. Promotion must not reopen that door in miniature.
+
+## 2. Offer shortlist ranking
+
+`analysis.match_score` is stored on every completed analysis and **nothing in the offer list reads
+it**: `JdbcOfferService.list()` returns offers newest-first, `OfferSummary` carries no score, and
+`OffersPage.tsx` sorts on `createdAt`. Which of your saved offers you match best is currently
+invisible without opening each one in turn.
+
+Two traps, both instances of rules this repository already states:
+
+- **A ranking needs a total order.** Sorting on score alone lets two equal offers swap between
+  requests, and a page boundary then shows one twice and the other never — the same rule
+  `CoverageStatus.UNMET_FIRST` carries. Tie-break on an id.
+- **An unscored offer has no score, and null is not zero.** An offer that was never analysed must
+  not rank as a zero-percent match. The list needs to say how many of its offers are actually
+  scored — a ranked list of ten over three analyses is a ranking of three.
+
+## 3. AI-assisted polish of a profile field
+
+The profile is hand-authored ground truth, and its prose is the input to every CV ever generated
+from it. Improving a project description once improves every tailored CV afterwards. That leverage
+is why this outranks the library despite being the larger build.
+
+**It sits on rule one and is shaped so that it does not cross it.** The precedent is already in the
+codebase, in `LlmTask.TRIAGE`: *"Never authoritative … everything it returns is re-resolved against
+the catalog and dropped if it does not exist, and a human still clicks approve."* Polish takes the
+same shape.
+
+- **The model suggests; the user's accept is the write.** Nothing reaches `profile` except through
+  the existing CRUD path, driven by a human click. "No model writes to the profile" stays literally
+  true.
+- **The suggestion is scanned before it is shown.** `CvInvariant`'s core check — *this text names a
+  catalog skill the profile does not hold* — is currently welded to document rendering and needs
+  extracting, the way `ProfileCoverage` was extracted in #66. A suggestion naming an unheld skill is
+  **shown with the term flagged, not refused**: unlike a CV, nothing is going to an employer yet,
+  and the honest response may be to declare the skill.
+- **Free prose only.** Project name and description, experience bullet text, the career goal. Never
+  skill names — those are catalog-resolved ids, not text — and never dates, employers or
+  identifiers.
+- **A project's URL must not enter the prompt.** `JdbcProfileService.identities()` folds project
+  URLs into `linkUrls` precisely because `github.com/AnielskieOczko` names the candidate as surely
+  as an email does, so `ProfileIdentityInspector` would refuse the call. That is the guard working;
+  the prompt builder is what has to be right.
+- **A fifth `LlmTask`**, so polish is routable to a cheap model without touching extraction or
+  narrative, and so its spend is separable in `llm_spend_daily`.
+
+## 4. Generated-document library and reuse
+
+Every generated document is reachable **only through the offer that produced it**. There is no
+cross-offer view, which means there is no way to look at what you actually sent an employer. Two
+similar Java offers do not always justify two generations — reusing a CV you already read and
+approved is a legitimate decision the application currently cannot express.
+
+`GeneratedDocument` already carries what a library needs: type, language, `createdAt`,
+`profileRevision`, both drop counts and `consentClauseLanguage`. What is missing is the read path
+and one column.
+
+- **Reuse is a copy with provenance**, not a link. A new `generated_document` row for the target
+  offer carrying `source_document_id`, so the list can say *"reused from &lt;offer&gt;"* and the
+  drop counts are never misread as this offer's tailoring. A row that claims a tailoring which never
+  happened is the same failure as a rate without its denominator.
+- **The copy re-runs `CvInvariant`.** It costs no model call, and it catches the case the original
+  generation could not: a skill deleted from the profile since is now a fabricated claim on a
+  document about to be sent.
+- **A trailing `profileRevision` is reported, not hidden.** The stored HTML was true when written;
+  a moved revision makes it out of date rather than wrong, and the library should say which.
+- **Where it lives:** a top-level `Documents` route beside Offers, Profile and Market, plus a
+  *"reuse an existing CV"* action on an offer's Documents tab that opens the same list filtered.
+
+## 5. Privacy indicators in the UI
+
+The application has a genuinely strong privacy architecture — ADR-0002, three enforced layers, a
+guard that refuses outgoing prompts — and the UI says nothing about any of it. This scores zero on
+the ranking axis and wins the portfolio tiebreak outright: it is the codebase's best story and it is
+currently invisible to anyone the application is shown to.
+
+**A two-state shield would be a lie, and that is the whole design.** There are three states:
+
+| State | Fields | Mechanism |
+|---|---|---|
+| Never sent, **enforced** | name, email, phone, profile links, project URLs | `PromptPrivacyInvariant` refuses the prompt |
+| Never sent, **by construction** | location, portrait, consent clause | Prompt builders omit it; no guard |
+| **Sent** to the model | employers, schools, dates, bullet text, skills | Tailoring is worthless without them |
+
+The third row is the one most worth rendering. A user who reads a shield as *"my profile is
+private"* and later sees their employer history in a prompt has been misled by a well-meaning icon.
+
+- **The manifest comes from the backend**, derived from the same source the invariant checks, with a
+  test asserting the enforced set equals what `PromptPrivacyInvariant` actually inspects. A
+  hardcoded frontend list that says "protected" about a field the guard stopped covering is worse
+  than no badge at all.
+- **The two "never sent" states render differently.** Collapsing them claims enforcement that
+  `location` and the portrait do not have — and `PromptPrivacyInvariant`'s own comment is explicit
+  that they are omitted by construction rather than policed.
+- Clicking an indicator names the mechanism — minimize, scrub, or assert — in a sentence.
+
+## 6–9. The tail
+
+- **6 — The dialog-reseed rule** (part of [#72](https://github.com/AnielskieOczko/job-assistant/issues/72)).
+  A subtle correctness rule with a non-obvious failure mode — a *discarded* edit reappearing as
+  though it had been saved — currently living as three independent copies with no test behind any.
+  It ranks above the refactor that surrounds it because it is a bug, and because what it corrupts is
+  hand-authored ground truth.
+- **7 — [#68](https://github.com/AnielskieOczko/job-assistant/issues/68) Path B.** `ApiContractTest`
+  discovers wire DTOs by scan rather than by 62 hand-written imports. Cheap, and it closes the hole
+  that is genuinely silent today: a DTO added without a test entry is unprotected and nothing says
+  so. **Path A — generating the TypeScript from an OpenAPI schema — is not ranked here**, because
+  it changes a convention `CLAUDE.md` states deliberately; that decision is #68's deliverable, and
+  doing Path B after Path A would be wasted work.
+- **8 — [#19](https://github.com/AnielskieOczko/job-assistant/issues/19), the GitHub import.**
+  Ranked normally rather than declined, and it lands low. Research #12 found `description` on 5 of
+  11 repositories, `topics` on none, `license` on none, and the SBOM endpoint 404ing unpredictably;
+  everything richer is a derived signal needing a human review queue before it becomes profile
+  truth. Since #50 shipped `Project` as hand-authored, the import's remaining value is saving typing
+  on eleven repositories once — which is throughput, and the axis excludes throughput by name. The
+  reusable part is the review-queue pattern, not the data. Revisit if the repository count passes
+  roughly thirty.
+- **9 — [#72](https://github.com/AnielskieOczko/job-assistant/issues/72), the remaining refactor.**
+  The row-actions and confirm-delete wiring across seven profile cards. It carries its own bar,
+  set by the issue and kept here: **it must reduce lines, or it should be closed undone** — measured
+  before the PR is opened, not after, because #65 was judged on a line count that turned out to be a
+  wash.
+
+## 10. Host this application ([#62](https://github.com/AnielskieOczko/job-assistant/issues/62))
+
+Last, for the reason given in the caveat above. #62 carries a full dependency enumeration and a
+free-tier survey current as of 2026-08-31; nothing in it has been decided, and the survey ages
+quickly — three of the platforms it lists changed within twelve months and one changed without
+announcement.
+
+Two things are folded into this item rather than being roadmap entries of their own.
+
+### Authentication is hosting's precondition, not a peer
+
+`server.address: 127.0.0.1` is currently the **only** access control the application has. Deleting
+that line deletes all of it, so authentication is not a feature that accompanies deployment.
+
+The insight that kept it unbuilt still holds and is why it is not ranked separately: **a `user_id`
+column with no login is a value that is always `1`, and a stored password with no auth is a
+liability that looks like a security boundary while enforcing none.** Isolation cannot be
+meaningfully tested until there is a way to be a different user, and backfill stays trivial for
+exactly as long as there is one user — so deferring costs almost nothing and doing it early buys
+nothing that can be verified.
+
+**There are two shapes and they are not the same amount of work.** An in-app `User` root with Spring
+Security, `user_id` on the owned tables, session cookies and CSRF for the SPA; or an identity-aware
+proxy (Cloudflare Access, GCP IAP) that authenticates before a request reaches the JVM — zero
+application code, sufficient for a genuinely single-user tool because there is no second tenant to
+isolate from, and reversible, so it does not foreclose the first. **Choosing between them is the
+first task of this item**, and it deserves an ADR: hosting reverses `CLAUDE.md`'s opening premise
+and should not arrive as silent drift.
+
+Whichever is chosen, if rows ever become user-scoped, `CvInvariant`, `RequirementMatcher` and
+`SkillCoverage` must read the selected user's held skills and never a union — the fabrication rule
+arriving through a new door. The profile-level version of that rule is already enforced by
+`ProfileIsolationIntegrationTest`, which builds two profiles with disjoint skills and asserts the
+refusal in both directions; a user-level version needs the same treatment.
+
+### Portable profile export is a rider on this, not an item
+
+Candidate E was *"scheduled export of the hand-authored ground truth — import exists, export does
+not"*, which implies the profile is unprotected. **It is not.** `scripts/db-backup.sh` runs nightly
+via launchd and before every prod start, each dump carries a `.counts` sidecar, and
+`scripts/db-verify-restore.sh` performs a monthly restore drill, because a backup that has never
+been restored is a file rather than a backup.
+
+What a JSON export would add is a *portable, Postgres-independent* copy. That is worth little today
+and becomes a real requirement the moment the data sits on a third party's disk — and #62 notes that
+`scripts/db-backup.sh` is macOS-local and does not survive the move. Ranking it standalone would
+present a risk that is managed nightly and verified monthly as though it were unmanaged.
+
+---
+
+## Gated, deliberately not ranked: outcome calibration
+
+Correlating `matchScore` against real application outcomes is the best value-for-effort idea that
+cannot yet be built. The data already exists in the `application` lifecycle and **nothing reads it**
+— `ApplicationStatus` is referenced only by the two screens that display it. The build is one query
+and one small screen.
+
+It is not ranked because at low n any correlation is noise, and shipping a screen whose number
+cannot be trusted is the exact failure this repository already guards against in three other places:
+`MIN_CLAIMS_FOR_A_RATE` in the eval tier, n ≥ 30 for a market claim, and *never report a number
+without its denominator*. Its cheapness is the trap, not the argument.
+
+**The trigger, so this is falsifiable rather than indefinite:** build it when applications at
+`APPLIED` or beyond with a recorded outcome reach **30**. That number is the one the market
+dashboard already uses, so it is consistent rather than invented.
+
+## Declined
+
+Said plainly rather than ranked politely last.
+
+- **A scheduler that pushes corpus offers into the offer list.** This was the original shape of
+  automated ingestion, and it fails on the reasoning that kept `market_offer` separate from
+  `job_offer` in the first place: it would create `SAVED` applications the candidate never chose and
+  silently change what `AggregateGapReport.analysedOffers` counts. Research #10 also concluded the
+  inflow would be a trickle, which weakens the case rather than strengthening it. The half worth
+  building is item 1 — promotion by an explicit human decision.
+
+## Recorded as done, not ranked
+
+These were candidates when the ranking was commissioned and shipped before it ran. They are listed
+so that a reader of the old candidate list does not re-propose them.
+
+Multi-profile (`V10`), the offer market dashboard (#47), the CV template redesign (#73, #75),
+credentials (#49), side projects (#50), the stated career goal (#51), the CV consent clause (#52),
+LLM per-call cost observability, the spend guardrail, and CI/CD (#16). `CLAUDE.md` also lists four
+things assumed missing that already ship: application lifecycle tracking, the unmatched-term triage
+UI, output-language parameterisation, and cross-offer skill aggregation.
+
+## What this file used to say
+
+Until 2026-09-03 this file recorded a three-step sequence: *profile CRUD (done) → multi-profile →
+user accounts*. Two of those three are no longer steps.
+
+- **§2 `feat/multi-profile` shipped** in `V10__multi_profile.sql` — the `profile` root,
+  `is_default`, the partial unique index, the lot. The section was describing work that already
+  existed, so a session reading this file would have started building it a second time. Its one rule
+  worth keeping — that coverage must never be a union across profiles — is not lost with it: it is
+  enforced by `ProfileIsolationIntegrationTest`, in code, with assertions in both directions.
+- **§3 `feat/user-accounts` is not a step of its own**; it is the decision gate inside item 10,
+  above, and its reasoning is preserved there. Left where it was, it would have had §2's failure
+  mode for a different reason — describing the in-app Spring Security shape as though it were the
+  plan, when an identity-aware proxy is a sufficient and cheaper alternative it never considered.
