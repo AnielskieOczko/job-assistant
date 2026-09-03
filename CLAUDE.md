@@ -27,7 +27,9 @@ sequenced roadmap: every item carrying an explicit feasibility, complexity and e
 value statement written against a stated axis, plus what was declined, what is gated on data that
 does not exist yet, and what already shipped. Read it before proposing a feature. The top six items
 each have a shaping ticket on GitHub (#79–#83 and #85); where an item has an issue number, **GitHub
-is canonical** and the file is a summary.
+is canonical** and the file is a summary. Item 2 (#85, recording which document was sent) shipped on
+2026-09-04; the numbers in that file deliberately do not move when an item ships, so item 1 is still
+the next thing to build.
 
 The ranking axis is **application quality first, learning direction second, explicitly not
 throughput**, with portfolio value breaking ties. Hosting ranks last under it, deliberately — see
@@ -680,6 +682,19 @@ plus short ambiguous names (`Go`, `C`, `REST`). It is a floor, not a ceiling: it
 Kubernetes, Kafka and Terraform, and knowingly ignores vocabulary where a false positive would
 reject every honest CV. A rejected generation stores nothing and surfaces as HTTP 422 with
 `fabricatedClaims`.
+
+**Which document was actually sent is recorded on `application`, not on `generated_document`.**
+`sent_cv_document_id` and `sent_cover_letter_document_id` (`V27`) hold it: an application has at
+most one of each that went out, while a document may exist and never be sent. The write path lives
+in `document` rather than `offer` because `document → offer` already exists and the reverse edge
+would be a cycle — `offer` exposes `markCvSent`/`markCoverLetterSent` taking a bare id it does not
+validate, and `DocumentService.markSent` resolves the document, refuses one belonging to another
+offer and dispatches on the document's own type. **Sent and `ApplicationStatus` are independent in
+both directions** and must stay that way: marking does not move the status, a status change does not
+touch the link, and deriving either from the other would fabricate a record in the table outcome
+calibration will eventually read. The link is optional, replaceable and reversible, and its foreign
+key is `on delete set null` — the opposite of `llm_call.subject_id`, because this link exists so the
+document can be opened rather than so history outlives it.
 
 `CvSelection` counts what it drops, and those counts are persisted on `generated_document`
 (`dropped_bullet_count`, `dropped_skill_count`, added in `V12`) and served on `GeneratedDocument`.

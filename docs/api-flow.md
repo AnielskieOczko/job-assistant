@@ -175,8 +175,19 @@ profile does not contain. Nothing is stored in that case — regenerate.
 curl -X PUT localhost:8080/api/offers/1/status -H 'Content-Type: application/json' \
   -d '{"status":"APPLIED","appliedOn":"2026-08-23","notes":"Referred by a friend"}'
 
+# Which document actually went out. Answers with the application, not the document.
+curl -X PUT localhost:8080/api/offers/1/documents/1/sent
+curl -X DELETE 'localhost:8080/api/offers/1/documents/sent?type=CV'
+
 curl 'localhost:8080/api/analyses/aggregate?profileId=1'   # what to actually learn, for that persona
 ```
+
+Marking a document sent and moving the status are separate facts and neither implies the other: an
+application can be `APPLIED` with documents sent by hand, and a document can be sent before the
+status is updated. The link lives on `application` — `sentCvDocumentId` and
+`sentCoverLetterDocumentId` — because an application has at most one of each that went out, while a
+document may exist and never be sent. Marking is optional, replaceable and reversible; a document
+belonging to another offer is a `404`.
 
 The aggregate counts each offer once, using its most recent completed analysis, and ranks by
 must-have gaps. This is the number that should drive a learning plan — a single offer only tells

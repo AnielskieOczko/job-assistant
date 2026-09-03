@@ -53,6 +53,7 @@ already extracted out of components for exactly this purpose:
 | `lib/format.ts` | dates, durations, and the two money formatters |
 | `routes/llm/format.ts` | spend bucket labels, priced-call coverage, shares |
 | `routes/market/format.ts` | salary bands, demand level mix, plurals, coverage provenance |
+| `lib/sentDocuments.ts` | which documents an application recorded as sent, as one list-row label |
 
 Two conventions worth keeping. **Test files sit beside their subject as `*.test.ts`** — the Vitest
 default, needing no configuration, and picked up by `tsc -b` because `tsconfig.app.json` includes
@@ -69,6 +70,11 @@ anything else, and `ProfileCrudHttpTest`'s *a partial reorder is a 409 rather th
 move* is the server-side statement of the same rule. `mutations.test.ts` asserts the permutation
 property on every case rather than only the resulting order, so a bug that today surfaces as an
 unexplained error toast fails a test instead.
+
+`sentDocumentsLabel` returns `null` rather than a dash when nothing was recorded, and the rule is
+worth stating because it is the same one the backend keeps: an application made outside the tool has
+no document to name, which is not the same fact as one sent with neither a CV nor a letter. The
+caller decides how the absence renders; the helper refuses to turn it into a claim.
 
 There is **no coverage number** for the frontend. Sonar's `frontend/**` coverage exclusion stays in
 place: no lcov report is produced or imported, so retiring the exclusion on the strength of four

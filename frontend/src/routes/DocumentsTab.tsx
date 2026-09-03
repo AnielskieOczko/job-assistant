@@ -2,16 +2,18 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router'
 import {
-  Download, FileText, RefreshCw, ShieldAlert, ShieldCheck, SquareArrowOutUpRight,
+  Check, Download, FileText, RefreshCw, Send, ShieldAlert, ShieldCheck, SquareArrowOutUpRight,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
-  documentHtmlUrl, documentPdfUrl, generateDocument, getLatestDocument,
+  documentHtmlUrl, documentPdfUrl, generateDocument, getLatestDocument, markDocumentSent,
+  unmarkDocumentSent,
 } from '@/api/documents'
 import { ApiError } from '@/api/http'
 import { keys } from '@/api/keys'
+import { listOffers } from '@/api/offers'
 import { getProfile } from '@/api/profile'
-import type { DocumentType, GeneratedDocument } from '@/api/types'
+import type { Application, DocumentType, GeneratedDocument } from '@/api/types'
 import { ApiErrorAlert } from '@/components/ApiErrorAlert'
 import { StaleProfileNotice } from '@/components/StaleProfileNotice'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -64,6 +66,11 @@ function DocumentPanel({ type, title }: { type: DocumentType; title: string }) {
     queryFn: () => getLatestDocument(offerId, type, profileId!),
     enabled: profileId !== null,
   })
+
+  // Which document was sent is a fact about the application, and the application record only comes
+  // back on the list endpoint - the same reason OfferOverviewTab reads it from here.
+  const offers = useQuery({ queryKey: keys.offers, queryFn: listOffers })
+  const application = offers.data?.find((row) => row.offer.id === offerId)?.application
 
   // Only a CV carries a consent clause - see issue #52. Fetched here rather than lifted to
   // DocumentsTab because only this panel needs it, and ProfilePage already owns the cache entry.
@@ -162,6 +169,7 @@ function DocumentPanel({ type, title }: { type: DocumentType; title: string }) {
                 </Badge>
               ) : null}
               <span className="ml-auto flex gap-2">
+                <SentControl doc={doc} application={application} />
                 <Button asChild size="sm" variant="outline">
                   <a href={documentPdfUrl(doc.id)} target="_blank" rel="noreferrer">
                     <SquareArrowOutUpRight /> Open PDF
@@ -195,6 +203,69 @@ function DocumentPanel({ type, title }: { type: DocumentType; title: string }) {
         )}
       </CardContent>
     </Card>
+  )
+}
+
+/**
+ * Which document actually went to the employer.
+ *
+ * Deliberately manual and deliberately independent of the application's status: a document can be
+ * generated and never sent, and an application can be sent by hand with no document to name. It is
+ * recorded rather than derived because an application already sent cannot be reconstructed
+ * afterwards — the link has to be captured at the time or it does not exist at all.
+ */
+function SentControl({
+  doc,
+  application,
+}: {
+  doc: GeneratedDocument
+  application: Application | undefined
+}) {
+  const offerId = useOfferId()
+  const queryClient = useQueryClient()
+
+  const label = doc.type === 'CV' ? 'CV' : 'cover letter'
+  const sentId = doc.type === 'CV'
+    ? application?.sentCvDocumentId
+    : application?.sentCoverLetterDocumentId
+  const isThisOne = sentId === doc.id
+
+  const mark = useMutation({
+    mutationFn: () =>
+      isThisOne ? unmarkDocumentSent(offerId, doc.type) : markDocumentSent(offerId, doc.id),
+    onSuccess: () => {
+      toast.success(isThisOne ? `No longer recorded as sent` : `Recorded as the ${label} you sent`)
+      queryClient.invalidateQueries({ queryKey: keys.offers })
+    },
+  })
+
+  if (!application) return null
+
+  return (
+    <>
+      {/*
+        An earlier document holds the slot. Said out loud rather than silently overwritten: the
+        one on screen is not what the employer read.
+      */}
+      {sentId != null && !isThisOne ? (
+        <span className="self-center text-amber-700 dark:text-amber-400">
+          An earlier {label} is the one recorded as sent.
+        </span>
+      ) : null}
+      <Button
+        size="sm"
+        variant={isThisOne ? 'secondary' : 'outline'}
+        onClick={() => mark.mutate()}
+        disabled={mark.isPending}
+        title={
+          isThisOne
+            ? `Recorded as the ${label} you sent for this offer. Click to undo.`
+            : `Record this as the ${label} you sent. It does not change the application's status.`
+        }
+      >
+        {isThisOne ? <><Check /> Sent</> : <><Send /> Mark as sent</>}
+      </Button>
+    </>
   )
 }
 

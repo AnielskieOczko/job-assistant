@@ -12,6 +12,7 @@ import com.jankowski.rafal.jobassistant.llm.AiServiceFactory
 import com.jankowski.rafal.jobassistant.llm.LlmCallScope
 import com.jankowski.rafal.jobassistant.llm.LlmCallScope.SUBJECT_OFFER
 import com.jankowski.rafal.jobassistant.llm.LlmTask
+import com.jankowski.rafal.jobassistant.offer.Application
 import com.jankowski.rafal.jobassistant.offer.OfferService
 import com.jankowski.rafal.jobassistant.profile.CandidateProfile
 import com.jankowski.rafal.jobassistant.profile.ProfileService
@@ -236,6 +237,32 @@ internal class JdbcDocumentService(
     override fun renderPdf(documentId: Long): ByteArray {
         val document = findById(documentId) ?: throw NoSuchElementException("No document $documentId")
         return renderer.toPdf(document.html)
+    }
+
+    /**
+     * The offer id in the path is checked against the document's own rather than ignored. Without
+     * it, a mistyped path would file one offer's CV as the document sent for another - a wrong
+     * record is worse than a missing one in the table outcome calibration will eventually read.
+     */
+    @Transactional
+    override fun markSent(offerId: Long, documentId: Long): Application {
+        val document = findById(documentId) ?: throw NoSuchElementException("No document $documentId")
+        if (document.offerId != offerId) {
+            throw NoSuchElementException("Document $documentId does not belong to offer $offerId")
+        }
+        return record(offerId, document.type, documentId)
+    }
+
+    @Transactional
+    override fun unmarkSent(offerId: Long, type: DocumentType): Application = record(offerId, type, documentId = null)
+
+    /**
+     * Which slot a document occupies is its own type, never the caller's claim about it - marking a
+     * cover letter as the CV that was sent is not a thing this API can express.
+     */
+    private fun record(offerId: Long, type: DocumentType, documentId: Long?): Application = when (type) {
+        DocumentType.CV -> offers.markCvSent(offerId, documentId)
+        DocumentType.COVER_LETTER -> offers.markCoverLetterSent(offerId, documentId)
     }
 }
 

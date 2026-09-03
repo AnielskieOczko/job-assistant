@@ -167,6 +167,13 @@ export interface Application {
   statusChangedAt: string
   appliedOn: string | null
   notes: string | null
+  /**
+   * The documents actually sent for this offer, if any. Null is the ordinary state — a document
+   * can be generated and never sent, and an application made outside the tool has none to name.
+   * Independent of `status`: neither field implies the other.
+   */
+  sentCvDocumentId: number | null
+  sentCoverLetterDocumentId: number | null
 }
 
 export interface OfferSummary {
