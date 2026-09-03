@@ -25,9 +25,9 @@ acted on should move to `docs/roadmap.md` or an ADR as it is settled.
 **`docs/roadmap.md` is the answer, and it is where a new session picks up.** It holds a ranked,
 sequenced roadmap: every item carrying an explicit feasibility, complexity and effort verdict and a
 value statement written against a stated axis, plus what was declined, what is gated on data that
-does not exist yet, and what already shipped. Read it before proposing a feature. The top five items
-each have a shaping ticket on GitHub (#79–#83); where an item has an issue number, **GitHub is
-canonical** and the file is a summary.
+does not exist yet, and what already shipped. Read it before proposing a feature. The top six items
+each have a shaping ticket on GitHub (#79–#83 and #85); where an item has an issue number, **GitHub
+is canonical** and the file is a summary.
 
 The ranking axis is **application quality first, learning direction second, explicitly not
 throughput**, with portfolio value breaking ties. Hosting ranks last under it, deliberately — see
