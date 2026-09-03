@@ -53,10 +53,12 @@
         </sonar.exclusions>
         <!--
             Two honest exclusions, neither of them a way to hide untested code:
-            - the frontend has no test suite yet, so measuring it would report 0%, not a fact;
+            - the frontend has a Vitest suite (issue #67) but no TypeScript coverage reporting
+              wired into this job, so Sonar has nothing to import and would report 0%, not a fact.
+              Wiring lcov in is its own piece of work with its own failure modes; retiring this
+              line on the strength of four tested modules would report a number, not a measure.
             - PlaywrightDocumentRenderer IS tested, by the `pdf` tier, which the coverage job
               deliberately does not run (it would mean downloading Chromium a second time).
-            Delete the first line the day frontend tests exist.
         -->
         <sonar.coverage.exclusions>
             frontend/**,**/PlaywrightDocumentRenderer.kt

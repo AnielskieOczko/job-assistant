@@ -29,6 +29,51 @@ For a production-shaped run — SPA served by Spring from a single jar:
 
 `./mvnw test` is unchanged and never touches npm.
 
+## Tests
+
+```bash
+cd frontend && npm test      # vitest run, the whole suite, no browser
+npm run test:watch           # vitest in watch mode
+```
+
+Vitest reads `vite.config.ts`, so the suite resolves `@/` and everything else exactly the way the
+application does. The `test` block there pins `TZ=UTC`, because half of what is under test is date
+formatting and a run in Warsaw would otherwise disagree with a run on a UTC CI box about which day
+an ISO instant falls on. `npm test` runs in the `frontend` job in `ci.yml`, after `oxlint` and
+`tsc -b`.
+
+**The environment is `node`, and everything tested is a pure function.** There is no jsdom, no
+React Testing Library and no component rendering — the suite finishes in well under a second, which
+is the property that keeps anyone from skipping it. What is under test today is the logic that was
+already extracted out of components for exactly this purpose:
+
+| Module | What it decides |
+|---|---|
+| `routes/profile/mutations.ts` | `movedIds`, `swappedIds`, `blankToNull` |
+| `lib/format.ts` | dates, durations, and the two money formatters |
+| `routes/llm/format.ts` | spend bucket labels, priced-call coverage, shares |
+| `routes/market/format.ts` | salary bands, demand level mix, plurals, coverage provenance |
+
+Two conventions worth keeping. **Test files sit beside their subject as `*.test.ts`** — the Vitest
+default, needing no configuration, and picked up by `tsc -b` because `tsconfig.app.json` includes
+all of `src`. They never reach the production bundle: nothing imports them, so `vite build` output
+is byte-identical with and without them.
+
+And **a test name is a sentence stating the rule**, matching `SkillNormalizerTest` and
+`SkillCoverageTest` on the Kotlin side — `a swap by ids that are not both present leaves the order
+unchanged`, not `test swappedIds 3`.
+
+The reorder helpers are the ones that carry a real invariant rather than a formatting preference.
+A reorder request must name every id of the collection exactly once; the backend answers 409 to
+anything else, and `ProfileCrudHttpTest`'s *a partial reorder is a 409 rather than a silent partial
+move* is the server-side statement of the same rule. `mutations.test.ts` asserts the permutation
+property on every case rather than only the resulting order, so a bug that today surfaces as an
+unexplained error toast fails a test instead.
+
+There is **no coverage number** for the frontend. Sonar's `frontend/**` coverage exclusion stays in
+place: no lcov report is produced or imported, so retiring the exclusion on the strength of four
+tested modules would publish a figure rather than a measure.
+
 ## Why there is no CORS configuration
 
 Every request path in the client is relative (`/api/...`). There is no base URL and no
