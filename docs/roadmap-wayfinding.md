@@ -1,49 +1,29 @@
-# Roadmap wayfinding
+# Roadmap wayfinding — a finished effort
 
-This file exists so that a session starting cold can pick up the roadmap effort without being told
-anything. It is a **checked-in snapshot**; the live map is
-[Roadmap: the next phase of the job assistant](https://github.com/AnielskieOczko/job-assistant/issues/9)
-and its child issues, and **GitHub is canonical**. When the two disagree, GitHub is right and this
-file is stale.
+**This effort is over. It reached its destination on 2026-09-03, and the destination is
+[`docs/roadmap.md`](roadmap.md).** If you are a session looking for what to build next, read that
+file, not this one.
 
-> **Refresh this file** whenever a ticket is resolved, using
-> `gh issue view 9` for the map body and
-> `gh issue list --state all --label "wayfinder:research" --label "wayfinder:grilling" --label "wayfinder:prototype"`
-> for ticket states. Stale is acceptable; silently stale is not, so the refresh belongs in the same
-> commit as the resolution.
+What remains here is the *reasoning* that produced the ranking: what was ruled out and why, which
+guesses were settled by research rather than by argument, and which assumptions turned out to be
+wrong. It is kept because a ranked list is much harder to trust — and much easier to relitigate —
+without the record of what was considered and discarded. Nothing in it is a live instruction.
 
-Distinguish this file from `docs/roadmap.md`. That one records decisions already taken for work not
-yet started. This one records the effort that is *producing* the next version of it — and rewriting
-`docs/roadmap.md` is the last thing this effort does.
+The map was [issue #9](https://github.com/AnielskieOczko/job-assistant/issues/9), now closed. Every
+ticket under it is resolved, and the last one,
+[Rank and sequence the roadmap](https://github.com/AnielskieOczko/job-assistant/issues/15),
+rewrote `docs/roadmap.md` as its deliverable and filed shaping tickets
+[#79](https://github.com/AnielskieOczko/job-assistant/issues/79)–[#83](https://github.com/AnielskieOczko/job-assistant/issues/83)
+for the top of the new order.
 
-## How to continue in a new session
+The three research findings this map produced live under `docs/research/`, one file per ticket, each
+citing a source against every claim. Those remain current and are still worth reading before
+re-opening a question they answered.
 
-Run `/mattpocock-skills:wayfinder 9`. That loads the map, picks the first unblocked, unassigned
-ticket, claims it, and resolves it. Resolve **one ticket per session**, except research tickets,
-which can be run in parallel because they only gather facts.
-
-**Every leaf is now closed.** The three research tickets, the CV prototype, both grillings and the
-alert-email task are all resolved, and their findings are checked in under `docs/research/` — except
-the CV prototype, whose output is now the production template itself (issue #73); the throwaway
-layouts it was judged from have been deleted, and `prototype/cv-layouts` is merged history.
-
-**[Rank and sequence the roadmap](https://github.com/AnielskieOczko/job-assistant/issues/15) is the
-only unblocked ticket, and it is the one this map exists to reach.** Resolving it rewrites
-`docs/roadmap.md` and ends the effort. Note that Rafal has already fixed its top item by decision
-rather than by ranking — see the entry for ticket 18 below — so that ticket's remaining job is the
-*rest* of the order, not the first item.
-
-To pick a ticket yourself, pass it: `/mattpocock-skills:wayfinder 9 --ticket 15`.
-
-To see what is takeable right now:
-
-```bash
-gh issue list --state open --json number,title,assignees,labels \
-  --jq '.[] | select(.assignees | length == 0) | "\(.number)  \(.title)"'
-```
-
-A ticket is takeable when it is open, unassigned, and has no open blocker. GitHub renders the
-blocking relationships in the issue UI, so the sidebar of issue 15 shows what still gates it.
+**One correction worth carrying forward.** This file used to say
+[ticket 19](https://github.com/AnielskieOczko/job-assistant/issues/19) was gated behind ticket 15.
+It is now unblocked and ranked eighth in `docs/roadmap.md`, low, for the reasons research ticket 12
+established about how thin GitHub's owner-stated repository data actually is.
 
 ## Destination
 
@@ -228,13 +208,22 @@ under **`docs/research/`**.
 | [14](https://github.com/AnielskieOczko/job-assistant/issues/14) | What should a tailored CV look like? | prototype | **closed** |
 | [16](https://github.com/AnielskieOczko/job-assistant/issues/16) | What should CI/CD actually do, and does CD have a target? | grilling | **closed** |
 | [18](https://github.com/AnielskieOczko/job-assistant/issues/18) | Do the Polish boards' alert emails carry the full offer text? | task | **closed** |
-| [15](https://github.com/AnielskieOczko/job-assistant/issues/15) | Rank and sequence the roadmap | grilling | **open, unblocked** |
-| [19](https://github.com/AnielskieOczko/job-assistant/issues/19) | How does a GitHub repository become a profile Project? (narrowed to the *import* half) | grilling | blocked by 15 |
+| [15](https://github.com/AnielskieOczko/job-assistant/issues/15) | Rank and sequence the roadmap | grilling | **closed** |
+| [19](https://github.com/AnielskieOczko/job-assistant/issues/19) | How does a GitHub repository become a profile Project? (narrowed to the *import* half) | grilling | open, unblocked, ranked 8th |
 
-**Rank and sequence the roadmap** was deliberately last, so that nothing would be ranked on a guess.
-Every guess it was waiting on is now settled, and it is unblocked. Ticket 19 remains gated behind it,
-and was **narrowed on 2026-08-29**: the domain half of its question — what a `Project` is — was
-decided by conversation and now lives in issue 50, so ticket 19 owns only the GitHub-import half.
+**Rank and sequence the roadmap** was deliberately last, so that nothing would be ranked on a guess,
+and it **resolved on 2026-09-03** — see `docs/roadmap.md` for its output. Ticket 19 was
+**narrowed on 2026-08-29**: the domain half of its question — what a `Project` is — was decided by
+conversation and now lives in issue 50, so ticket 19 owns only the GitHub-import half. It is no
+longer gated; ranking it was ticket 15's job, and it landed eighth of ten, low, because research
+ticket 12 found GitHub's owner-stated repository data too thin to import honestly and everything
+richer to be a derived signal needing a review queue.
+
+**A note on how much this map's own candidate list had decayed by the time it was ranked.** Of the
+eight numbered candidates, six had shipped in the eight days between the ticket being written and
+being resolved, three of them by decision rather than by rank. Ranking is perishable: the lesson
+carried into `docs/roadmap.md` is that an order written down is worth re-checking against the code
+before it is trusted, not just re-read.
 
 ## Features decided outside this map
 
@@ -273,8 +262,14 @@ them on the safe side of the first rule without touching the fabrication guard.
 In scope, not yet sharp enough to ticket. Most graduates once **Rank and sequence the roadmap** has
 run, because until then it is not known which items earn detailed shaping.
 
-- **Shaping tickets for the top ~4 ranked items.** The destination requires them; the ranking names
-  them. This one patch becomes roughly four tickets.
+- ~~**Shaping tickets for the top ~4 ranked items.**~~ **Done on 2026-09-03.** The ranking named
+  them and they were filed as
+  [#79](https://github.com/AnielskieOczko/job-assistant/issues/79),
+  [#80](https://github.com/AnielskieOczko/job-assistant/issues/80),
+  [#81](https://github.com/AnielskieOczko/job-assistant/issues/81),
+  [#82](https://github.com/AnielskieOczko/job-assistant/issues/82) and
+  [#83](https://github.com/AnielskieOczko/job-assistant/issues/83) — five rather than four, because
+  three features requested while the ranking was being settled needed specs of their own.
 - ~~**Whether a credential is a distinct thing from an education record.**~~ **Settled on
   2026-08-29** and specified as [issue 49](https://github.com/AnielskieOczko/job-assistant/issues/49)
   — see *Features decided outside this map* below. A credential is its own aggregate and grants no
