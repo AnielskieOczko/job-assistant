@@ -17,7 +17,7 @@ interface ProsePolishService {
      * @param text the field as the candidate currently has it. Must not be blank - this polishes
      *   writing that exists and never generates a field from nothing.
      * @throws IllegalArgumentException if [text] is blank or longer than [MAX_TEXT_LENGTH].
-     * @throws EmptyPolishException if the model answered with nothing usable.
+     * @throws UnusablePolishException if the model answered with nothing usable.
      */
     fun polish(profileId: Long, field: PolishField, text: String): PolishSuggestion
 
@@ -35,13 +35,19 @@ interface ProsePolishService {
 }
 
 /**
- * Thrown when the model answered with nothing to show.
+ * Thrown when the model answered with nothing this can show.
  *
  * An empty suggestion is a failure, not a result. Rendered as an empty pane next to the original it
  * would read as "your text is best left alone", which is a judgement no empty response supports -
  * the same shape as an empty extraction reading as "this offer asks for nothing".
+ *
+ * It also covers the *fluent* non-answer. When a model replies with prose instead of an object,
+ * `JsonOutputGuardrail` fails the call rather than accepting it, and that arrives here: a sentence
+ * addressed to whoever asked ("I need a question to respond to") deserialises into a text field
+ * perfectly and would render as a suggested rewrite of the candidate's own description. Refusing to
+ * show it is the whole point - this surface has no other way to tell a rewrite from a reply.
  */
-class EmptyPolishException(field: PolishField) : RuntimeException(
-    "The model returned no text when asked to polish $field. Nothing has been changed; check the " +
-        "response on the most recent llm_call row for this profile."
+class UnusablePolishException(field: PolishField, reason: String? = null) : RuntimeException(
+    "The model returned nothing usable when asked to polish $field. Nothing has been changed" +
+        (reason?.let { "; $it" } ?: ". Check the response on the most recent llm_call row.")
 )

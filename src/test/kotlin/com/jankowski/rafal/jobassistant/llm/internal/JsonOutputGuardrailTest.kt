@@ -4,6 +4,7 @@ import dev.langchain4j.data.message.AiMessage
 import dev.langchain4j.guardrail.GuardrailResult
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
@@ -62,18 +63,38 @@ class JsonOutputGuardrailTest {
         assertEquals(payload, validate("```json\n$payload\n```").successfulText())
     }
 
+    /**
+     * It used to reprompt, and the reprompt could not work: `OutputGuardrailExecutor` builds the
+     * retry from a chat memory these services deliberately do not have, so the correction
+     * instruction went out as the only message and the model answered a question it had never been
+     * asked. Failing carries the reason to the caller; repromptng carried a fluent non-answer to
+     * the user.
+     */
     @Test
-    fun `prose with no JSON at all triggers a reprompt`() {
+    fun `prose with no JSON at all fails the call rather than asking again with no question`() {
         val result = validate("I am unable to help with that request.")
 
-        assertTrue(result.isReprompt, "expected a reprompt, got ${result.result()}")
-        assertTrue(result.getReprompt().isPresent)
+        assertFalse(result.isSuccess(), "prose is not a parseable answer")
+        assertFalse(result.isReprompt, "a reprompt here cannot see the original request")
+        assertFalse(result.isRetry, "and a retry from this layer would be the same call again")
     }
 
     @Test
-    fun `an unterminated object triggers a reprompt rather than returning junk`() {
+    fun `an unterminated object fails rather than returning junk`() {
         val result = validate("""{"skill":"Kotlin", "unfinished": """)
 
-        assertTrue(result.isReprompt)
+        assertFalse(result.isSuccess())
+        assertFalse(result.isReprompt)
+    }
+
+    @Test
+    fun `a response with no text at all fails, and says so in words a caller can render`() {
+        val result = JsonOutputGuardrail().validate(AiMessage.builder().text(null).build())
+
+        assertFalse(result.isSuccess())
+        assertTrue(
+            result.toString().contains("no text", ignoreCase = true),
+            "the reason reaches an analysis row and a polish response; it has to name what happened",
+        )
     }
 }

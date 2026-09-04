@@ -198,7 +198,7 @@ internal class ProfilePolishIntegrationTest(
     fun `an empty answer is a failure rather than an empty pane`() {
         models[LlmTask.POLISH].enqueue("""{"polished":""}""")
 
-        assertFailsWith<EmptyPolishException> {
+        assertFailsWith<UnusablePolishException> {
             polish.polish(profileId, PolishField.CAREER_GOAL, "want to work more on platform things")
         }
     }
@@ -213,9 +213,53 @@ internal class ProfilePolishIntegrationTest(
     fun `an explicit null answer is read as a claim rather than a guarantee`() {
         models[LlmTask.POLISH].enqueue("""{"polished":null}""")
 
-        assertFailsWith<EmptyPolishException> {
+        assertFailsWith<UnusablePolishException> {
             polish.polish(profileId, PolishField.CAREER_GOAL, "want to work more on platform things")
         }
+    }
+
+    /**
+     * The bug this test exists for, reproduced from the response that caused it.
+     *
+     * A model that answers with prose instead of an object used to be reprompted, and the reprompt
+     * carried no question - so it replied *"I understand you'd like me to respond with a single JSON
+     * value. However, I need a question or request to respond to."*, which is well-formed JSON, has a
+     * `polished` field, and rendered on screen as a suggested rewrite of the candidate's project
+     * description. This surface has no way to tell a rewrite from a reply, so the answer is refused
+     * rather than shown.
+     */
+    @Test
+    fun `a model that replies instead of rewriting is refused rather than shown`() {
+        models[LlmTask.POLISH].enqueue(
+            "I understand you'd like me to respond with a single JSON value. However, I need a " +
+                "question or request to respond to. Could you please provide what you'd like me to address?"
+        )
+
+        assertFailsWith<UnusablePolishException> {
+            polish.polish(profileId, PolishField.PROJECT_DESCRIPTION, ORIGINAL_DESCRIPTION)
+        }
+
+        assertEquals(1, models[LlmTask.POLISH].requests.size, "prose must not buy a second question")
+        assertEquals(ORIGINAL_DESCRIPTION, project().description)
+    }
+
+    /**
+     * The other half: a model that says nothing at all is asked the *same question* again, because
+     * a reasoning model spending its whole completion on `thinking` is a wasted call rather than a
+     * refusal. Two rows in `llm_call`, one suggestion.
+     */
+    @Test
+    fun `a silent model is asked again with the original request`() {
+        models[LlmTask.POLISH].enqueue("", """{"polished":"$POLISHED_DESCRIPTION"}""")
+
+        val suggestion = polish.polish(profileId, PolishField.PROJECT_DESCRIPTION, ORIGINAL_DESCRIPTION)
+
+        assertEquals(POLISHED_DESCRIPTION, suggestion.suggestion)
+        assertEquals(2, models[LlmTask.POLISH].requests.size)
+        assertTrue(
+            promptsSent().split(ORIGINAL_DESCRIPTION).size - 1 == 2,
+            "the retry has to carry the text being polished, or it is answering nothing",
+        )
     }
 
     @Test

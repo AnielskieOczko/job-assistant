@@ -2,6 +2,7 @@ package com.jankowski.rafal.jobassistant.llm
 
 import com.jankowski.rafal.jobassistant.support.IntegrationTest
 import com.jankowski.rafal.jobassistant.support.ScriptedModels
+import dev.langchain4j.guardrail.OutputGuardrailException
 import dev.langchain4j.service.SystemMessage
 import dev.langchain4j.service.UserMessage
 import dev.langchain4j.service.V
@@ -10,6 +11,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.jdbc.core.simple.JdbcClient
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -80,30 +82,56 @@ class AiServiceFactoryIntegrationTest(
         )
     }
 
+    /**
+     * This pair of tests used to assert that prose was reprompted and the second answer accepted,
+     * and they passed for a reason that had nothing to do with the code: a scripted model returns
+     * the next queued reply whatever it is asked, so they queued a correct answer to a question the
+     * model never received. In production that second request carried the correction instruction
+     * and **nothing else** - no system prompt, no original request - because a guardrail reprompt
+     * is assembled from a chat memory these services do not have. The model duly answered the only
+     * question it could see, and its reply reached a user as a polished project description.
+     *
+     * The lesson is in the assertion, not only in the behaviour: *never assert that a repair
+     * happened without asserting what the repair asked.*
+     */
     @Test
-    fun `reprompts once when the model answers with prose, then succeeds`() {
+    fun `prose instead of JSON fails the call rather than being asked again`() {
         models[LlmTask.EXTRACTION].enqueue(
             "I'm afraid I can't do that.",
             """{"skill":"Kotlin","confidence":5,"aliases":[]}""",
         )
 
-        val result = service().summarise("Kotlin")
+        val refused = assertFailsWith<OutputGuardrailException> { service().summarise("Kotlin") }
 
-        assertEquals("Kotlin", result.skill)
-        assertEquals(2, models[LlmTask.EXTRACTION].requests.size, "expected exactly one repair call")
+        assertTrue(refused.message!!.contains("JSON"), "the caller has to be able to say what happened")
+        assertEquals(
+            1,
+            models[LlmTask.EXTRACTION].requests.size,
+            "a second question nobody can answer is worse than none",
+        )
     }
 
     @Test
-    fun `the reprompt carries the correction instruction to the model`() {
-        models[LlmTask.EXTRACTION].enqueue(
-            "no json here",
-            """{"skill":"Kotlin","confidence":5,"aliases":[]}""",
-        )
+    fun `a silent answer is asked again, carrying the original request`() {
+        models[LlmTask.EXTRACTION].enqueue("", """{"skill":"Kotlin","confidence":5,"aliases":[]}""")
 
-        service().summarise("Kotlin")
+        val result = service().summarise("Kotlin coroutines")
 
-        val repair = models[LlmTask.EXTRACTION].requests.last().messages().joinToString { it.toString() }
-        assertTrue(repair.contains("JSON"), "repair prompt should tell the model what went wrong")
+        assertEquals("Kotlin", result.skill)
+        assertEquals(2, models[LlmTask.EXTRACTION].requests.size, "expected exactly one retry")
+
+        val retry = models[LlmTask.EXTRACTION].requests.last().messages().joinToString { it.toString() }
+        assertTrue(retry.contains("Summarise Kotlin coroutines"), "the retry lost the question")
+        assertTrue(retry.contains("You summarise skills."), "the retry lost the system prompt")
+    }
+
+    @Test
+    fun `a model silent twice fails rather than answering something else`() {
+        models[LlmTask.EXTRACTION].enqueue("", "")
+
+        assertFailsWith<OutputGuardrailException> { service().summarise("Kotlin") }
+
+        assertEquals(2, models[LlmTask.EXTRACTION].requests.size, "one retry, not a loop")
     }
 
     @Test
@@ -144,12 +172,10 @@ class AiServiceFactoryIntegrationTest(
         assertTrue(assertNotNull(detail.responseText).contains("\"skill\":\"Kotlin\""))
     }
 
+    /** Two rows for one logical call is the honest record: it cost two. */
     @Test
-    fun `a repaired call records both round trips`() {
-        models[LlmTask.EXTRACTION].enqueue(
-            "not json",
-            """{"skill":"Kotlin","confidence":1,"aliases":[]}""",
-        )
+    fun `a retried call records both round trips`() {
+        models[LlmTask.EXTRACTION].enqueue("", """{"skill":"Kotlin","confidence":1,"aliases":[]}""")
 
         service().summarise("Kotlin")
 
