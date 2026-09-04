@@ -711,6 +711,18 @@ export interface GeneratedDocument {
    * `language`. Always null for a cover letter, which carries no clause.
    */
   consentClauseLanguage: string | null
+  /**
+   * The document this one was copied from, when it was reused onto a second offer instead of
+   * freshly tailored. Null for every ordinarily generated document.
+   */
+  sourceDocumentId: number | null
+}
+
+/** One row in the cross-offer document library — a document plus the offer fields to render it with. */
+export interface DocumentLibraryEntry {
+  document: GeneratedDocument
+  offerTitle: string
+  offerCompany: string | null
 }
 
 /* ---------------------------------------------------------------------- llm */

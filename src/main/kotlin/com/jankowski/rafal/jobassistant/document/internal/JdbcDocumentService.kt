@@ -4,6 +4,7 @@ import com.jankowski.rafal.jobassistant.analysis.AnalysisReport
 import com.jankowski.rafal.jobassistant.analysis.AnalysisService
 import com.jankowski.rafal.jobassistant.analysis.AnalysisState
 import com.jankowski.rafal.jobassistant.catalog.SkillCatalog
+import com.jankowski.rafal.jobassistant.document.DocumentLibraryEntry
 import com.jankowski.rafal.jobassistant.document.DocumentService
 import com.jankowski.rafal.jobassistant.document.DocumentType
 import com.jankowski.rafal.jobassistant.document.FabricatedClaimException
@@ -22,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional
 import org.thymeleaf.TemplateEngine
 import org.thymeleaf.context.Context
 import tools.jackson.databind.json.JsonMapper
+import java.time.Instant
 import java.util.Locale
 
 @Service
@@ -240,6 +242,49 @@ internal class JdbcDocumentService(
     }
 
     /**
+     * Joins against `offers.list()` rather than resolving one offer per row: the offer list is
+     * already a single query, and the library can be dozens of documents deep once reuse exists.
+     */
+    @Transactional(readOnly = true)
+    override fun library(profileId: Long): List<DocumentLibraryEntry> {
+        val offersById = offers.list().associateBy { it.offer.id }
+        return documents.findByProfileId(profileId).mapNotNull { row ->
+            val offer = offersById[row.jobOfferId]?.offer ?: return@mapNotNull null
+            DocumentLibraryEntry(document = row.toDomain(), offerTitle = offer.displayTitle, offerCompany = offer.company)
+        }
+    }
+
+    /**
+     * No `@Transactional`: one read, `enforceNoFabrication`, then one insert - the same shape as
+     * [generate], and for the same reason there is nothing here that needs a shared snapshot.
+     */
+    override fun reuse(targetOfferId: Long, profileId: Long, sourceDocumentId: Long): GeneratedDocument {
+        val source = documents.findById(sourceDocumentId).orElse(null)
+            ?: throw NoSuchElementException("No document $sourceDocumentId")
+        require(DocumentType.valueOf(source.type) == DocumentType.CV) {
+            "Only a CV can be reused; document $sourceDocumentId is a ${source.type}"
+        }
+        offers.findById(targetOfferId) ?: throw NoSuchElementException("No job offer $targetOfferId")
+        val profile = profiles.require(profileId)
+
+        // The HTML is unchanged, but the profile might not be: a skill deleted since the original
+        // generation would otherwise carry a now-fabricated claim onto a second offer.
+        enforceNoFabrication(source.html, profile)
+
+        val saved = documents.save(
+            source.copy(
+                id = null,
+                jobOfferId = targetOfferId,
+                profileId = profileId,
+                analysisId = null,
+                createdAt = Instant.now(),
+                sourceDocumentId = sourceDocumentId,
+            )
+        )
+        return saved.toDomain()
+    }
+
+    /**
      * The offer id in the path is checked against the document's own rather than ignored. Without
      * it, a mistyped path would file one offer's CV as the document sent for another - a wrong
      * record is worse than a missing one in the table outcome calibration will eventually read.
@@ -279,4 +324,5 @@ private fun GeneratedDocumentRow.toDomain() = GeneratedDocument(
     droppedBulletCount = droppedBulletCount,
     droppedSkillCount = droppedSkillCount,
     consentClauseLanguage = consentClauseLanguage,
+    sourceDocumentId = sourceDocumentId,
 )

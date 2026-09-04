@@ -1,5 +1,6 @@
 package com.jankowski.rafal.jobassistant.document.internal
 
+import com.jankowski.rafal.jobassistant.document.DocumentLibraryEntry
 import com.jankowski.rafal.jobassistant.document.DocumentService
 import com.jankowski.rafal.jobassistant.document.DocumentType
 import com.jankowski.rafal.jobassistant.document.FabricatedClaimException
@@ -42,6 +43,22 @@ internal class DocumentController(private val documents: DocumentService) {
         @RequestParam(required = false) profileId: Long?,
     ): ResponseEntity<GeneratedDocument> =
         documents.latest(offerId, type, profileId)?.let { ResponseEntity.ok(it) } ?: ResponseEntity.notFound().build()
+
+    /** The cross-offer library: every document generated for this profile, newest first. */
+    @GetMapping("/api/documents")
+    fun library(@RequestParam profileId: Long): List<DocumentLibraryEntry> = documents.library(profileId)
+
+    /**
+     * Attaches an existing CV to a second offer as a copy, with no model call. `sourceDocumentId`
+     * is the CV being reused; `profileId` is whose skills the fabrication guard re-checks it
+     * against, since the HTML itself is not regenerated.
+     */
+    @PostMapping("/api/offers/{offerId}/documents/reuse")
+    fun reuse(
+        @PathVariable offerId: Long,
+        @RequestParam profileId: Long,
+        @RequestParam sourceDocumentId: Long,
+    ): GeneratedDocument = documents.reuse(offerId, profileId, sourceDocumentId)
 
     /** The browser preview. Byte-for-byte the same markup Chromium turns into the PDF. */
     @GetMapping("/api/documents/{documentId}/html", produces = [MediaType.TEXT_HTML_VALUE])
@@ -105,6 +122,12 @@ internal class DocumentController(private val documents: DocumentService) {
                 setProperty("sensitiveFields", exception.fields)
             }
         )
+
+    /** `reuse` refusing a non-CV source names a request the client sent wrong, not a server refusal. */
+    @ExceptionHandler(IllegalArgumentException::class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    fun handleInvalid(exception: IllegalArgumentException): Map<String, String?> =
+        mapOf("error" to exception.message)
 
     @ExceptionHandler(NoSuchElementException::class)
     @ResponseStatus(HttpStatus.NOT_FOUND)

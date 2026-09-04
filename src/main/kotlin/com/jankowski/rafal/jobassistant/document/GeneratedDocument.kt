@@ -37,6 +37,25 @@ data class GeneratedDocument(
      * success, just on the document side. Always null for a cover letter, which carries no clause.
      */
     val consentClauseLanguage: String? = null,
+    /**
+     * The document this one was copied from, when it was reused onto a second offer rather than
+     * freshly tailored. Null for every ordinarily generated document. See [DocumentLibraryEntry].
+     */
+    val sourceDocumentId: Long? = null,
+)
+
+/**
+ * One row in the cross-offer document library - every document generated for a profile, with the
+ * offer fields it needs to render without a second request per row.
+ *
+ * Carries the offer's own display fields rather than the whole [com.jankowski.rafal.jobassistant.offer.JobOffer]:
+ * the library is the one screen that shows a document with no other context about its offer already
+ * loaded, and a title plus a company is all it needs.
+ */
+data class DocumentLibraryEntry(
+    val document: GeneratedDocument,
+    val offerTitle: String,
+    val offerCompany: String? = null,
 )
 
 /**
