@@ -23,4 +23,18 @@ enum class LlmTask {
      * approve. It carries no profile data at all - only public job-board vocabulary.
      */
     TRIAGE,
+
+    /**
+     * Rewriting one free-prose field of the profile so the candidate's own facts read better.
+     *
+     * [TRIAGE]'s discipline applied to the profile: never authoritative. The model is handed one
+     * field's text and returns a suggestion, the suggestion is scanned for skills the profile does
+     * not hold, and nothing is stored until the candidate accepts it through the ordinary CRUD
+     * path. "No model writes to the profile" stays literally true.
+     *
+     * Its own task so it can point at a cheap model - rewriting a sentence is not extraction - and
+     * so a habit of polishing every field shows up as its own line in `llm_spend_daily` rather
+     * than inflating [DOCUMENT].
+     */
+    POLISH,
 }

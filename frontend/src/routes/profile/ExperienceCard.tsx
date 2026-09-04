@@ -21,6 +21,7 @@ import { formatPeriod } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { ConfirmDelete } from './ConfirmDelete'
 import { Field } from './Field'
+import { PolishAction } from './PolishAction'
 import { RowActions } from './RowActions'
 import { blankToNull, movedIds, useProfileEdit } from './mutations'
 
@@ -272,6 +273,12 @@ function BulletDialog({
               value={text}
               onChange={(e) => setText(e.target.value)}
               placeholder="Cut checkout latency by 40% by rewriting the pricing service."
+            />
+            <PolishAction
+              profileId={profileId}
+              field="EXPERIENCE_BULLET"
+              text={text}
+              onAccept={setText}
             />
           </div>
 

@@ -108,6 +108,35 @@ Failure shapes, all RFC 7807 `ProblemDetail`:
 | 409 | deleting a skill that bullets still cite | `blockingBullets` |
 | 409 | deleting the default profile while another one exists | |
 
+### Polishing a field
+
+```
+POST /api/profiles/{profileId}/polish?field=PROJECT_DESCRIPTION
+  {"text":"a tool i built that reads a job offer and makes a cv"}
+
+-> {"field":"PROJECT_DESCRIPTION",
+    "original":"a tool i built that reads a job offer and makes a cv",
+    "suggestion":"A tool that reads a job offer and tailors a CV to it.",
+    "unheldSkills":[],
+    "modelProfile":"openrouter"}
+```
+
+**This writes nothing.** It spends tokens and answers with a proposal; the profile changes only when
+the candidate accepts and the client sends the ordinary `PUT` above. `field` is one of
+`CAREER_GOAL`, `PROJECT_NAME`, `PROJECT_DESCRIPTION`, `EXPERIENCE_BULLET` — free prose only, and an
+unknown value is a 400 rather than a fifth thing to polish.
+
+`unheldSkills` names any catalog skill the suggestion mentions that the profile does not hold. It is
+a **flag, not a refusal**: the same reading rejects a generated CV outright, because an employer is
+about to read that one. Here the candidate is, and declaring the skill is a legitimate answer.
+
+| Status | When | Extensions |
+|---|---|---|
+| 400 | blank text, text over 2000 characters, unknown `field` | |
+| 404 | no such profile, or it has no details yet | |
+| 422 | the model answered with nothing | |
+| 422 | the field's own text carries an identifier — a description quoting the project's URL | `sensitiveFields` |
+
 ### Staleness
 
 `CandidateProfile.revision` counts writes to the profile. An analysis and a generated document each

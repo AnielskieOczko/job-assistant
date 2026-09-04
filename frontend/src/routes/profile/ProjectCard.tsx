@@ -19,6 +19,7 @@ import { useSkillNames } from '@/hooks/useSkillNames'
 import { formatPeriod } from '@/lib/format'
 import { ConfirmDelete } from './ConfirmDelete'
 import { Field } from './Field'
+import { PolishAction } from './PolishAction'
 import { RowActions } from './RowActions'
 import { blankToNull, movedIds, useProfileEdit } from './mutations'
 
@@ -268,6 +269,12 @@ function ProjectBulletDialog({
               onChange={(e) => setText(e.target.value)}
               placeholder="Built a CLI that cut deploy time from 20 minutes to 2."
             />
+            <PolishAction
+              profileId={profileId}
+              field="EXPERIENCE_BULLET"
+              text={text}
+              onAccept={setText}
+            />
           </div>
 
           <div className="space-y-1.5">
@@ -386,6 +393,7 @@ function ProjectDialog({
 
         <div className="space-y-3">
           <Field label="Name" value={name} onChange={setName} placeholder="Side project" />
+          <PolishAction profileId={profileId} field="PROJECT_NAME" text={name} onAccept={setName} />
           <Field label="URL" value={url} onChange={setUrl} placeholder="https://github.com/you/project" />
           <div className="space-y-1.5">
             <Label htmlFor="project-description">Description</Label>
@@ -394,6 +402,12 @@ function ProjectDialog({
               rows={2}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
+            />
+            <PolishAction
+              profileId={profileId}
+              field="PROJECT_DESCRIPTION"
+              text={description}
+              onAccept={setDescription}
             />
           </div>
           <div className="grid gap-3 sm:grid-cols-2">

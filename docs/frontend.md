@@ -55,6 +55,7 @@ already extracted out of components for exactly this purpose:
 | `routes/market/format.ts` | salary bands, demand level mix, plurals, coverage provenance |
 | `lib/sentDocuments.ts` | which documents an application recorded as sent, as one list-row label |
 | `lib/shortlist.ts` | the offer list's two orderings, the score label, and the scored-of-total caveat |
+| `routes/profile/polish.ts` | what an accept would write, and which flagged terms a draft still names |
 
 Two conventions worth keeping. **Test files sit beside their subject as `*.test.ts`** — the Vitest
 default, needing no configuration, and picked up by `tsc -b` because `tsconfig.app.json` includes
@@ -247,6 +248,29 @@ itself. Reordering is arrow buttons rather than drag-and-drop, for the same reas
 `CandidateProfile.revision` and is what makes an out-of-date analysis or CV visible rather than
 silently wrong.
 
+### Polish with AI
+
+`PolishAction` sits under four free-prose fields — the career goal, a project's name and
+description, and a bullet's text — and asks a model for a better-reading version of what is already
+in the box. It is **inline rather than a dialog of its own**: every one of those fields is already
+being edited inside one, and opening the suggestion under the field puts the original and the
+suggestion on screen together without nesting a modal in a modal.
+
+The component writes nowhere. Accepting calls `onAccept`, which fills the form control the candidate
+is looking at; the profile changes when they press Save and the dialog sends the same `PUT` it
+always has. Two presses, both theirs.
+
+`routes/profile/polish.ts` holds the rules, so they can be asserted without rendering anything:
+
+- `acceptedText` refuses a blank draft (deleting a field is not polishing it) and a draft equal to
+  the original (a write with no change still bumps the revision, which is what marks stored CVs and
+  analyses stale).
+- `markTerms` highlights the skills the server flagged, whole-word and longest-first so
+  "Apache Kafka" is not cut in half by a "Kafka". A term it cannot locate — the model wrote "K8s" —
+  goes unmarked and is still named in the warning beneath.
+- `flaggedIn` narrows the server's list as the candidate edits, so deleting the word clears the
+  warning. It can only ever narrow: a client-side reading is not the authority on what is claimed.
+
 ## Response codes the UI has to handle
 
 | Code | Where | Meaning |
@@ -262,6 +286,8 @@ silently wrong.
 | 409 | any profile edit | Skill already held, language already listed, role ending before it starts, partial reorder. |
 | 409 | `DELETE /api/profiles/{id}/skills/{id}` | `blockingBullets` — the bullets still citing it. Rendered in the confirm dialog rather than closing it. |
 | 409 | `DELETE /api/profiles/{id}` | This is the default profile and another one still exists. Set a different default first. |
+| 400 | `POST /api/profiles/{id}/polish` | Blank text, over 2000 characters, or an unknown `field`. |
+| 422 | `POST /api/profiles/{id}/polish` | The model answered with nothing, or `sensitiveFields` — the field's own text carries an identifier. |
 
 **Exception handlers in this backend are per-controller, not a `@ControllerAdvice`.** The catalog
 and llm controllers have none, so an invalid id there surfaces as a bare 500 with no

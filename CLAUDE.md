@@ -28,9 +28,9 @@ value statement written against a stated axis, plus what was declined, what is g
 does not exist yet, and what already shipped. Read it before proposing a feature. The top six items
 each have a shaping ticket on GitHub (#79–#83 and #85); where an item has an issue number, **GitHub
 is canonical** and the file is a summary. Items 1 (#79, promoting a corpus offer), 2 (#85, recording
-which document was sent) and 3 (#80, ranking the offer list by match score) shipped on 2026-09-04;
-the numbers in that file deliberately do not move when an item ships, so item 4 is the next thing
-to build.
+which document was sent), 3 (#80, ranking the offer list by match score) and 4 (#81, AI-assisted
+polish of a profile field) shipped on 2026-09-04; the numbers in that file deliberately do not move
+when an item ships, so item 5 is the next thing to build.
 
 The ranking axis is **application quality first, learning direction second, explicitly not
 throughput**, with portfolio value breaking ties. Hosting ranks last under it, deliberately — see
@@ -268,6 +268,7 @@ Feature slices under the base package, each a Spring Modulith module. Anything i
 | `llm` | Model profiles, `ChatModel` factory, AI services, call audit, parse-repair |
 | `market` | Ingested board offers as a market corpus, the solid.jobs client, the scheduled poll, promotion into a real offer |
 | `triage` | The ranked, filtered review queue, plus model-assisted suggestions for it |
+| `polish` | Model-suggested rewrites of the profile's free prose. Suggests only; never writes |
 
 `catalog` is depended on by nearly everything; it has no dependencies of its own — and keeping it
 that way is why `triage` exists.
@@ -305,6 +306,35 @@ denominator*: the frequency filter applies to the **sum** of `occurrences` and `
 (every corpus term has `occurrences = 0`, so filtering the candidate's counter alone would hide the
 whole market behind a control meant to cut the singleton tail), and the response carries `matching`
 and `pending` alongside `entries`, so a 100-row page out of 1,540 cannot read as a finished queue.
+
+**`polish` is `triage`'s discipline applied to the candidate's own prose, and it is a module for
+the same reason.** A per-field "polish with AI" action needs the profile's held skills, the catalog
+and a model, and the obvious home — `profile` — is the wrong one: `analysis`, `document` and
+`market` all depend on `profile`, so a `profile → llm` edge would put the model factory, the audit
+listener and the provider configuration into every one of their closures to serve one endpoint.
+That is ADR-0003's argument in a new place. `polish` depends on `profile`, `catalog`, `llm` and
+`privacy`, and **nothing depends on `polish`**. `docs/adr/0005-polish-suggests-and-never-writes.md`
+records it.
+
+**`ProsePolishService` has no write path of any kind** — no repository, no `JdbcClient`, nothing.
+`POST /api/profiles/{id}/polish` answers with a `PolishSuggestion` and stops; the profile changes
+when the candidate accepts and saves, which sends the same per-entity `PUT` the edit dialog has
+always sent. *"No model writes to the profile"* stays literally true as a fact about the module
+graph rather than a promise made in a prompt. Four fields are polishable and the list is closed:
+the career goal, a project's name and description, and one experience bullet — free prose only.
+Skill names are catalog ids, and employers, dates and URLs are records rather than writing.
+
+**The prompt is one field's text plus a description of what that field is, never the entity.** That
+is not tidiness: `JdbcProfileService.identities()` folds project URLs into `linkUrls`, so a prompt
+built from a `Project` would be refused outright by `ProfileIdentityInspector`. Building from the
+field is what makes the call possible at all.
+
+**A suggestion naming an unheld skill is flagged, not refused** — see the document section below for
+why that is deliberately weaker than `CvInvariant`. An *empty* suggestion, by contrast, is a 422:
+rendered next to the original it would read as "your text is best left alone", which is a judgement
+no empty response supports. Blank and oversized input are refused before a provider is reached, and
+there is no bulk form — no "polish every bullet" — because each suggestion has to be read by a
+person to mean anything.
 
 `frontend/` sits outside the Modulith world entirely. `SpaWebConfiguration` lives in the **base
 package**, next to `JobAssistantApplication`, because `ApplicationModules.of(...)` treats every
@@ -507,9 +537,10 @@ Providers are configured, not coded. OpenRouter, Requesty, Ollama and LM Studio 
 OpenAI-compatible, so a "profile" under `job-assistant.llm.profiles` is just a base URL, key, model
 name and a `strict-schema` flag — there is no provider SPI, and adding one would be a mistake.
 
-`job-assistant.llm.tasks` routes each `LlmTask` (`EXTRACTION`, `NARRATIVE`, `DOCUMENT`) to a profile
-by name, so extraction can run on a different provider from narrative writing with no code change.
-A task pointing at an undefined profile fails loudly at first use.
+`job-assistant.llm.tasks` routes each `LlmTask` (`EXTRACTION`, `NARRATIVE`, `DOCUMENT`, `TRIAGE`,
+`POLISH`) to a profile by name, so extraction can run on a different provider from narrative writing
+with no code change. A task pointing at an undefined profile fails loudly at first use, which is why
+the enum and that map are never allowed to drift apart.
 
 **A router's model name is not a model.** OpenRouter serves one slug from many upstream providers
 whose capabilities genuinely differ — `minimax/minimax-m3` had 3 of 11 implementing structured
@@ -718,6 +749,15 @@ plus short ambiguous names (`Go`, `C`, `REST`). It is a floor, not a ceiling: it
 Kubernetes, Kafka and Terraform, and knowingly ignores vocabulary where a false positive would
 reject every honest CV. A rejected generation stores nothing and surfaces as HTTP 422 with
 `fabricatedClaims`.
+
+**The reading is `SkillMentions`, in `catalog`; the consequence is not shared.** `CvInvariant` is a
+delegate — one function answers *"does this text name a catalog skill the profile does not hold"*
+for both the finished document and a `polish` suggestion, because two callers deriving nearly the
+same notion of a mention is how a document and a suggestion start disagreeing about one sentence.
+What differs is who reads the text next. Here it is an employer, so a hit throws the document away.
+There it is the candidate, so a hit is reported and shown — declaring the skill is a legitimate
+answer to the flag. **Do not soften this side to match that one**; `CvInvariantTest` was not edited
+when the reading moved, which is exactly the check that proves the extraction changed nothing.
 
 **Which document was actually sent is recorded on `application`, not on `generated_document`.**
 `sent_cv_document_id` and `sent_cover_letter_document_id` (`V27`) hold it: an application has at

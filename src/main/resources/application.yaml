@@ -162,3 +162,7 @@ job-assistant:
       # Added together with LlmTask.TRIAGE: a task pointing at no profile fails loudly at first
       # use, so the enum and this map are never allowed to drift apart.
       triage: openrouter
+      # Rewriting one field of prose. The cheapest task here by a distance - no catalog listing, no
+      # schema to hold, one short paragraph in and one out - so it is the first task worth pointing
+      # at a smaller model when one is configured.
+      polish: openrouter
