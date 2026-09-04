@@ -3,6 +3,7 @@ package com.jankowski.rafal.jobassistant.analysis.internal
 import com.jankowski.rafal.jobassistant.analysis.AggregateGapReport
 import com.jankowski.rafal.jobassistant.analysis.AnalysisReport
 import com.jankowski.rafal.jobassistant.analysis.AnalysisService
+import com.jankowski.rafal.jobassistant.analysis.OfferShortlist
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.ExceptionHandler
@@ -43,6 +44,21 @@ internal class AnalysisController(private val analyses: AnalysisService) {
         @RequestParam(required = false) profileId: Long?,
     ): ResponseEntity<AnalysisReport> =
         analyses.latestForOffer(offerId, profileId)?.let { ResponseEntity.ok(it) } ?: ResponseEntity.notFound().build()
+
+    /**
+     * Every saved offer ranked by match score, for deciding what to apply to first.
+     *
+     * Under `/api/analyses` rather than `/api/offers` because the score is what it is *for*: it
+     * sits beside `aggregate`, the other cross-offer view, and `/api/offers/{id}` is a path where a
+     * literal segment would be one rename away from shadowing an id.
+     *
+     * `profileId` is optional and falls back to the default profile, like `latest` - this is a
+     * read, and a shortlist that refused to render before a persona was picked would be a blank
+     * offer list.
+     */
+    @GetMapping("/api/analyses/shortlist")
+    fun shortlist(@RequestParam(required = false) profileId: Long?): OfferShortlist =
+        analyses.shortlist(profileId)
 
     /** What to actually learn, across every offer analysed so far against the given profile. */
     @GetMapping("/api/analyses/aggregate")

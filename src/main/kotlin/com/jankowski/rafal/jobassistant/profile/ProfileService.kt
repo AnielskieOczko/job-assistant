@@ -57,6 +57,20 @@ interface ProfileService {
     fun defaultProfileId(): Long
 
     /**
+     * Id of the default profile, or null when no persona exists yet.
+     *
+     * The same lookup as [defaultProfileId] for callers to whom "there is no profile" is a state
+     * rather than an error - a fresh install still has a meaningful offer list and a meaningful
+     * demand table, and both are read from screens that must render.
+     *
+     * It exists rather than leaving those callers to catch [defaultProfileId]'s exception because
+     * catching it is not enough: the throw happens inside a transaction, so a caller that is itself
+     * transactional has its transaction marked rollback-only whether or not it swallows the
+     * exception, and fails at commit for a reason with nothing to do with what went wrong.
+     */
+    fun findDefaultProfileId(): Long?
+
+    /**
      * The identifying fields of *every* profile, for the privacy guard that vets outgoing prompts.
      *
      * Deliberately every profile rather than one: the guard runs beneath the AI-service call, where

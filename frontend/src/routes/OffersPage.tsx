@@ -3,7 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router'
 import { ExternalLink, FileStack, Plus } from 'lucide-react'
 import { toast } from 'sonner'
-import { listOffers, pasteOffer } from '@/api/offers'
+import { getShortlist } from '@/api/analyses'
+import { pasteOffer } from '@/api/offers'
 import { keys } from '@/api/keys'
 import { APPLICATION_STATUSES } from '@/api/types'
 import { ApiErrorAlert } from '@/components/ApiErrorAlert'
@@ -26,26 +27,54 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { formatRelative } from '@/lib/format'
 import { sentDocumentsLabel } from '@/lib/sentDocuments'
+import {
+  comparatorFor, matchScoreLabel, OFFER_SORT_LABELS, OFFER_SORTS, scoredCoverageNote,
+  type OfferSort,
+} from '@/lib/shortlist'
+import { useSelectedProfile } from '@/hooks/useSelectedProfile'
+import type { ShortlistEntry } from '@/api/types'
 
 const ALL = '__all__'
 
 export function OffersPage() {
-  const offers = useQuery({ queryKey: keys.offers, queryFn: listOffers })
+  const { profileId } = useSelectedProfile()
+  /*
+    The offer list and the score arrive together. `GET /api/analyses/shortlist` is the join —
+    resolving an analysis per row from here would be one request per offer, and the list has always
+    been one request.
+  */
+  const offers = useQuery({
+    queryKey: keys.shortlist(profileId),
+    queryFn: () => getShortlist(profileId),
+  })
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<string>(ALL)
+  const [sort, setSort] = useState<OfferSort>('match')
   const [pasteOpen, setPasteOpen] = useState(false)
 
+  const entries = offers.data?.entries
   const rows = useMemo(() => {
     const term = search.trim().toLowerCase()
-    return (offers.data ?? [])
+    return (entries ?? [])
       .filter((row) => status === ALL || row.application.status === status)
       .filter((row) => {
         if (!term) return true
         const title = row.offer.displayTitle ?? row.offer.title ?? row.offer.rawText
         return `${title} ${row.offer.company ?? ''}`.toLowerCase().includes(term)
       })
-      .sort((a, b) => b.offer.createdAt.localeCompare(a.offer.createdAt))
-  }, [offers.data, search, status])
+      // The server already ranks; re-sorting here is what makes the toggle instant. Both
+      // comparators are total, so the same rows always land in the same order.
+      .sort(comparatorFor(sort))
+  }, [entries, search, status, sort])
+
+  /*
+    Filtering changes what is on screen but not what has been measured, so the caveat is computed
+    over the whole shortlist rather than the visible rows: "3 of 10 scored" is a fact about the
+    offers, not about the search box.
+  */
+  const coverageNote = offers.data
+    ? scoredCoverageNote(offers.data.scored, offers.data.total)
+    : null
 
   return (
     <>
@@ -65,7 +94,7 @@ export function OffersPage() {
         <div className="space-y-2">
           {[0, 1, 2].map((i) => <Skeleton key={i} className="h-12 w-full" />)}
         </div>
-      ) : offers.data && offers.data.length === 0 ? (
+      ) : offers.data && offers.data.total === 0 ? (
         <EmptyState
           icon={FileStack}
           title="No offers yet"
@@ -92,10 +121,28 @@ export function OffersPage() {
                 ))}
               </SelectContent>
             </Select>
+            <Select value={sort} onValueChange={(value) => setSort(value as OfferSort)}>
+              <SelectTrigger className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {OFFER_SORTS.map((option) => (
+                  <SelectItem key={option} value={option}>{OFFER_SORT_LABELS[option]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <span className="ml-auto text-sm text-muted-foreground">
-              {rows.length} of {offers.data?.length ?? 0}
+              {rows.length} of {offers.data?.total ?? 0}
             </span>
           </div>
+
+          {/*
+            Never a rank without saying what it ranks. Ten rows built from three analyses is a
+            ranking of three, and the rows alone cannot say so.
+          */}
+          {coverageNote ? (
+            <p className="mb-3 text-sm text-muted-foreground">{coverageNote}</p>
+          ) : null}
 
           <div className="rounded-lg border">
             <Table>
@@ -104,13 +151,14 @@ export function OffersPage() {
                   <TableHead>Offer</TableHead>
                   <TableHead className="w-44">Company</TableHead>
                   <TableHead className="w-32">Seniority</TableHead>
+                  <TableHead className="w-24">Match</TableHead>
                   <TableHead className="w-32">Status</TableHead>
                   <TableHead className="w-28">Sent</TableHead>
                   <TableHead className="w-32 text-right">Pasted</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rows.map(({ offer, application }) => (
+                {rows.map(({ offer, application, score }) => (
                   <TableRow key={offer.id}>
                     <TableCell className="max-w-0">
                       <div className="flex items-center gap-2">
@@ -135,6 +183,7 @@ export function OffersPage() {
                     </TableCell>
                     <TableCell className="text-muted-foreground">{offer.company ?? '—'}</TableCell>
                     <TableCell className="text-muted-foreground">{offer.seniority ?? '—'}</TableCell>
+                    <TableCell><MatchScoreCell score={score} /></TableCell>
                     <TableCell><ApplicationStatusBadge status={application.status} /></TableCell>
                     {/*
                       What actually went to the employer, which "Applied" on its own does not say.
@@ -151,7 +200,7 @@ export function OffersPage() {
                 ))}
                 {rows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
+                    <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
                       No offers match those filters.
                     </TableCell>
                   </TableRow>
@@ -164,6 +213,44 @@ export function OffersPage() {
 
       <PasteOfferDialog open={pasteOpen} onOpenChange={setPasteOpen} />
     </>
+  )
+}
+
+/**
+ * The score in a list row.
+ *
+ * A dash for an unscored offer, never `0%`. An offer nobody has analysed has not scored badly, and
+ * a column you are about to sort on is the last place that difference may be blurred.
+ *
+ * A score from the old rule is labelled rather than quietly compared. Historical scores are never
+ * recomputed, so the shortlist is exactly where a V1 and a V2 number end up side by side.
+ */
+function MatchScoreCell({ score }: { score: ShortlistEntry['score'] }) {
+  if (score === null) {
+    return (
+      <span className="text-muted-foreground" title="Not analysed against this profile yet">
+        —
+      </span>
+    )
+  }
+
+  // Rounded before the thresholds, so the colour cannot disagree with the number printed next
+  // to it: 74.6% renders as "75%" and must be the same green a flat 75 gets.
+  const percent = Math.round(score.matchScore * 100)
+  const hue = percent >= 75 ? 'text-emerald-600' : percent >= 45 ? 'text-amber-600' : 'text-red-600'
+
+  return (
+    <span className={`font-medium tabular-nums ${hue}`}>
+      {matchScoreLabel(score)}
+      {score.scoringRule === 'V1_ALL_CATEGORIES' ? (
+        <sup
+          className="ml-0.5 cursor-help font-normal text-muted-foreground"
+          title="Scored before soft skills were excluded, so they count toward this number. Not directly comparable with a newer score."
+        >
+          V1
+        </sup>
+      ) : null}
+    </span>
   )
 }
 

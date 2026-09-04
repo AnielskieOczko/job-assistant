@@ -4,6 +4,15 @@ import type { DemandRanking, DocumentType, SpendBucket, TriageRanking } from './
 export const keys = {
   offers: ['offers'] as const,
   offer: (id: number) => ['offer', id] as const,
+  /*
+    Deliberately nested under `offers` rather than under `analysis`, even though the scores come
+    from analyses. The shortlist holds the same rows the offer list does, and five places already
+    invalidate `keys.offers` after a paste, a promotion, a status change or a sent-document mark.
+    A sibling key would need every one of them to remember a second one; a child key means none
+    of them has to. The profile id is on the end because the scores are measured against one
+    persona, so switching must refetch rather than show the previous one's numbers.
+  */
+  shortlist: (profileId: number | null) => ['offers', 'shortlist', profileId] as const,
 
   latestAnalysis: (offerId: number, profileId: number) => ['analysis', 'latest', offerId, profileId] as const,
   analysis: (id: number | null) => ['analysis', id] as const,
