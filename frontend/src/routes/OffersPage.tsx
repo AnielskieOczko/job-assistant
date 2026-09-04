@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
 import { formatRelative } from '@/lib/format'
+import { sentDocumentsLabel } from '@/lib/sentDocuments'
 
 const ALL = '__all__'
 
@@ -104,6 +105,7 @@ export function OffersPage() {
                   <TableHead className="w-44">Company</TableHead>
                   <TableHead className="w-32">Seniority</TableHead>
                   <TableHead className="w-32">Status</TableHead>
+                  <TableHead className="w-28">Sent</TableHead>
                   <TableHead className="w-32 text-right">Pasted</TableHead>
                 </TableRow>
               </TableHeader>
@@ -134,6 +136,14 @@ export function OffersPage() {
                     <TableCell className="text-muted-foreground">{offer.company ?? '—'}</TableCell>
                     <TableCell className="text-muted-foreground">{offer.seniority ?? '—'}</TableCell>
                     <TableCell><ApplicationStatusBadge status={application.status} /></TableCell>
+                    {/*
+                      What actually went to the employer, which "Applied" on its own does not say.
+                      A dash means no document was recorded — not that none was sent, since an
+                      application made outside the tool has none to name.
+                    */}
+                    <TableCell className="text-muted-foreground">
+                      {sentDocumentsLabel(application) ?? '—'}
+                    </TableCell>
                     <TableCell className="text-right text-sm text-muted-foreground">
                       {formatRelative(offer.createdAt)}
                     </TableCell>
@@ -141,7 +151,7 @@ export function OffersPage() {
                 ))}
                 {rows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
+                    <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
                       No offers match those filters.
                     </TableCell>
                   </TableRow>

@@ -101,6 +101,23 @@ internal class JdbcOfferService(
             )
         ).toDomain()
     }
+
+    @Transactional
+    override fun markCvSent(offerId: Long, documentId: Long?): Application =
+        recordSent(offerId) { it.copy(sentCvDocumentId = documentId) }
+
+    @Transactional
+    override fun markCoverLetterSent(offerId: Long, documentId: Long?): Application =
+        recordSent(offerId) { it.copy(sentCoverLetterDocumentId = documentId) }
+
+    /**
+     * Null is a value here, not "leave it alone" - unmarking is how a mis-click is corrected, so
+     * this cannot use the `?:` fallback that [updateStatus] applies to its optional fields.
+     */
+    private fun recordSent(offerId: Long, edit: (ApplicationRow) -> ApplicationRow): Application {
+        val row = applications.findByJobOfferId(offerId) ?: throw UnknownOfferException(offerId)
+        return applications.save(edit(row)).toDomain()
+    }
 }
 
 internal class UnknownOfferException(offerId: Long) : NoSuchElementException("No job offer $offerId")
@@ -132,4 +149,6 @@ private fun ApplicationRow.toDomain() = Application(
     statusChangedAt = statusChangedAt,
     appliedOn = appliedOn,
     notes = notes,
+    sentCvDocumentId = sentCvDocumentId,
+    sentCoverLetterDocumentId = sentCoverLetterDocumentId,
 )

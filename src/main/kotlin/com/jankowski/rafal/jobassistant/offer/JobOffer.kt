@@ -28,6 +28,21 @@ data class Application(
     val statusChangedAt: Instant,
     val appliedOn: LocalDate? = null,
     val notes: String? = null,
+    /**
+     * The generated CV that was actually sent, and the cover letter that went with it. Null is the
+     * normal state: a document may be generated and never sent, and an application made outside the
+     * tool has no document to name at all.
+     *
+     * These are ids rather than documents because `offer` knows nothing about the `document`
+     * module - the dependency runs the other way, and it is `document` that checks an id names a
+     * real document of the right type belonging to this offer before recording it here.
+     *
+     * Deliberately independent of [status]: sending a document does not move an application to
+     * APPLIED, and marking it APPLIED does not claim a document was sent. Deriving either from the
+     * other would fabricate a record.
+     */
+    val sentCvDocumentId: Long? = null,
+    val sentCoverLetterDocumentId: Long? = null,
 )
 
 data class OfferSummary(val offer: JobOffer, val application: Application)

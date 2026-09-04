@@ -28,4 +28,7 @@ internal data class ApplicationRow(
     val statusChangedAt: Instant,
     val appliedOn: LocalDate?,
     val notes: String?,
+    /** The documents that were actually sent for this application. See V27. */
+    val sentCvDocumentId: Long? = null,
+    val sentCoverLetterDocumentId: Long? = null,
 )

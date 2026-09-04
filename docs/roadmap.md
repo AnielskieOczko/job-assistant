@@ -37,7 +37,7 @@ deliberately — and to say so here — rather than to quietly promote a single 
 | # | Item | Issue | Feasibility | Complexity | Effort | Value on the axis |
 |---|---|---|---|---|---|---|
 | 1 | Promote a corpus offer into a real offer | [#79](https://github.com/AnielskieOczko/job-assistant/issues/79) | certain | low | ~1 session | **Highest** |
-| 2 | Record which document was sent | [#85](https://github.com/AnielskieOczko/job-assistant/issues/85) | certain | low | ~½ session | **A closing window** |
+| ~~2~~ | ~~Record which document was sent~~ | [#85](https://github.com/AnielskieOczko/job-assistant/issues/85) | — | — | **shipped 2026-09-04** | *see below* |
 | 3 | Offer shortlist ranking | [#80](https://github.com/AnielskieOczko/job-assistant/issues/80) | certain | low | ~1 session | **Direct** |
 | 4 | AI-assisted polish of a profile field | [#81](https://github.com/AnielskieOczko/job-assistant/issues/81) | certain | medium | ~2 sessions | **Upstream leverage** |
 | 5 | Generated-document library and reuse | [#82](https://github.com/AnielskieOczko/job-assistant/issues/82) | certain | low–medium | ~1.5 sessions | **Visibility** |
@@ -52,10 +52,14 @@ deliberately — and to say so here — rather than to quietly promote a single 
 ranking only required the top four to be shaped, and the other two are features that were asked for
 rather than lines in a list.
 
-Three orderings in that table look surprising and are deliberate. **Item 2 is ranked out of
-value-for-effort order** — it is second because its cost rises with every application sent without
-it, not because it is the second most valuable thing; see its section below. **Hosting is last, not
-fifth** —
+**The numbers do not move when an item ships.** Item 2 is done and the rest keep the numbers they
+were ranked under: they are how this file and the GitHub tickets refer to each other, and
+renumbering would silently change what a comment saying "item 5" points at.
+
+Three orderings in that table look surprising and are deliberate. **Item 2 was ranked out of
+value-for-effort order** — it was second because its cost rose with every application sent without
+it, not because it was the second most valuable thing; it shipped on 2026-09-04 and its record is
+below. **Hosting is last, not fifth** —
 it is simultaneously the lowest-value item on the axis and by far the most expensive, so
 value-for-effort puts it at the bottom on its own arithmetic; the portfolio tiebreak only separates
 items of comparable cost, and hosting is not comparable to anything else here. And **item 4 outranks
@@ -82,33 +86,37 @@ the paste path that is already there.
   thousands of rows would become thousands of `SAVED` applications and silently change what
   `AggregateGapReport.analysedOffers` counts. Promotion must not reopen that door in miniature.
 
-## 2. Record which document was sent
+## 2. Record which document was sent — shipped 2026-09-04
 
-**This is ranked out of value-for-effort order, and the reason is the only one of its kind on this
-list: it is the item whose cost rises with every day it is not built.**
+`application` now carries `sent_cv_document_id` and `sent_cover_letter_document_id`
+(`V27__sent_document.sql`), written through `PUT /api/offers/{offerId}/documents/{documentId}/sent`
+and cleared by `DELETE /api/offers/{offerId}/documents/sent?type=…`. The Documents tab marks the
+document on screen, and the offer list carries a **Sent** column so "Applied" is no longer a status
+with nothing behind it.
 
-`PUT /api/offers/{id}/status` records `status`, `appliedOn` and `notes`, so an offer can be marked
-`APPLIED` with a date. Nothing links an application to the **document that was actually sent**.
-`generated_document` carries `offer_id`, `profile_id`, `analysis_id`, `profile_revision`, both drop
-counts and `consent_clause_language`, and no notion of having been sent — so three CVs generated for
-one offer leave no record of which went out. Free-text `notes` is the only place that fact can
-currently live, and free text is not queryable.
+Four decisions the build had to take, kept here because they are the ones a later change could undo
+by accident:
 
-Zero applications have been sent as of 2026-09-03. That is precisely why this is urgent rather than
-why it can wait: **the data that makes outcome calibration worth reading is being defined now.** If
-applications are recorded as `APPLIED` and nothing more, then when the calibration gate opens at 30
-outcomes the only available correlation is `matchScore` against result. Whether a freshly tailored
-CV outperformed a reused one, or whether a polished project description changed anything, would be
-unanswerable — the link was never captured, and unrecorded applications cannot be reconstructed.
+- **The link lives on `application`, not on `generated_document`.** An application has at most one
+  CV and one cover letter that went out; a document may exist and never be sent. Two columns keep
+  *"what did I send for this offer"* a single read of a row the offer list already loads.
+- **The write path lives in `document`, not in `offer`.** `document` already depends on `offer`
+  (`JdbcDocumentService` reads `OfferService`), so an `offer → document` edge would be a cycle and
+  `ModularityTest` would fail. `offer` therefore exposes `markCvSent` / `markCoverLetterSent` taking
+  a bare id and checking nothing; `DocumentService.markSent` resolves the id, refuses a document
+  belonging to another offer, and dispatches on the document's **own** type — marking a cover letter
+  as the CV that was sent is not a thing the API can express.
+- **The foreign key is deliberate, and the opposite choice from `llm_call`.** That table's
+  `subject_kind`/`subject_id` pair carries no key so cost history outlives what it paid for; this
+  link exists so the document can be opened, so `on delete set null` drops it rather than dangling
+  it. There is no document-deletion path today; this is the rule for the one that may arrive.
+- **Sent and status stay independent in both directions.** Marking a document does not move the
+  status or restamp `statusChangedAt`, and a status change leaves the link alone. Both are asserted
+  in `SentDocumentIntegrationTest`, because deriving either fact from the other would fabricate a
+  record in the table calibration will eventually read.
 
-It is therefore a **prerequisite of the gated calibration entry**, not a neighbour of it.
-
-- **The link belongs to the application**, which has at most one CV and one cover letter that were
-  sent; a document may exist and never be sent.
-- **Marking sent does not change status, and status does not mark sent.** They are separate facts,
-  and deriving either from the other would fabricate a record.
-- **Optional and reversible.** An application made outside the tool has no document to name, and
-  forcing one would put a false row in the table calibration will eventually read.
+Marking stays optional and reversible: an application made outside the tool has no document to name,
+and `sentDocumentsLabel` renders that absence as a dash rather than as "nothing was sent".
 
 ## 3. Offer shortlist ranking
 
@@ -298,11 +306,13 @@ without its denominator*. Its cheapness is the trap, not the argument.
 `APPLIED` or beyond with a recorded outcome reach **30**. That number is the one the market
 dashboard already uses, so it is consistent rather than invented.
 
-**Item 2 is this entry's prerequisite, and that is why it is ranked second.** A gate that opens onto
-data nobody captured is not a gate, it is a delay. Reaching thirty outcomes while recording only
-`APPLIED` would make the cheap half of calibration possible and the interesting half permanently
-impossible, because the link between an application and the document it sent cannot be reconstructed
-after the fact.
+**Item 2 was this entry's prerequisite, which is why it was ranked second and why it shipped first.**
+A gate that opens onto data nobody captured is not a gate, it is a delay. Reaching thirty outcomes
+while recording only `APPLIED` would have made the cheap half of calibration possible and the
+interesting half permanently impossible, because the link between an application and the document it
+sent cannot be reconstructed after the fact. With `sent_cv_document_id` in place from the first
+application onward, the gate now opens onto data that was captured rather than data that has to be
+remembered.
 
 ## Declined
 

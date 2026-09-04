@@ -113,8 +113,10 @@ class ApiContractTest {
                 Application(
                     id = 1, offerId = 1, status = ApplicationStatus.SAVED,
                     statusChangedAt = Instant.EPOCH, appliedOn = null, notes = null,
+                    sentCvDocumentId = null, sentCoverLetterDocumentId = null,
                 ),
                 "id", "offerId", "status", "statusChangedAt", "appliedOn", "notes",
+                "sentCvDocumentId", "sentCoverLetterDocumentId",
             )
         },
     )

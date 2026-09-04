@@ -4,6 +4,7 @@ import com.jankowski.rafal.jobassistant.document.DocumentService
 import com.jankowski.rafal.jobassistant.document.DocumentType
 import com.jankowski.rafal.jobassistant.document.FabricatedClaimException
 import com.jankowski.rafal.jobassistant.document.GeneratedDocument
+import com.jankowski.rafal.jobassistant.offer.Application
 import com.jankowski.rafal.jobassistant.privacy.SensitiveDataInPromptException
 import org.springframework.http.ContentDisposition
 import org.springframework.http.HttpHeaders
@@ -11,10 +12,12 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ProblemDetail
 import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
@@ -57,6 +60,24 @@ internal class DocumentController(private val documents: DocumentService) {
             )
             .body(documents.renderPdf(documentId))
     }
+
+    /**
+     * Records this document as the one sent for the offer, and answers with the *application* -
+     * the link is a fact about the application, not about the document, so that is the row a client
+     * has to re-read. `PUT` because marking the same document twice is the same state, not a second
+     * send.
+     */
+    @PutMapping("/api/offers/{offerId}/documents/{documentId}/sent")
+    fun markSent(@PathVariable offerId: Long, @PathVariable documentId: Long): Application =
+        documents.markSent(offerId, documentId)
+
+    /**
+     * Undoes a mis-click. Keyed by type rather than by document id: there is one CV slot and one
+     * cover letter slot, and clearing the slot should not require knowing what is currently in it.
+     */
+    @DeleteMapping("/api/offers/{offerId}/documents/sent")
+    fun unmarkSent(@PathVariable offerId: Long, @RequestParam type: DocumentType): Application =
+        documents.unmarkSent(offerId, type)
 
     /**
      * A fabricated claim is a server-side refusal, not a client mistake, but 422 is the honest
