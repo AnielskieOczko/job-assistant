@@ -36,12 +36,14 @@ import com.jankowski.rafal.jobassistant.market.MarketOfferPage
 import com.jankowski.rafal.jobassistant.market.MarketOfferSummary
 import com.jankowski.rafal.jobassistant.market.MarketSalary
 import com.jankowski.rafal.jobassistant.market.MarketScopeReport
+import com.jankowski.rafal.jobassistant.market.PromotedOffer
 import com.jankowski.rafal.jobassistant.market.SalaryBand
 import com.jankowski.rafal.jobassistant.market.SalaryGroup
 import com.jankowski.rafal.jobassistant.market.SalaryReport
 import com.jankowski.rafal.jobassistant.offer.Application
 import com.jankowski.rafal.jobassistant.offer.ApplicationStatus
 import com.jankowski.rafal.jobassistant.offer.JobOffer
+import com.jankowski.rafal.jobassistant.offer.OfferOrigin
 import com.jankowski.rafal.jobassistant.profile.CandidateProfile
 import com.jankowski.rafal.jobassistant.profile.ConsentClause
 import com.jankowski.rafal.jobassistant.profile.Credential
@@ -102,10 +104,16 @@ class ApiContractTest {
                 JobOffer(
                     id = 1, contentHash = "h", rawText = "text", sourceUrl = null, title = null,
                     company = null, seniority = null, detectedLanguage = null,
-                    createdAt = Instant.EPOCH,
+                    createdAt = Instant.EPOCH, origin = OfferOrigin.PASTED, marketOfferId = null,
                 ),
                 "id", "contentHash", "rawText", "sourceUrl", "title", "company", "seniority",
-                "detectedLanguage", "createdAt", "displayTitle",
+                "detectedLanguage", "createdAt", "origin", "marketOfferId", "displayTitle",
+            )
+        },
+        {
+            assertKeys(
+                PromotedOffer(offerId = 1, marketOfferId = 2, deduplicated = false),
+                "offerId", "marketOfferId", "deduplicated",
             )
         },
         {

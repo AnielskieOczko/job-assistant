@@ -24,6 +24,10 @@ class MarketScheduleTest {
                     lastSeen?.let { CorpusSummary("solid.jobs", 1, 1, it, it) },
                 )
             },
+            // No test here promotes anything: this class is about what the schedule reports.
+            promotion = object : MarketPromotion {
+                override fun promote(marketOfferId: Long) = error("no test here promotes an offer")
+            },
             properties = properties,
         )
 

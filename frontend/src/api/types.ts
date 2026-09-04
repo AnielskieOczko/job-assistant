@@ -146,6 +146,9 @@ export const APPLICATION_STATUSES = [
 ] as const
 export type ApplicationStatus = (typeof APPLICATION_STATUSES)[number]
 
+export const OFFER_ORIGINS = ['PASTED', 'MARKET'] as const
+export type OfferOrigin = (typeof OFFER_ORIGINS)[number]
+
 export interface JobOffer {
   id: number
   contentHash: string
@@ -156,6 +159,10 @@ export interface JobOffer {
   seniority: string | null
   detectedLanguage: string | null
   createdAt: string
+  /** Whether you found this offer or the market poll did. */
+  origin: OfferOrigin
+  /** The corpus listing it was promoted from, when `origin` is `MARKET`. */
+  marketOfferId: number | null
   /** Computed getter. Falls back to `title` or the first non-blank line. */
   displayTitle?: string
 }
@@ -184,6 +191,14 @@ export interface OfferSummary {
 export interface PastedOffer {
   offer: JobOffer
   /** True when the text matched an offer already stored; nothing new was created. */
+  deduplicated: boolean
+}
+
+/** What `POST /api/market/offers/{id}/promote` answers with. */
+export interface PromotedOffer {
+  offerId: number
+  marketOfferId: number
+  /** True when this listing's text was already stored; nothing new was created. */
   deduplicated: boolean
 }
 

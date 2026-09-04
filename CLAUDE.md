@@ -27,9 +27,9 @@ sequenced roadmap: every item carrying an explicit feasibility, complexity and e
 value statement written against a stated axis, plus what was declined, what is gated on data that
 does not exist yet, and what already shipped. Read it before proposing a feature. The top six items
 each have a shaping ticket on GitHub (#79–#83 and #85); where an item has an issue number, **GitHub
-is canonical** and the file is a summary. Item 2 (#85, recording which document was sent) shipped on
-2026-09-04; the numbers in that file deliberately do not move when an item ships, so item 1 is still
-the next thing to build.
+is canonical** and the file is a summary. Items 1 (#79, promoting a corpus offer) and 2 (#85, recording
+which document was sent) shipped on 2026-09-04; the numbers in that file deliberately do not move
+when an item ships, so item 3 is the next thing to build.
 
 The ranking axis is **application quality first, learning direction second, explicitly not
 throughput**, with portfolio value breaking ties. Hosting ranks last under it, deliberately — see
@@ -265,7 +265,7 @@ Feature slices under the base package, each a Spring Modulith module. Anything i
 | `analysis` | Async analysis job, extraction, deterministic diff, narrative, learning plan |
 | `document` | CV and cover letter generation, templates, PDF rendering, invariant enforcement |
 | `llm` | Model profiles, `ChatModel` factory, AI services, call audit, parse-repair |
-| `market` | Ingested board offers as a market corpus, the solid.jobs client, the scheduled poll |
+| `market` | Ingested board offers as a market corpus, the solid.jobs client, the scheduled poll, promotion into a real offer |
 | `triage` | The ranked, filtered review queue, plus model-assisted suggestions for it |
 
 `catalog` is depended on by nearly everything; it has no dependencies of its own — and keeping it
@@ -422,13 +422,37 @@ salary, skills, experience level and validity as structured data, so there is no
 nothing to hallucinate. The reasoning is in `docs/research/13-offer-market-dashboard.md`; the source
 survey that picked solid.jobs is in `docs/research/10-offer-ingestion-sources.md`.
 
-**A `market_offer` is not a `JobOffer` and must not become one.** A `JobOffer` is something the
+**A `market_offer` is not a `JobOffer` and must not become one, except by an explicit copy.** A `JobOffer` is something the
 candidate might apply to: it carries an `application` lifecycle row, a profile revision, analyses and
 generated documents. A market offer is a row in a sample — there are thousands, and folding them
 together would put thousands of `SAVED` applications in the offer list and silently change what
 `AggregateGapReport.analysedOffers` counts. Saving one for real is an explicit copy.
 
-`market` depends on `catalog` and — on the read side only — `profile`. Ingestion touches neither the
+**Promotion is that copy, and it is the whole of the `market → offer` edge.**
+`POST /api/market/offers/{id}/promote` hands one listing's prose to `OfferService.promoteFromMarket`,
+which shares its entire body with `paste` — same content hash, same deduplication, same `SAVED`
+application row — so a promoted offer is a pasted one that knows where it came from. Provenance is
+on the row: `job_offer.origin` (`PASTED`/`MARKET`) and `job_offer.market_offer_id`, both, because
+`origin` has to survive the deletion of the corpus row the id names. `market` may depend on `offer`
+and never the reverse — `offer` depends on nothing, and putting an HTTP client and a scheduler into
+its closure is ADR-0003's mistake in a new place; `docs/adr/0004-promotion-crosses-from-market-to-offer.md`
+records it. **There is no bulk and no scheduled form**, and `MarketIngestion` does not know
+`MarketPromotionService` exists.
+
+**The offer text is the employer's prose, and the listing's own skill list is deliberately left
+out of it.** Those names are the corpus's structured field, already resolved through the catalog, so
+feeding them back to the extractor would return our own resolution and make the resulting
+`matchScore` the market coverage number under a second name.
+
+**`market_offer.description` holds that prose, and until `V28` nothing did.** solid.jobs serves the
+full HTML posting and `SolidJobsOffer` did not model the field, so Jackson dropped it — and `payload`
+was storing a re-serialisation of that same parsed object rather than the response, so V14's promise
+that it held "the whole response verbatim" was false and its insurance did not pay out. The client
+now parses through `SolidJobsPages`, which keeps each offer's own JSON. **A row with no description
+cannot be promoted and is refused**, because it can only gain one from a re-poll and a delisted
+listing never will.
+
+`market` depends on `catalog`, `offer`, and — on the read side only — `profile`. Ingestion touches neither the
 candidate nor a persona: it resolves skill names through `catalog` and nothing else. The `profile`
 edge belongs to `MarketInsightsService` alone, and is `ProfileCoverage` rather than the whole of
 `ProfileService` — the dashboard overlays the candidate's `SkillCoverage` onto the demand table so a

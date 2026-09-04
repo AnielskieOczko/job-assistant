@@ -60,7 +60,10 @@ internal class MarketIngestion(
                         }
                         seen++
 
-                        val payload = jsonMapper.writeValueAsString(offer)
+                        // The offer's own JSON when the client kept it, which is the whole point
+                        // of the column; re-serialising the mapped object is the fallback that
+                        // used to be the only behaviour, and it loses every unmodelled field.
+                        val payload = offer.raw ?: jsonMapper.writeValueAsString(offer)
                         val locationsJson = jsonMapper.writeValueAsString(offer.locations)
                         val (id, outcome) =
                             repository.upsert(offer, SOURCE, payload, locationsJson, startedAt)

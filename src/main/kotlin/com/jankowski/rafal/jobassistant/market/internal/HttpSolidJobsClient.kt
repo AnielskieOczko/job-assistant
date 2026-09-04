@@ -2,6 +2,7 @@ package com.jankowski.rafal.jobassistant.market.internal
 
 import org.slf4j.LoggerFactory
 import org.springframework.web.client.RestClient
+import tools.jackson.databind.json.JsonMapper
 
 /**
  * Reads the solid.jobs public API.
@@ -13,6 +14,7 @@ import org.springframework.web.client.RestClient
 internal class HttpSolidJobsClient(
     private val restClient: RestClient,
     private val properties: SolidJobsProperties,
+    private val jsonMapper: JsonMapper,
 ) : SolidJobsClient {
 
     private val log = LoggerFactory.getLogger(javaClass)
@@ -28,7 +30,11 @@ internal class HttpSolidJobsClient(
                     .build(division)
             }
             .retrieve()
-            .body(SolidJobsPage::class.java)
+            // Taken as text and parsed here rather than bound straight to SolidJobsPage: the
+            // corpus stores each offer's own JSON, and a response already turned into objects can
+            // no longer produce it. See SolidJobsPages.
+            .body(String::class.java)
+            ?.let { SolidJobsPages.parse(it, jsonMapper) }
             ?: SolidJobsPage()
     }
 }

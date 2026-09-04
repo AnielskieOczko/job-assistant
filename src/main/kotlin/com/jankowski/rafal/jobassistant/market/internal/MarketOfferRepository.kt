@@ -2,6 +2,7 @@ package com.jankowski.rafal.jobassistant.market.internal
 
 import com.jankowski.rafal.jobassistant.market.CorpusSummary
 import com.jankowski.rafal.jobassistant.market.MarketOfferSkill
+import com.jankowski.rafal.jobassistant.market.MarketSalary
 import com.jankowski.rafal.jobassistant.market.MarketSkillLevel
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.stereotype.Repository
@@ -39,17 +40,20 @@ internal class MarketOfferRepository(private val jdbc: JdbcClient) {
         val row = jdbc.sql(
             """
             insert into market_offer (source, offer_key, title, company, division, category, sub_category,
-                                      url, experience_level, contract_time, is_remote, is_hybrid, locations,
+                                      url, description, experience_level, contract_time, is_remote, is_hybrid, locations,
                                       salary_from, salary_to, salary_currency, salary_period, employment_type,
                                       valid_from, valid_to, source_updated_at, first_seen_at, last_seen_at, payload)
             values (:source, :offerKey, :title, :company, :division, :category, :subCategory,
-                    :url, :experienceLevel, :contractTime, :isRemote, :isHybrid,
+                    :url, :description, :experienceLevel, :contractTime, :isRemote, :isHybrid,
                     array(select jsonb_array_elements_text(cast(:locations as jsonb))),
                     :salaryFrom, :salaryTo, :salaryCurrency, :salaryPeriod, :employmentType,
                     :validFrom, :validTo, :sourceUpdatedAt, :seenAt, :seenAt, cast(:payload as jsonb))
             on conflict (source, offer_key) do update set
                 title = excluded.title, company = excluded.company, division = excluded.division,
                 category = excluded.category, sub_category = excluded.sub_category, url = excluded.url,
+                -- Never overwritten with a null: a re-poll that stops carrying the prose would
+                -- otherwise silently un-promotable every offer already in the corpus.
+                description = coalesce(excluded.description, market_offer.description),
                 experience_level = excluded.experience_level, contract_time = excluded.contract_time,
                 is_remote = excluded.is_remote, is_hybrid = excluded.is_hybrid,
                 locations = excluded.locations, salary_from = excluded.salary_from,
@@ -69,6 +73,7 @@ internal class MarketOfferRepository(private val jdbc: JdbcClient) {
             .param("category", offer.category)
             .param("subCategory", offer.subCategory)
             .param("url", offer.url)
+            .param("description", offer.description)
             .param("experienceLevel", offer.experienceLevel)
             .param("contractTime", offer.contractTime)
             .param("isRemote", offer.isRemote)
@@ -206,7 +211,65 @@ internal class MarketOfferRepository(private val jdbc: JdbcClient) {
         }
         .list()
 
+    /**
+     * The one row promotion needs, read as its own query rather than through the dashboard's page.
+     *
+     * The dashboard never selects `description` - it lists thousands of rows and a posting is
+     * kilobytes - so a listing read and a promotion read want genuinely different columns.
+     */
+    fun findForPromotion(marketOfferId: Long): PromotableOffer? = jdbc.sql(
+        """
+        select id, source, title, company, url, description, experience_level, contract_time,
+               is_remote, is_hybrid, locations, salary_from, salary_to, salary_currency,
+               salary_period, employment_type
+        from market_offer
+        where id = :id
+        """
+    )
+        .param("id", marketOfferId)
+        .query { rs, _ ->
+            PromotableOffer(
+                id = rs.getLong("id"),
+                source = rs.getString("source"),
+                title = rs.getString("title"),
+                company = rs.getString("company"),
+                url = rs.getString("url"),
+                description = rs.getString("description"),
+                experienceLevel = rs.getString("experience_level"),
+                contractTime = rs.getString("contract_time"),
+                isRemote = rs.getBoolean("is_remote"),
+                isHybrid = rs.getBoolean("is_hybrid"),
+                locations = (rs.getArray("locations")?.array as? Array<*>)
+                    ?.filterIsInstance<String>()
+                    .orEmpty(),
+                salary = MarketSalary(
+                    from = rs.getBigDecimal("salary_from"),
+                    to = rs.getBigDecimal("salary_to"),
+                    currency = rs.getString("salary_currency"),
+                    period = rs.getString("salary_period"),
+                    employmentType = rs.getString("employment_type"),
+                ),
+            )
+        }
+        .optional()
+        .orElse(null)
 }
+
+/** A corpus row read for promotion: the listing's facts, plus the prose that may not be there. */
+internal data class PromotableOffer(
+    val id: Long,
+    val source: String,
+    val title: String,
+    val company: String?,
+    val url: String?,
+    val description: String?,
+    val experienceLevel: String?,
+    val contractTime: String?,
+    val isRemote: Boolean,
+    val isHybrid: Boolean,
+    val locations: List<String>,
+    val salary: MarketSalary,
+)
 
 /**
  * The source stamps offsets (`2026-08-28T10:25:00.308+02:00`), which [Instant.parse] rejects.

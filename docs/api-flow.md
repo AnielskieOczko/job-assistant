@@ -151,6 +151,27 @@ curl localhost:8080/api/catalog/unmatched
 curl -X POST 'localhost:8080/api/catalog/unmatched/3/approve?skillId=42'
 ```
 
+### Promoting a corpus offer
+
+The market corpus is a sample, not a source you apply from — until you pick one out of it:
+
+```bash
+curl -X POST localhost:8080/api/market/offers/42/promote
+```
+
+`201` for an offer that did not exist, `200` with `deduplicated: true` when that text was already
+stored — by an earlier promotion or by an ordinary paste, which deduplicate against each other
+because both go through the same content hash. The promoted offer carries `origin: MARKET` and the
+`marketOfferId` it came from, and is analysed and tailored to exactly like a pasted one.
+
+A `409` means the corpus holds no posting text for that listing. Everything ingested before `V28`
+is in that state — the description solid.jobs serves was being discarded at parse time — and a
+re-poll fixes any listing still live. Composing an offer out of the structured fields instead is
+deliberately not done: it would hand the extractor our own resolved skill list and produce a match
+score that is the market dashboard's coverage number under a second name.
+
+**One id at a time, and no batch form.** See `docs/adr/0004-promotion-crosses-from-market-to-offer.md`.
+
 ## 4. Generate documents
 
 `profileId` is required here too, and must match the profile the analysis being tailored against
