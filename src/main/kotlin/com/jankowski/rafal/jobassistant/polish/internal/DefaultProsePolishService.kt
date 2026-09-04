@@ -5,11 +5,12 @@ import com.jankowski.rafal.jobassistant.catalog.SkillMentions
 import com.jankowski.rafal.jobassistant.llm.AiServiceFactory
 import com.jankowski.rafal.jobassistant.llm.ChatModelRegistry
 import com.jankowski.rafal.jobassistant.llm.LlmTask
-import com.jankowski.rafal.jobassistant.polish.EmptyPolishException
+import com.jankowski.rafal.jobassistant.polish.UnusablePolishException
 import com.jankowski.rafal.jobassistant.polish.PolishField
 import com.jankowski.rafal.jobassistant.polish.PolishSuggestion
 import com.jankowski.rafal.jobassistant.polish.ProsePolishService
 import com.jankowski.rafal.jobassistant.profile.ProfileService
+import dev.langchain4j.guardrail.OutputGuardrailException
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 
@@ -53,12 +54,19 @@ internal class DefaultProsePolishService(
         // nothing, and a suggestion that cannot be scanned must not be shown.
         val profile = profiles.require(profileId)
 
-        val suggestion = aiServices
-            .create(ProsePolisher::class.java, LlmTask.POLISH)
-            .polish(field = field.name, guidance = PolishBriefs.of(field), text = original)
-            .polishedOrBlank()
+        // A guardrail failure is a refusal to show what came back, not a server fault, so it is
+        // translated rather than propagated: the caller gets the same 422 an empty answer produces,
+        // carrying the reason the guardrail gave.
+        val suggestion = try {
+            aiServices
+                .create(ProsePolisher::class.java, LlmTask.POLISH)
+                .polish(field = field.name, guidance = PolishBriefs.of(field), text = original)
+                .polishedOrBlank()
+        } catch (refused: OutputGuardrailException) {
+            throw UnusablePolishException(field, refused.message)
+        }
 
-        if (suggestion.isEmpty()) throw EmptyPolishException(field)
+        if (suggestion.isEmpty()) throw UnusablePolishException(field)
 
         val unheld = SkillMentions.unheld(suggestion, catalog.findAll(), profile.heldSkillIds)
         if (unheld.isNotEmpty()) {

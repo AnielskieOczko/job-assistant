@@ -83,7 +83,10 @@ as its own line in `llm_spend_daily` rather than inflating `DOCUMENT`.
   like an analysis.
 - An empty answer is a 422, not an empty pane. Rendered next to the original, an empty suggestion
   reads as *"your text is best left alone"*, which is a judgement no empty response supports — the
-  same shape as an empty extraction reading as *"this offer asks for nothing"*.
+  same shape as an empty extraction reading as *"this offer asks for nothing"*. A model that
+  *replies* rather than rewriting is refused on the same 422: this surface has no way to tell a
+  rewrite from a reply, and the first live call proved that matters — see the repair note in
+  `CLAUDE.md` under "Writing an AI service".
 - There is no bulk form: no "polish this whole profile", no "polish every bullet". Each of those is
   several calls behind one click, and every suggestion has to be read by a person to mean anything.
 - The frontend's flag warning narrows the server's list as the candidate edits and can never widen

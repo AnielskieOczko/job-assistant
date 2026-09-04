@@ -287,7 +287,7 @@ always has. Two presses, both theirs.
 | 409 | `DELETE /api/profiles/{id}/skills/{id}` | `blockingBullets` — the bullets still citing it. Rendered in the confirm dialog rather than closing it. |
 | 409 | `DELETE /api/profiles/{id}` | This is the default profile and another one still exists. Set a different default first. |
 | 400 | `POST /api/profiles/{id}/polish` | Blank text, over 2000 characters, or an unknown `field`. |
-| 422 | `POST /api/profiles/{id}/polish` | The model answered with nothing, or `sensitiveFields` — the field's own text carries an identifier. |
+| 422 | `POST /api/profiles/{id}/polish` | The model answered with nothing or replied instead of rewriting, or `sensitiveFields` — the field's own text carries an identifier. |
 
 **Exception handlers in this backend are per-controller, not a `@ControllerAdvice`.** The catalog
 and llm controllers have none, so an invalid id there surfaces as a bare 500 with no

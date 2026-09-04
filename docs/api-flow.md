@@ -134,7 +134,7 @@ about to read that one. Here the candidate is, and declaring the skill is a legi
 |---|---|---|
 | 400 | blank text, text over 2000 characters, unknown `field` | |
 | 404 | no such profile, or it has no details yet | |
-| 422 | the model answered with nothing | |
+| 422 | the model answered with nothing, or replied instead of rewriting | |
 | 422 | the field's own text carries an identifier — a description quoting the project's URL | `sensitiveFields` |
 
 ### Staleness

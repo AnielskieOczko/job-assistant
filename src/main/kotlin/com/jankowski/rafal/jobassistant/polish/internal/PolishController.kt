@@ -1,6 +1,6 @@
 package com.jankowski.rafal.jobassistant.polish.internal
 
-import com.jankowski.rafal.jobassistant.polish.EmptyPolishException
+import com.jankowski.rafal.jobassistant.polish.UnusablePolishException
 import com.jankowski.rafal.jobassistant.polish.PolishField
 import com.jankowski.rafal.jobassistant.polish.PolishSuggestion
 import com.jankowski.rafal.jobassistant.polish.ProsePolishService
@@ -54,10 +54,13 @@ internal class PolishController(private val polish: ProsePolishService) {
     fun handleMissingProfile(exception: IllegalStateException): Map<String, String?> =
         mapOf("error" to exception.message)
 
-    /** An empty suggestion is a refusal to show one, not an empty result. */
-    @ExceptionHandler(EmptyPolishException::class)
+    /**
+     * A refusal to show what the model said, not an empty result. 422 for the same reason document
+     * generation uses it: the request was fine and the answer was rejected on its content.
+     */
+    @ExceptionHandler(UnusablePolishException::class)
     @ResponseStatus(HttpStatus.UNPROCESSABLE_ENTITY)
-    fun handleEmpty(exception: EmptyPolishException): Map<String, String?> =
+    fun handleUnusable(exception: UnusablePolishException): Map<String, String?> =
         mapOf("error" to exception.message)
 
     /**

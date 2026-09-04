@@ -643,16 +643,39 @@ type is a claim rather than a guarantee** — `?: emptyList()` there is not dead
 `@Suppress("USELESS_ELVIS")` plus a comment saying so. `CvSelection.from` is the worked example.
 
 **An empty model response must be normalised, not passed on.** A model that emits only `thinking`
-returns an `AiMessage` whose `text()` is null. `JsonOutputGuardrail` reprompts correctly, but
-LangChain4j 1.19's `OutputGuardrailExecutor.rewriteResult` then compares the reprompted text against
-the null original without a null check, throws, and **discards the reprompt that had just succeeded**.
+returns an `AiMessage` whose `text()` is null, and LangChain4j 1.19's
+`OutputGuardrailExecutor.rewriteResult` dereferences it without a null check.
 `InspectingChatModel` substitutes `""` on the way back to stop that. Remove it when upstream adds
 the check; keep it until then, because no scripted test can produce the case that needs it.
 
-Non-JSON responses are handled by `JsonOutputGuardrail`: markdown fences and surrounding
-commentary are stripped in place at no cost, and only a genuinely JSON-free response triggers a
-single reprompt. Both round trips are audited — every model call lands in `llm_call` with its
-prompt, response, token usage and latency.
+**A repair must carry the question, so it lives in `InspectingChatModel` and not in a guardrail.**
+`OutputGuardrailExecutor` builds a reprompt from `requestParams().chatMemory()` and falls back to an
+*empty* message list when there is none — and no AI service here has a memory, deliberately, since a
+reused service would then carry one call's prompt into the next. So every guardrail reprompt this
+application ever sent consisted of the correction instruction **alone**: no system prompt, no
+original request.
+
+It was invisible until polish shipped, because polish returns a single free-text field. `llm_call`
+row 8 was a project description whose answer came back empty; row 9, the "repair", asked a model
+with no context to "respond with a single JSON value", and it answered `{"polished": "I understand
+you'd like me to respond with a single JSON value. However, I need a question or request to respond
+to."}` — schema-valid, and rendered on screen as a suggested rewrite. **A repair that cannot see the
+question is a fluent non-answer wearing the shape of an answer**, which is the failure this codebase
+keeps naming from other directions.
+
+So: `InspectingChatModel`, which still holds the `ChatRequest`, re-asks **the same question once**
+when the answer comes back empty or blank. `JsonOutputGuardrail` still strips markdown fences and
+surrounding commentary in place at no cost, and a genuinely JSON-free response now **fails the call
+with a reason** rather than reprompting. Prose is not retried at any layer: whether prose is
+acceptable is the guardrail's question, and re-asking a model that answered the wrong way is a
+different bet from re-asking one that did not answer.
+
+Both round trips are audited — every model call lands in `llm_call` with its prompt, response, token
+usage and latency, so two rows for one logical call is the honest record of a retry.
+
+The test lesson is worth as much as the fix: the old tests asserted that a repair *happened*, and
+passed, because a `ScriptedChatModel` returns the next queued reply whatever it is asked. **Never
+assert that a repair happened without asserting what the repair asked.**
 
 ## Testing conventions
 
