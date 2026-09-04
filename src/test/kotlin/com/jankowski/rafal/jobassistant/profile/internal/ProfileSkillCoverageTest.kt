@@ -39,7 +39,7 @@ class ProfileSkillCoverageTest {
         defaultId: Long? = 7L,
         stored: Map<Long, CandidateProfile> = emptyMap(),
     ) = object : FakeProfileService() {
-        override fun defaultProfileId(): Long = defaultId ?: error("no profile exists yet")
+        override fun findDefaultProfileId(): Long? = defaultId
         override fun current(profileId: Long): CandidateProfile? = stored[profileId]
     }
 
@@ -108,6 +108,7 @@ private abstract class FakeProfileService : ProfileService {
     override fun replace(profileId: Long, import: ProfileImport): CandidateProfile = unused()
     override fun portrait(profileId: Long): ProfilePortrait? = unused()
     override fun revision(profileId: Long): Long = unused()
+    override fun findDefaultProfileId(): Long? = unused()
     override fun defaultProfileId(): Long = unused()
     override fun identities(): List<ProfileIdentity> = unused()
     private fun unused(): Nothing = error("not used by ProfileSkillCoverage")

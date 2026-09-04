@@ -38,7 +38,7 @@ deliberately — and to say so here — rather than to quietly promote a single 
 |---|---|---|---|---|---|---|
 | ~~1~~ | ~~Promote a corpus offer into a real offer~~ | [#79](https://github.com/AnielskieOczko/job-assistant/issues/79) | — | — | **shipped 2026-09-04** | *see below* |
 | ~~2~~ | ~~Record which document was sent~~ | [#85](https://github.com/AnielskieOczko/job-assistant/issues/85) | — | — | **shipped 2026-09-04** | *see below* |
-| 3 | Offer shortlist ranking | [#80](https://github.com/AnielskieOczko/job-assistant/issues/80) | certain | low | ~1 session | **Direct** |
+| ~~3~~ | ~~Offer shortlist ranking~~ | [#80](https://github.com/AnielskieOczko/job-assistant/issues/80) | — | — | **shipped 2026-09-04** | *see below* |
 | 4 | AI-assisted polish of a profile field | [#81](https://github.com/AnielskieOczko/job-assistant/issues/81) | certain | medium | ~2 sessions | **Upstream leverage** |
 | 5 | Generated-document library and reuse | [#82](https://github.com/AnielskieOczko/job-assistant/issues/82) | certain | low–medium | ~1.5 sessions | **Visibility** |
 | 6 | Privacy indicators in the UI | [#83](https://github.com/AnielskieOczko/job-assistant/issues/83) | certain | low–medium | ~1 session | Zero; wins the tiebreak |
@@ -48,13 +48,13 @@ deliberately — and to say so here — rather than to quietly promote a single 
 | 10 | The remaining profile-UI refactor | [#72](https://github.com/AnielskieOczko/job-assistant/issues/72) | certain | low | ~1 session | Zero |
 | 11 | Host this application | [#62](https://github.com/AnielskieOczko/job-assistant/issues/62) | needs a decision first | high | many sessions | ~Zero; portfolio |
 
-**The top four were 1–4, and items 1 and 2 are done.** Items 1–6 all carry shaping tickets written
-to be picked up cold; the ranking only required the top four to be shaped, and the other two are
-features that were asked for rather than lines in a list.
+**The top four were 1–4, and items 1, 2 and 3 are done.** Items 1–6 all carry shaping tickets
+written to be picked up cold; the ranking only required the top four to be shaped, and the other two
+are features that were asked for rather than lines in a list.
 
-**The numbers do not move when an item ships.** Items 1 and 2 are done and the rest keep the numbers
-they were ranked under: they are how this file and the GitHub tickets refer to each other, and
-renumbering would silently change what a comment saying "item 5" points at. **Item 3 is next.**
+**The numbers do not move when an item ships.** Items 1, 2 and 3 are done and the rest keep the
+numbers they were ranked under: they are how this file and the GitHub tickets refer to each other,
+and renumbering would silently change what a comment saying "item 5" points at. **Item 4 is next.**
 
 Three orderings in that table look surprising and are deliberate. **Item 2 was ranked out of
 value-for-effort order** — it was second because its cost rose with every application sent without
@@ -135,21 +135,39 @@ by accident:
 Marking stays optional and reversible: an application made outside the tool has no document to name,
 and `sentDocumentsLabel` renders that absence as a dash rather than as "nothing was sent".
 
-## 3. Offer shortlist ranking
+## 3. Offer shortlist ranking — shipped 2026-09-04
 
-`analysis.match_score` is stored on every completed analysis and **nothing in the offer list reads
-it**: `JdbcOfferService.list()` returns offers newest-first, `OfferSummary` carries no score, and
-`OffersPage.tsx` sorts on `createdAt`. Which of your saved offers you match best is currently
-invisible without opening each one in turn.
+`GET /api/analyses/shortlist?profileId=` returns every saved offer with the score of its latest
+completed analysis, ranked. `/offers` renders it as a **Match** column with a sort control, so
+"which of these should I apply to first" is answered without opening each offer in turn.
 
-Two traps, both instances of rules this repository already states:
+Five decisions the build had to take:
 
-- **A ranking needs a total order.** Sorting on score alone lets two equal offers swap between
-  requests, and a page boundary then shows one twice and the other never — the same rule
-  `CoverageStatus.UNMET_FIRST` carries. Tie-break on an id.
-- **An unscored offer has no score, and null is not zero.** An offer that was never analysed must
-  not rank as a zero-percent match. The list needs to say how many of its offers are actually
-  scored — a ranked list of ten over three analyses is a ranking of three.
+- **The join lives in `analysis`, not in `offer`.** `offer` depends on nothing, and the edge that
+  would let it read a score is the one `analysis` already occupies in the other direction — ADR-0003's
+  mistake in a new place. `AnalysisService.shortlist` is a new type on an existing edge, the way
+  `ProfileCoverage` was. It reads `job_offer` and `application` through `OfferService` and queries
+  only its own table, so the module owning each table is still the one reading it. Two queries, one
+  HTTP request; what the issue ruled out was resolving an analysis per row from the browser.
+- **Latest analysis, not the best one.** A re-run that scores lower replaces the number. Promoting
+  an older, higher score would show a figure nothing currently backs.
+- **A DONE analysis with a null `match_score` leaves its offer unscored.** Nothing scoreable is not
+  zero percent, and `RequirementMatcher` already refuses to report it as one; the list had to agree.
+  Unscored offers sort *below* every scored one, including a measured `0%`.
+- **The order is total on both sides.** `ShortlistOrder` and `lib/shortlist.ts` apply the same rule —
+  score descending, unscored last, offer id descending — because the client re-sorts rows it already
+  holds so the toggle costs no request. Without the id tie-break the list is free to reshuffle.
+- **`scored` and `total` travel with the rows,** and the page states the shortfall. Ten rows built
+  from three analyses is a ranking of three, and the rows alone cannot say so. A `V1_ALL_CATEGORIES`
+  score is marked in the cell rather than quietly compared: historical scores are never recomputed,
+  so this is the one screen where the two rules sit side by side.
+
+**One trap found on the way.** `ProfileService.defaultProfileId()` throws when no persona exists, and
+the established way to treat that as a state rather than an error was to catch it — which is not
+enough: the throw happens inside a transaction, so a transactional caller has its transaction marked
+rollback-only and fails at commit having handled nothing. `ProfileSkillCoverage` got away with it
+only because its caller was not transactional. `findDefaultProfileId(): Long?` now states the
+non-throwing lookup once, and both callers use it.
 
 ## 4. AI-assisted polish of a profile field
 

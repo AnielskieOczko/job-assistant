@@ -133,8 +133,22 @@ curl -X POST 'localhost:8080/api/offers/1/analyses?profileId=1'   # 202 + {"anal
 curl localhost:8080/api/analyses/1                                # poll until state is DONE or FAILED
 ```
 
-`GET .../analyses/latest` and `GET /api/analyses/aggregate` take the same `?profileId=` optionally,
-defaulting to the default profile when omitted.
+`GET .../analyses/latest`, `GET /api/analyses/aggregate` and `GET /api/analyses/shortlist` take the
+same `?profileId=` optionally, defaulting to the default profile when omitted. The shortlist is the
+cross-offer ranking and answers with every saved offer:
+
+```bash
+curl 'localhost:8080/api/analyses/shortlist?profileId=1'
+```
+
+Each entry carries the offer, its application and the score of that offer's **latest** completed
+analysis — latest rather than best, because the shortlist reports where you stand now. `score` is
+null for an offer never analysed against that profile, and for one whose latest analysis had nothing
+scoreable; neither is a zero-percent match, and neither ranks as one. Entries arrive in a *total*
+order — score descending, unscored last, offer id descending — so two equally matched offers cannot
+swap between requests. `scored` and `total` come with them, because a ranked list of ten offers
+built from three analyses is a ranking of three. An install with no profile at all answers with
+every offer unscored rather than an error.
 
 States run `PENDING → EXTRACTING → MATCHING → NARRATING → DONE`. A job interrupted by a restart is
 marked `FAILED` at startup rather than left polling forever.

@@ -6,6 +6,10 @@ import com.jankowski.rafal.jobassistant.analysis.AnalysisState
 import com.jankowski.rafal.jobassistant.analysis.Importance
 import com.jankowski.rafal.jobassistant.analysis.LanguageFinding
 import com.jankowski.rafal.jobassistant.analysis.LearningPlanItem
+import com.jankowski.rafal.jobassistant.analysis.OfferScore
+import com.jankowski.rafal.jobassistant.analysis.OfferShortlist
+import com.jankowski.rafal.jobassistant.analysis.ScoringRule
+import com.jankowski.rafal.jobassistant.analysis.ShortlistEntry
 import com.jankowski.rafal.jobassistant.analysis.RequirementFinding
 import com.jankowski.rafal.jobassistant.analysis.RequirementStatus
 import com.jankowski.rafal.jobassistant.catalog.CanonicalSkill
@@ -180,8 +184,37 @@ class ApiContractTest {
                     "category", "gapRatio",
                 )
             },
+            {
+                assertKeys(
+                    OfferScore(
+                        analysisId = 1, matchScore = 0.5,
+                        scoringRule = ScoringRule.V2_SOFT_EXCLUDED, completedAt = Instant.EPOCH,
+                    ),
+                    "analysisId", "matchScore", "scoringRule", "completedAt",
+                )
+            },
+            {
+                assertKeys(
+                    ShortlistEntry(offer = shortlistOffer, application = shortlistApplication, score = null),
+                    "offer", "application", "score",
+                )
+            },
+            {
+                assertKeys(
+                    OfferShortlist(entries = emptyList(), scored = 0, total = 0, profileId = null),
+                    "entries", "scored", "total", "profileId",
+                )
+            },
         )
     }
+
+    private val shortlistOffer = JobOffer(
+        id = 1, contentHash = "h", rawText = "text", createdAt = Instant.EPOCH,
+    )
+
+    private val shortlistApplication = Application(
+        id = 1, offerId = 1, status = ApplicationStatus.SAVED, statusChangedAt = Instant.EPOCH,
+    )
 
     @Test
     fun `profile module wire format`() {

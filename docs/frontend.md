@@ -54,6 +54,7 @@ already extracted out of components for exactly this purpose:
 | `routes/llm/format.ts` | spend bucket labels, priced-call coverage, shares |
 | `routes/market/format.ts` | salary bands, demand level mix, plurals, coverage provenance |
 | `lib/sentDocuments.ts` | which documents an application recorded as sent, as one list-row label |
+| `lib/shortlist.ts` | the offer list's two orderings, the score label, and the scored-of-total caveat |
 
 Two conventions worth keeping. **Test files sit beside their subject as `*.test.ts`** — the Vitest
 default, needing no configuration, and picked up by `tsc -b` because `tsconfig.app.json` includes
@@ -100,7 +101,7 @@ Playwright, which downloads Chromium on first use.
 
 | Route | Screen |
 |---|---|
-| `/offers` | List, filters, paste-offer dialog |
+| `/offers` | The shortlist: every offer with its match score, ranked; filters, paste-offer dialog |
 | `/offers/:id` | Raw offer text and the application status editor |
 | `/offers/:id/analysis` | The gap report — start, poll, read |
 | `/offers/:id/documents` | Generate CV / cover letter, preview, PDF |
@@ -111,6 +112,33 @@ Playwright, which downloads Chromium on first use.
 | `/llm` | Model call audit — prompt, raw response, tokens, cost, latency |
 | `/llm/spend` | What the models cost: hero, KPI row, one chart, breakdowns by task/model/profile |
 | `/llm/calls/:id` | One call in full. Under `calls/` so it can never compete with `spend` |
+
+## The offer shortlist
+
+`/offers` is a ranking, not a log. `GET /api/analyses/shortlist?profileId=` returns every saved
+offer with the score of its latest completed analysis against that persona, so the cross-offer
+question — *which of these should I apply to first* — is answered without opening each offer in
+turn. It stays a single request: the join is the endpoint's, and resolving an analysis per row from
+the browser is exactly what it exists to avoid.
+
+Three rules on that screen are the repository's usual ones, applied to a list:
+
+- **Null is not zero.** An unanalysed offer renders as `—`, never `0%`, and sorts *below* every
+  scored one rather than alongside a measured zero. Never measured and measured badly are different
+  facts, and a column you are about to sort on is the last place to blur them.
+- **A ranking needs a total order.** Both comparators in `lib/shortlist.ts` fall through to the
+  offer id, so equally scored offers hold a fixed position instead of reshuffling between renders.
+  The server's `ShortlistOrder` applies the same rule, and the two are deliberately identical — the
+  client re-sorts rows it already holds so the toggle costs no request.
+- **The rows carry their denominator.** `scored` and `total` come back alongside the entries, and
+  the page states the shortfall: ten rows built from three analyses is a ranking of three.
+
+A score from `V1_ALL_CATEGORIES` is marked in the cell rather than quietly compared. Historical
+scores are never recomputed, so the shortlist is the one screen where the two rules sit side by side.
+
+`keys.shortlist(profileId)` is nested under `keys.offers` on purpose: five places already invalidate
+the offer list after a paste, a promotion, a status change or a sent-document mark, and a sibling
+key would need every one of them to remember a second one.
 
 ## The market dashboard
 

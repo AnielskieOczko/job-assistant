@@ -307,6 +307,47 @@ export interface AnalysisReport {
 export const SCORING_RULES = ['V1_ALL_CATEGORIES', 'V2_SOFT_EXCLUDED'] as const
 export type ScoringRule = (typeof SCORING_RULES)[number]
 
+/**
+ * The score an offer carries on the shortlist, from its latest completed analysis.
+ *
+ * Only present when there is a number. An offer never analysed, and one whose latest analysis had
+ * nothing scoreable, both arrive with `score: null` — neither is a zero-percent match.
+ */
+export interface OfferScore {
+  analysisId: number
+  /** 0.0-1.0. Never null here; a missing score is the absent `OfferScore` itself. */
+  matchScore: number
+  /**
+   * Which rule produced it. A shortlist is the one screen where a V1 and a V2 score sit side by
+   * side, so the row has to say which is which rather than let them read as comparable.
+   */
+  scoringRule: ScoringRule
+  completedAt: string | null
+}
+
+/** One row of `GET /api/analyses/shortlist`: the offer list row, plus what it never carried. */
+export interface ShortlistEntry {
+  offer: JobOffer
+  application: Application
+  score: OfferScore | null
+}
+
+/**
+ * Every saved offer ranked by match score.
+ *
+ * `entries` arrive already in rank order — score descending, unscored last, offer id descending —
+ * and that order is total, so it does not reshuffle between requests. `scored` and `total` are the
+ * numerator and denominator: a ranked list of ten offers built from three analyses is a ranking of
+ * three, and the screen has to be able to say so.
+ */
+export interface OfferShortlist {
+  entries: ShortlistEntry[]
+  scored: number
+  total: number
+  /** The profile the scores were measured against. Null on an install with no persona yet. */
+  profileId: number | null
+}
+
 /** Response of `POST /api/offers/{id}/analyses`. Built as a raw map server-side. */
 export interface StartedAnalysis {
   analysisId: number

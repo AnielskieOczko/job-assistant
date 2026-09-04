@@ -18,9 +18,11 @@ internal class ProfileSkillCoverage(
 ) : ProfileCoverage {
 
     override fun of(profileId: Long?): SkillCoverage {
-        // defaultProfileId throws when no persona exists at all, which is a legitimate state on a
-        // fresh install rather than an error worth propagating to whoever asked.
-        val id = profileId ?: runCatching { profiles.defaultProfileId() }.getOrNull() ?: return SkillCoverage.EMPTY
+        // No persona at all is a legitimate state on a fresh install rather than an error worth
+        // propagating to whoever asked - hence the lookup that answers null instead of throwing.
+        // Catching `defaultProfileId` would not do: its throw marks the surrounding transaction
+        // rollback-only, so a transactional caller would fail at commit having handled nothing.
+        val id = profileId ?: profiles.findDefaultProfileId() ?: return SkillCoverage.EMPTY
         val profile = profiles.current(id) ?: return SkillCoverage.EMPTY
         return of(profile)
     }

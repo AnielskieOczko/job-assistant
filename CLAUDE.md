@@ -27,9 +27,10 @@ sequenced roadmap: every item carrying an explicit feasibility, complexity and e
 value statement written against a stated axis, plus what was declined, what is gated on data that
 does not exist yet, and what already shipped. Read it before proposing a feature. The top six items
 each have a shaping ticket on GitHub (#79–#83 and #85); where an item has an issue number, **GitHub
-is canonical** and the file is a summary. Items 1 (#79, promoting a corpus offer) and 2 (#85, recording
-which document was sent) shipped on 2026-09-04; the numbers in that file deliberately do not move
-when an item ships, so item 3 is the next thing to build.
+is canonical** and the file is a summary. Items 1 (#79, promoting a corpus offer), 2 (#85, recording
+which document was sent) and 3 (#80, ranking the offer list by match score) shipped on 2026-09-04;
+the numbers in that file deliberately do not move when an item ships, so item 4 is the next thing
+to build.
 
 The ranking axis is **application quality first, learning direction second, explicitly not
 throughput**, with portfolio value breaking ties. Hosting ranks last under it, deliberately — see
@@ -403,6 +404,17 @@ applies to rows Kotlin constructs — a row loaded from the database keeps what 
   concurrency means unbounded spend.
 - A job orphaned by a restart is marked `FAILED` at startup (`failOrphanedAnalyses`) rather than
   left for a client to poll forever. Keep that property if you touch the lifecycle.
+**The score is read back two ways, and both are cross-offer.** `aggregateGaps` answers *what should
+I learn*; `shortlist` answers *which of these should I apply to first*, returning every saved offer
+with the score of its latest completed analysis. Both live in `analysis` because the score does:
+`offer` depends on nothing, and letting it read a score would invert the edge `analysis` already
+occupies — ADR-0003's mistake in a new place. `shortlist` reads `job_offer` and `application`
+through `OfferService` rather than joining across another module's tables, and its order is
+*total* (score descending, unscored last, offer id descending) for the reason
+`CoverageStatus.UNMET_FIRST` exists. An offer whose latest DONE analysis scored nothing is
+**unscored, not zero**, and `scored`/`total` ship with the rows so a ranking of ten built from three
+analyses cannot read as a ranking of ten.
+
 - **An extraction that found no requirements is a failure, not a result.** The gap report is the
   product, so an empty one does not read as "something went wrong" — it reads as *"this offer asks
   for nothing"* or *"you match everything"*, and neither is a claim the application can back.
@@ -802,6 +814,12 @@ not move it back.
 Updates are `PUT` with full-entity bodies, never `PATCH`: `endedOn = null` is what makes a role
 current, and Kotlin data classes cannot tell an absent field from an explicit null without wrapping
 every property. Writes take `skillId`, not a name — the picker resolved it already.
+
+**`defaultProfileId()` throws when no persona exists, and catching that is not enough.** The throw
+happens inside a transaction, so a transactional caller is left with its transaction marked
+rollback-only and fails at commit for a reason unrelated to what it handled. `findDefaultProfileId()`
+is the non-throwing form, and it is what any read treating "no profile yet" as a state rather than an
+error must use — the offer shortlist and `ProfileCoverage` both do.
 
 `ProfileService` stays `current() / require() / replace() / revision()`. **CRUD is internal**; no
 other module has any business writing a single skill or bullet. `revision()` is a counter bumped by

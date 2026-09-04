@@ -113,11 +113,15 @@ internal class JdbcProfileService(
     }
 
     @Transactional(readOnly = true)
-    override fun defaultProfileId(): Long =
+    override fun defaultProfileId(): Long = findDefaultProfileId()
+        ?: throw IllegalStateException("No profile exists yet. POST /api/profiles to create one.")
+
+    @Transactional(readOnly = true)
+    override fun findDefaultProfileId(): Long? =
         jdbc.sql("select id from profile where is_default")
             .query(Long::class.java)
             .optional()
-            .orElseThrow { IllegalStateException("No profile exists yet. POST /api/profiles to create one.") }
+            .orElse(null)
 
     @Transactional
     override fun replace(profileId: Long, import: ProfileImport): CandidateProfile {
