@@ -2,6 +2,7 @@ import { NavLink, Outlet } from 'react-router'
 import {
   BookOpen,
   FileStack,
+  Files,
   Layers,
   Radar,
   ScrollText,
@@ -13,6 +14,7 @@ import { ProfileSwitcher } from '@/components/ProfileSwitcher'
 
 const NAV = [
   { to: '/offers', label: 'Offers', icon: FileStack },
+  { to: '/documents', label: 'Documents', icon: Files },
   { to: '/profile', label: 'Profile', icon: UserRound },
   { to: '/gaps', label: 'Gaps', icon: TrendingDown },
   { to: '/market', label: 'Market', icon: Radar },

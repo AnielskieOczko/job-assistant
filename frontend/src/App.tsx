@@ -5,6 +5,7 @@ import { OfferLayout } from '@/routes/OfferLayout'
 import { OfferOverviewTab } from '@/routes/OfferOverviewTab'
 import { AnalysisTab } from '@/routes/AnalysisTab'
 import { DocumentsTab } from '@/routes/DocumentsTab'
+import { DocumentLibraryPage } from '@/routes/DocumentLibraryPage'
 import { ProfilePage } from '@/routes/profile/ProfilePage'
 import { CatalogPage } from '@/routes/CatalogPage'
 import { GapsPage } from '@/routes/GapsPage'
@@ -25,6 +26,7 @@ export default function App() {
           <Route path="analysis" element={<AnalysisTab />} />
           <Route path="documents" element={<DocumentsTab />} />
         </Route>
+        <Route path="documents" element={<DocumentLibraryPage />} />
         <Route path="profile" element={<ProfilePage />} />
         <Route path="catalog" element={<CatalogPage />} />
         <Route path="gaps" element={<GapsPage />} />

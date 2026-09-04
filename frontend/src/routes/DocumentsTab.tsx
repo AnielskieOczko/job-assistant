@@ -1,13 +1,14 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router'
 import {
-  Check, Download, FileText, RefreshCw, Send, ShieldAlert, ShieldCheck, SquareArrowOutUpRight,
+  Check, Copy, Download, FileText, RefreshCw, Send, ShieldAlert, ShieldCheck,
+  SquareArrowOutUpRight,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
-  documentHtmlUrl, documentPdfUrl, generateDocument, getLatestDocument, markDocumentSent,
-  unmarkDocumentSent,
+  documentHtmlUrl, documentPdfUrl, generateDocument, getLatestDocument, listDocumentLibrary,
+  markDocumentSent, reuseDocument, unmarkDocumentSent,
 } from '@/api/documents'
 import { ApiError } from '@/api/http'
 import { keys } from '@/api/keys'
@@ -20,12 +21,16 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatDateTime } from '@/lib/format'
+import { cvEntries } from '@/lib/documents'
 import { cn } from '@/lib/utils'
 import { useOfferId } from '@/hooks/useOfferId'
 import { useSelectedProfile } from '@/hooks/useSelectedProfile'
@@ -59,6 +64,7 @@ function DocumentPanel({ type, title }: { type: DocumentType; title: string }) {
   const offerId = useOfferId()
   const queryClient = useQueryClient()
   const [language, setLanguage] = useState('English')
+  const [reuseOpen, setReuseOpen] = useState(false)
   const { profileId } = useSelectedProfile()
 
   const latest = useQuery({
@@ -121,6 +127,11 @@ function DocumentPanel({ type, title }: { type: DocumentType; title: string }) {
               <><FileText /> Generate</>
             )}
           </Button>
+          {type === 'CV' && profileId !== null ? (
+            <Button size="sm" variant="outline" onClick={() => setReuseOpen(true)}>
+              <Copy /> Reuse existing
+            </Button>
+          ) : null}
         </div>
       </CardHeader>
 
@@ -202,7 +213,109 @@ function DocumentPanel({ type, title }: { type: DocumentType; title: string }) {
           </>
         )}
       </CardContent>
+
+      {type === 'CV' && profileId !== null ? (
+        <ReuseCvDialog
+          open={reuseOpen}
+          onOpenChange={setReuseOpen}
+          offerId={offerId}
+          profileId={profileId}
+        />
+      ) : null}
     </Card>
+  )
+}
+
+/**
+ * Picks an existing CV from another offer and copies it onto this one — no model call, no
+ * regeneration. Excludes CVs already generated for this offer: reuse exists to skip a *second*
+ * tailoring, not to duplicate the one already here.
+ */
+function ReuseCvDialog({
+  open,
+  onOpenChange,
+  offerId,
+  profileId,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  offerId: number
+  profileId: number
+}) {
+  const queryClient = useQueryClient()
+
+  const library = useQuery({
+    queryKey: keys.documentLibrary(profileId),
+    queryFn: () => listDocumentLibrary(profileId),
+    enabled: open,
+  })
+
+  const candidates = useMemo(
+    () => cvEntries(library.data ?? []).filter((entry) => entry.document.offerId !== offerId),
+    [library.data, offerId],
+  )
+
+  const reuse = useMutation({
+    mutationFn: (sourceDocumentId: number) => reuseDocument(offerId, profileId, sourceDocumentId),
+    onSuccess: () => {
+      toast.success('CV reused for this offer')
+      queryClient.invalidateQueries({ queryKey: keys.latestDocument(offerId, 'CV', profileId) })
+      queryClient.invalidateQueries({ queryKey: keys.documentLibrary(profileId) })
+      onOpenChange(false)
+    },
+  })
+
+  const error = reuse.error instanceof ApiError ? reuse.error : null
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Reuse an existing CV</DialogTitle>
+          <DialogDescription>
+            Attaches a CV already generated for another offer to this one, unchanged. No model call,
+            no new tailoring — the fabrication check still re-runs, so a skill your profile no longer
+            holds will still be refused.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="max-h-80 space-y-2 overflow-y-auto">
+          {error?.status === 422 ? <FabricatedClaims error={error} /> : null}
+          {reuse.isError && error?.status !== 422 ? <ApiErrorAlert error={reuse.error} /> : null}
+
+          {library.isPending ? (
+            <Skeleton className="h-32 w-full" />
+          ) : candidates.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              No CV from another offer is available to reuse yet.
+            </p>
+          ) : (
+            candidates.map((entry) => (
+              <button
+                key={entry.document.id}
+                type="button"
+                onClick={() => reuse.mutate(entry.document.id)}
+                disabled={reuse.isPending}
+                className="flex w-full items-center justify-between gap-3 rounded-md border p-3 text-left text-sm hover:bg-accent disabled:opacity-50"
+              >
+                <span className="min-w-0">
+                  <span className="block truncate font-medium">{entry.offerTitle}</span>
+                  <span className="block truncate text-xs text-muted-foreground">
+                    {entry.offerCompany ?? 'Unknown company'} · {entry.document.language} ·{' '}
+                    {formatDateTime(entry.document.createdAt)}
+                  </span>
+                </span>
+                <Copy className="size-4 shrink-0 text-muted-foreground" />
+              </button>
+            ))
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 

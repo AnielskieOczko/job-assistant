@@ -25,6 +25,8 @@ internal data class GeneratedDocumentRow(
     val profileRevision: Long? = null,
     /** The consent clause language rendered onto this document, or null if none matched. See V23. */
     val consentClauseLanguage: String? = null,
+    /** The document this was reused from, or null when this row was freshly tailored. See V29. */
+    val sourceDocumentId: Long? = null,
 )
 
 internal interface GeneratedDocumentRepository : CrudRepository<GeneratedDocumentRow, Long> {
@@ -37,4 +39,7 @@ internal interface GeneratedDocumentRepository : CrudRepository<GeneratedDocumen
         """
     )
     fun findLatest(offerId: Long, profileId: Long, type: String): GeneratedDocumentRow?
+
+    @Query("select * from generated_document where profile_id = :profileId order by created_at desc")
+    fun findByProfileId(profileId: Long): List<GeneratedDocumentRow>
 }

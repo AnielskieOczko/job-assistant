@@ -1,5 +1,5 @@
 import { query, request, requestOrNull } from './http'
-import type { Application, DocumentType, GeneratedDocument } from './types'
+import type { Application, DocumentLibraryEntry, DocumentType, GeneratedDocument } from './types'
 
 /**
  * Query params only, no body. Throws ApiError 422 with `fabricatedClaims` when the model tried to
@@ -37,3 +37,18 @@ export const markDocumentSent = (offerId: number, documentId: number) =>
 /** Clears the record for a type, so a mis-click is not permanent. */
 export const unmarkDocumentSent = (offerId: number, type: DocumentType) =>
   request<Application>(`/api/offers/${offerId}/documents/sent${query({ type })}`, { method: 'DELETE' })
+
+/** Every document generated for a profile, across every offer, newest first. */
+export const listDocumentLibrary = (profileId: number) =>
+  request<DocumentLibraryEntry[]>(`/api/documents${query({ profileId })}`)
+
+/**
+ * Attaches an existing CV to a second offer as a copy — no model call, no regeneration. Throws
+ * ApiError 422 with `fabricatedClaims` if the profile has since dropped a skill the document
+ * mentions; nothing is stored in that case.
+ */
+export const reuseDocument = (targetOfferId: number, profileId: number, sourceDocumentId: number) =>
+  request<GeneratedDocument>(
+    `/api/offers/${targetOfferId}/documents/reuse${query({ profileId, sourceDocumentId })}`,
+    { method: 'POST' },
+  )

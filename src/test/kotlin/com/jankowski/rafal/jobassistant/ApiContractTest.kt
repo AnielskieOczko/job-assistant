@@ -18,6 +18,7 @@ import com.jankowski.rafal.jobassistant.catalog.SkillCategory
 import com.jankowski.rafal.jobassistant.catalog.SkillSuggestion
 import com.jankowski.rafal.jobassistant.catalog.UnmatchedTerm
 import com.jankowski.rafal.jobassistant.catalog.UnmatchedTermStatus
+import com.jankowski.rafal.jobassistant.document.DocumentLibraryEntry
 import com.jankowski.rafal.jobassistant.document.DocumentType
 import com.jankowski.rafal.jobassistant.document.GeneratedDocument
 import com.jankowski.rafal.jobassistant.llm.BudgetStatus
@@ -369,6 +370,20 @@ class ApiContractTest {
                 ),
                 "id", "offerId", "profileId", "analysisId", "type", "language", "html", "createdAt",
                 "profileRevision", "droppedBulletCount", "droppedSkillCount", "consentClauseLanguage",
+                "sourceDocumentId",
+            )
+        },
+        {
+            assertKeys(
+                DocumentLibraryEntry(
+                    document = GeneratedDocument(
+                        id = 1, offerId = 1, profileId = 1, analysisId = 1, type = DocumentType.CV,
+                        language = "English", html = "<html/>", createdAt = Instant.EPOCH,
+                    ),
+                    offerTitle = "Kotlin Engineer",
+                    offerCompany = "Acme",
+                ),
+                "document", "offerTitle", "offerCompany",
             )
         },
         {

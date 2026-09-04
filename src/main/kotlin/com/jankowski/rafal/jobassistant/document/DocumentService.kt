@@ -21,6 +21,28 @@ interface DocumentService {
     /** Renders a stored document's HTML to PDF. Requires Chromium. */
     fun renderPdf(documentId: Long): ByteArray
 
+    /** Every document generated for [profileId], across every offer, newest first. */
+    fun library(profileId: Long): List<DocumentLibraryEntry>
+
+    /**
+     * Copies [sourceDocumentId]'s CV onto [targetOfferId] as [profileId]'s document for that offer.
+     * No model call and no regeneration - the HTML is byte-identical to the source - which is the
+     * whole point: two similar offers should not cost two generations and two reviews.
+     *
+     * The copy is still re-checked against the fabrication guard before it is stored: the text is
+     * unchanged, but the profile might not be, and a skill deleted since the original generation
+     * would otherwise carry a stale, now-fabricated claim onto a second offer.
+     *
+     * The new row carries the source's drop counts and profile revision rather than fresh ones -
+     * nothing was regenerated, so there is nothing new to measure. `sourceDocumentId` on the result
+     * is what attributes them back to the generation that actually produced them.
+     *
+     * @throws FabricatedClaimException if [profileId] no longer holds a skill the document mentions.
+     * @throws IllegalArgumentException if [sourceDocumentId] does not name a CV.
+     * @throws NoSuchElementException if [sourceDocumentId] or [targetOfferId] does not exist.
+     */
+    fun reuse(targetOfferId: Long, profileId: Long, sourceDocumentId: Long): GeneratedDocument
+
     /**
      * Records that this document is the one actually sent for its offer, replacing whatever was
      * marked for its type before. The returned [Application] is the offer's lifecycle row, which is

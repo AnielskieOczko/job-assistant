@@ -20,6 +20,7 @@ export const keys = {
 
   latestDocument: (offerId: number, type: DocumentType, profileId: number) =>
     ['document', offerId, type, profileId] as const,
+  documentLibrary: (profileId: number | null) => ['document', 'library', profileId] as const,
 
   profiles: ['profiles'] as const,
   profile: (profileId: number) => ['profile', profileId] as const,
