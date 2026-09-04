@@ -48,6 +48,8 @@ import com.jankowski.rafal.jobassistant.offer.Application
 import com.jankowski.rafal.jobassistant.offer.ApplicationStatus
 import com.jankowski.rafal.jobassistant.offer.JobOffer
 import com.jankowski.rafal.jobassistant.offer.OfferOrigin
+import com.jankowski.rafal.jobassistant.polish.PolishField
+import com.jankowski.rafal.jobassistant.polish.PolishSuggestion
 import com.jankowski.rafal.jobassistant.profile.CandidateProfile
 import com.jankowski.rafal.jobassistant.profile.ConsentClause
 import com.jankowski.rafal.jobassistant.profile.Credential
@@ -329,6 +331,22 @@ class ApiContractTest {
                 SuggestionRun(termsConsidered = 25, termsSent = 12, suggestionsStored = 4),
                 "termsConsidered", "termsSent", "suggestionsStored", "droppedUnresolvable",
                 "droppedUnrequested",
+            )
+        },
+    )
+
+    @Test
+    fun `polish wire format`() = assertAll(
+        {
+            assertKeys(
+                PolishSuggestion(
+                    field = PolishField.PROJECT_DESCRIPTION,
+                    original = "a tool i built",
+                    suggestion = "A tool that tailors a CV to an offer.",
+                    unheldSkills = listOf("Kubernetes"),
+                    modelProfile = "openrouter",
+                ),
+                "field", "original", "suggestion", "unheldSkills", "modelProfile",
             )
         },
     )

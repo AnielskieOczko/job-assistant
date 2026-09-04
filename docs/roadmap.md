@@ -39,7 +39,7 @@ deliberately — and to say so here — rather than to quietly promote a single 
 | ~~1~~ | ~~Promote a corpus offer into a real offer~~ | [#79](https://github.com/AnielskieOczko/job-assistant/issues/79) | — | — | **shipped 2026-09-04** | *see below* |
 | ~~2~~ | ~~Record which document was sent~~ | [#85](https://github.com/AnielskieOczko/job-assistant/issues/85) | — | — | **shipped 2026-09-04** | *see below* |
 | ~~3~~ | ~~Offer shortlist ranking~~ | [#80](https://github.com/AnielskieOczko/job-assistant/issues/80) | — | — | **shipped 2026-09-04** | *see below* |
-| 4 | AI-assisted polish of a profile field | [#81](https://github.com/AnielskieOczko/job-assistant/issues/81) | certain | medium | ~2 sessions | **Upstream leverage** |
+| ~~4~~ | ~~AI-assisted polish of a profile field~~ | [#81](https://github.com/AnielskieOczko/job-assistant/issues/81) | — | — | **shipped 2026-09-04** | *see below* |
 | 5 | Generated-document library and reuse | [#82](https://github.com/AnielskieOczko/job-assistant/issues/82) | certain | low–medium | ~1.5 sessions | **Visibility** |
 | 6 | Privacy indicators in the UI | [#83](https://github.com/AnielskieOczko/job-assistant/issues/83) | certain | low–medium | ~1 session | Zero; wins the tiebreak |
 | 7 | The dialog-reseed rule, stated once with a test | [#72](https://github.com/AnielskieOczko/job-assistant/issues/72) | certain | low | ~½ session | Zero, but a real bug |
@@ -48,13 +48,13 @@ deliberately — and to say so here — rather than to quietly promote a single 
 | 10 | The remaining profile-UI refactor | [#72](https://github.com/AnielskieOczko/job-assistant/issues/72) | certain | low | ~1 session | Zero |
 | 11 | Host this application | [#62](https://github.com/AnielskieOczko/job-assistant/issues/62) | needs a decision first | high | many sessions | ~Zero; portfolio |
 
-**The top four were 1–4, and items 1, 2 and 3 are done.** Items 1–6 all carry shaping tickets
+**The top four were 1–4, and all four are done.** Items 1–6 all carry shaping tickets
 written to be picked up cold; the ranking only required the top four to be shaped, and the other two
 are features that were asked for rather than lines in a list.
 
-**The numbers do not move when an item ships.** Items 1, 2 and 3 are done and the rest keep the
+**The numbers do not move when an item ships.** Items 1 to 4 are done and the rest keep the
 numbers they were ranked under: they are how this file and the GitHub tickets refer to each other,
-and renumbering would silently change what a comment saying "item 5" points at. **Item 4 is next.**
+and renumbering would silently change what a comment saying "item 5" points at. **Item 5 is next.**
 
 Three orderings in that table look surprising and are deliberate. **Item 2 was ranked out of
 value-for-effort order** — it was second because its cost rose with every application sent without
@@ -169,34 +169,48 @@ rollback-only and fails at commit having handled nothing. `ProfileSkillCoverage`
 only because its caller was not transactional. `findDefaultProfileId(): Long?` now states the
 non-throwing lookup once, and both callers use it.
 
-## 4. AI-assisted polish of a profile field
+## 4. AI-assisted polish of a profile field — shipped 2026-09-04
 
-The profile is hand-authored ground truth, and its prose is the input to every CV ever generated
-from it. Improving a project description once improves every tailored CV afterwards. That leverage
-is why this outranks the library despite being the larger build.
+`POST /api/profiles/{id}/polish?field=…` returns a rewrite of one free-prose field and stores
+nothing. The profile editor puts a **Polish with AI** button under the career goal, a project's name
+and description, and every bullet's text; the suggestion opens under the field beside the original,
+is editable, and **Use this** fills the form control the ordinary Save then writes.
 
-**It sits on rule one and is shaped so that it does not cross it.** The precedent is already in the
+**It sits on rule one and is shaped so that it does not cross it.** The precedent was already in the
 codebase, in `LlmTask.TRIAGE`: *"Never authoritative … everything it returns is re-resolved against
-the catalog and dropped if it does not exist, and a human still clicks approve."* Polish takes the
-same shape.
+the catalog and dropped if it does not exist, and a human still clicks approve."*
 
-- **The model suggests; the user's accept is the write.** Nothing reaches `profile` except through
-  the existing CRUD path, driven by a human click. "No model writes to the profile" stays literally
-  true.
-- **The suggestion is scanned before it is shown.** `CvInvariant`'s core check — *this text names a
-  catalog skill the profile does not hold* — is currently welded to document rendering and needs
-  extracting, the way `ProfileCoverage` was extracted in #66. A suggestion naming an unheld skill is
-  **shown with the term flagged, not refused**: unlike a CV, nothing is going to an employer yet,
-  and the honest response may be to declare the skill.
-- **Free prose only.** Project name and description, experience bullet text, the career goal. Never
-  skill names — those are catalog-resolved ids, not text — and never dates, employers or
-  identifiers.
-- **A project's URL must not enter the prompt.** `JdbcProfileService.identities()` folds project
-  URLs into `linkUrls` precisely because `github.com/AnielskieOczko` names the candidate as surely
-  as an email does, so `ProfileIdentityInspector` would refuse the call. That is the guard working;
-  the prompt builder is what has to be right.
-- **A fifth `LlmTask`**, so polish is routable to a cheap model without touching extraction or
-  narrative, and so its spend is separable in `llm_spend_daily`.
+The decisions worth not undoing, recorded in
+`docs/adr/0005-polish-suggests-and-never-writes.md`:
+
+- **`ProsePolishService` has no write path at all** — no repository, no `JdbcClient`. The accept is
+  a separate `PUT` from the browser to the CRUD endpoint that has always been the only way in, so
+  "no model writes to the profile" is a fact about the module graph rather than a promise in a
+  prompt.
+- **`polish` is its own module.** `profile` is depended on by `analysis`, `document` and `market`, so
+  a `profile → llm` edge would put the model factory, the audit listener and the provider config
+  into all three closures to serve one endpoint — ADR-0003's argument in a new place. `polish`
+  depends on `profile`, `catalog`, `llm` and `privacy`; nothing depends on `polish`.
+- **The scan was extracted and the consequence was not.** `CvInvariant`'s reading is now
+  `SkillMentions` in `catalog` and both callers share it; `CvInvariant` is a delegate whose tests
+  were not edited, which is what proves the extraction changed nothing. A CV naming an unheld skill
+  is still thrown away with a 422. A *suggestion* naming one comes back flagged and is shown — the
+  reader is the candidate, and declaring the skill is a legitimate answer.
+- **The prompt is one field's text plus a description of what that field is.** Not the project, not
+  the employer, not the dates. A prompt built from a `Project` would carry its URL, which
+  `ProfileIdentityInspector` refuses outright; building from the field is what makes the call
+  possible rather than merely tidy.
+- **Free prose only, and the list is closed:** career goal, project name, project description,
+  experience bullet. An unknown `field` is a 400 rather than a fifth thing to polish.
+- **An empty suggestion is a 422, not an empty pane.** Next to the original it would read as "your
+  text is best left alone", a judgement no empty response supports — the same shape as an empty
+  extraction reading as "this offer asks for nothing". Blank and oversized input never reach a
+  provider, and there is no bulk form.
+- **A fifth `LlmTask`**, `POLISH`, routable to a cheap model and separable in `llm_spend_daily`.
+
+Cheaper than its "~2 sessions, medium" estimate: the shaping ticket had already settled the hard
+questions, and the only thing the build discovered was that the module placement needed an ADR of
+its own rather than a paragraph.
 
 ## 5. Generated-document library and reuse
 

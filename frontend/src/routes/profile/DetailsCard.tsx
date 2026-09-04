@@ -31,6 +31,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { ConfirmDelete } from './ConfirmDelete'
 import { Field } from './Field'
+import { PolishAction } from './PolishAction'
 import { RowActions } from './RowActions'
 import { blankToNull, movedIds, useProfileEdit } from './mutations'
 
@@ -304,6 +305,12 @@ function DetailsDialog({
               placeholder="e.g. I'm moving from product management into backend development."
               value={careerGoal}
               onChange={(e) => setCareerGoal(e.target.value)}
+            />
+            <PolishAction
+              profileId={profileId}
+              field="CAREER_GOAL"
+              text={careerGoal}
+              onAccept={setCareerGoal}
             />
             <p className="text-xs text-muted-foreground">
               What you're aiming at next, not what you've already done. Write in the first person and

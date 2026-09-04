@@ -1054,6 +1054,34 @@ export interface CorpusSummary {
   lastSeenAt: string | null
 }
 
+/* -------------------------------------------------------------------- polish */
+
+/**
+ * The profile fields a model may be asked to rewrite: free prose only.
+ *
+ * Skill names are catalog ids rather than text, and employers, dates and URLs are records rather
+ * than writing — a model rewriting one of those would be changing a fact instead of a sentence.
+ */
+export type PolishField = 'CAREER_GOAL' | 'PROJECT_NAME' | 'PROJECT_DESCRIPTION' | 'EXPERIENCE_BULLET'
+
+/**
+ * A rewrite offered for one field. **Nothing has been stored**: the profile still holds `original`
+ * and goes on holding it until the ordinary CRUD `PUT` that accepting sends.
+ */
+export interface PolishSuggestion {
+  field: PolishField
+  /** Echoed back, so the two panes are the text that was actually sent and what came of it. */
+  original: string
+  suggestion: string
+  /**
+   * Catalog skills the suggestion names that the profile does not hold. Flagged, never refused —
+   * the reader is the candidate, and declaring the skill is a legitimate answer. A generated CV
+   * saying the same thing is thrown away instead, because its reader is an employer.
+   */
+  unheldSkills: string[]
+  modelProfile: string
+}
+
 /* ------------------------------------------------------------------ helpers */
 
 export const mustHaves = (r: AnalysisReport): RequirementFinding[] =>

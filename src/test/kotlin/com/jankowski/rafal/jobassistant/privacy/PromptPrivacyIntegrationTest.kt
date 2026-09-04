@@ -5,6 +5,8 @@ import com.jankowski.rafal.jobassistant.document.DocumentService
 import com.jankowski.rafal.jobassistant.document.DocumentType
 import com.jankowski.rafal.jobassistant.llm.LlmTask
 import com.jankowski.rafal.jobassistant.offer.OfferService
+import com.jankowski.rafal.jobassistant.polish.PolishField
+import com.jankowski.rafal.jobassistant.polish.ProsePolishService
 import com.jankowski.rafal.jobassistant.profile.BulletImport
 import com.jankowski.rafal.jobassistant.profile.ConsentClauseImport
 import com.jankowski.rafal.jobassistant.profile.ExperienceImport
@@ -52,6 +54,7 @@ internal class PromptPrivacyIntegrationTest(
     @Autowired private val models: ScriptedModels,
     @Autowired private val jdbc: JdbcClient,
     @Autowired private val triageSuggestions: ModelTriageSuggestionService,
+    @Autowired private val polish: ProsePolishService,
 ) {
 
     private var kotlinBulletId = 0L
@@ -180,6 +183,24 @@ internal class PromptPrivacyIntegrationTest(
 
         val sent = everythingSentToModels()
         assertTrue(sent.contains("Triage Privacy Probe"), "the flow did not actually run")
+        assertNoIdentifiersIn(sent)
+    }
+
+    /**
+     * Polish is the one flow whose prompt is the candidate's own prose end to end, so what matters
+     * is what does *not* travel with it. The project's URL is a direct identifier - it is folded
+     * into `linkUrls` precisely because `github.com/ZZQXPROJECT` names the candidate as surely as
+     * an email does - and building the prompt from the project rather than from the one field being
+     * edited is exactly the mistake that would send it.
+     */
+    @Test
+    fun `no direct identifier reaches a model while polishing a profile field`() {
+        models[LlmTask.POLISH].enqueue("""{"polished":"A command-line tool built in Kotlin."}""")
+
+        polish.polish(profileId, PolishField.PROJECT_DESCRIPTION, "a cli thing i built in kotlin")
+
+        val sent = everythingSentToModels()
+        assertTrue(sent.contains("a cli thing i built in kotlin"), "the flow did not actually run")
         assertNoIdentifiersIn(sent)
     }
 
