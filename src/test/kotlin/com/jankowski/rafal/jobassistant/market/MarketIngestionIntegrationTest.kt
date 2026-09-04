@@ -2,6 +2,7 @@ package com.jankowski.rafal.jobassistant.market
 
 import com.jankowski.rafal.jobassistant.catalog.SkillCatalog
 import com.jankowski.rafal.jobassistant.market.internal.SolidJobsPage
+import com.jankowski.rafal.jobassistant.market.internal.SolidJobsPages
 import com.jankowski.rafal.jobassistant.support.IntegrationTest
 import com.jankowski.rafal.jobassistant.support.ScriptedSolidJobsClient
 import org.assertj.core.api.Assertions.assertThat
@@ -10,7 +11,6 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.jdbc.core.simple.JdbcClient
 import tools.jackson.databind.json.JsonMapper
-import tools.jackson.module.kotlin.readValue
 
 /**
  * Ingestion end to end against a real Postgres, with the source scripted from a page captured from
@@ -33,8 +33,16 @@ class MarketIngestionIntegrationTest {
         jdbc.sql("delete from unmatched_term").update()
     }
 
-    private fun fixturePage(): SolidJobsPage =
-        jsonMapper.readValue(requireNotNull(javaClass.getResource("/market/solid-jobs-page.json")).readText())
+    /**
+     * Parsed through [SolidJobsPages], the way the HTTP client does it, so the scripted path and
+     * the production path differ in nothing but where the bytes came from. A plain `readValue`
+     * here would leave `raw` null and quietly stop testing that the corpus stores the response
+     * rather than a re-serialisation of what we happened to model.
+     */
+    private fun fixturePage(): SolidJobsPage = SolidJobsPages.parse(
+        requireNotNull(javaClass.getResource("/market/solid-jobs-page.json")).readText(),
+        jsonMapper,
+    )
 
     @Test
     fun `ingests a page into the corpus with salary and skills mapped`() {
@@ -56,6 +64,35 @@ class MarketIngestionIntegrationTest {
         val employmentTypes = jdbc.sql("select distinct employment_type from market_offer")
             .query(String::class.java).list()
         assertThat(employmentTypes).containsExactlyInAnyOrder("B2B", "UoP")
+    }
+
+    /**
+     * The corpus was built on the promise that a field not stored now is not re-fetchable later,
+     * and for its first year it did not keep it: ingestion wrote a re-serialisation of the mapped
+     * object, so the posting prose - the field that made this source viable at all - was discarded
+     * on arrival. Both halves are asserted here, because the column and the promise are separate
+     * things and only one of them was visibly wrong.
+     */
+    @Test
+    fun `the posting prose is stored, and the payload is the offer as it arrived`() {
+        client.enqueue(fixturePage())
+
+        market.ingest()
+
+        val described = jdbc.sql("select count(*) from market_offer where description is not null")
+            .query(Int::class.java).single()
+        assertThat(described).isEqualTo(4)
+
+        // companyLogoUrl and benefits are real fields of the response that nothing models. Their
+        // survival is the whole point of a verbatim payload. `jsonb_exists` rather than the `?`
+        // operator, which pgjdbc reads as a bind placeholder.
+        val unmodelled = jdbc.sql(
+            """
+            select count(*) from market_offer
+            where jsonb_exists(payload, 'companyLogoUrl') and jsonb_exists(payload, 'benefits')
+            """
+        ).query(Int::class.java).single()
+        assertThat(unmodelled).isEqualTo(4)
     }
 
     @Test

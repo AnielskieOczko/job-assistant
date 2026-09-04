@@ -18,6 +18,9 @@ internal data class JobOfferRow(
     // Set here rather than relying on the column default: Spring Data JDBC writes every mapped
     // property, so a null would be sent explicitly and defeat `default now()`.
     val createdAt: Instant = Instant.now(),
+    /** PASTED or MARKET. See V28 and [com.jankowski.rafal.jobassistant.offer.OfferOrigin]. */
+    val origin: String = "PASTED",
+    val marketOfferId: Long? = null,
 )
 
 @Table("application")

@@ -7,6 +7,7 @@ import type {
   IngestionSchedule,
   MarketOfferPage,
   MarketScopeReport,
+  PromotedOffer,
   SalaryReport,
 } from './types'
 
@@ -63,3 +64,14 @@ export const fetchIngestionSchedule = () => request<IngestionSchedule>('/api/mar
  */
 export const runIngestion = () =>
   request<IngestionReport>('/api/market/ingest', { method: 'POST' })
+
+/**
+ * Copies one corpus listing into the offer list, where it can be analysed and tailored to like any
+ * other. The second call that writes, and like ingestion it only ever happens because someone
+ * pressed something — a page load must never promote anything.
+ *
+ * Throws ApiError 409 when the corpus holds no posting text for the listing: rows ingested before
+ * the description was stored gain one on the next poll, and a delisted one never will.
+ */
+export const promoteMarketOffer = (marketOfferId: number) =>
+  request<PromotedOffer>(`/api/market/offers/${marketOfferId}/promote`, { method: 'POST' })

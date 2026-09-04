@@ -1,8 +1,12 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { ExternalLink } from 'lucide-react'
-import { fetchMarketOffers } from '@/api/market'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Link, useNavigate } from 'react-router'
+import { ExternalLink, FilePlus2, SquareArrowOutUpRight } from 'lucide-react'
+import { toast } from 'sonner'
+import { ApiError } from '@/api/http'
+import { fetchMarketOffers, promoteMarketOffer } from '@/api/market'
 import { keys } from '@/api/keys'
+import { listOffers } from '@/api/offers'
 import type { MarketOfferSummary } from '@/api/types'
 import { ApiErrorAlert } from '@/components/ApiErrorAlert'
 import { EmptyState } from '@/components/EmptyState'
@@ -22,8 +26,11 @@ const PAGE = 50
  *
  * These are **market offers, not job offers**. A `job_offer` is something you might apply to and
  * carries an application status, a profile revision, analyses and generated documents; a row here
- * is one observation in a sample. Nothing on this screen copies one into the other — saving an
- * offer for real is a deliberate action and is not part of this dashboard.
+ * is one observation in a sample.
+ *
+ * Promote copies one across, and it is deliberately one row at a time behind a click. There is no
+ * "promote all matching", because thousands of applications nobody chose is exactly what keeping
+ * the two tables apart prevents.
  */
 export function CorpusOffers({ profileId }: { profileId: number | null }) {
   const [offset, setOffset] = useState(0)
@@ -31,6 +38,16 @@ export function CorpusOffers({ profileId }: { profileId: number | null }) {
     queryKey: keys.marketOffers(profileId, PAGE, offset),
     queryFn: () => fetchMarketOffers({ profileId: profileId ?? undefined, limit: PAGE, offset }),
   })
+
+  // Which listings are already in the offer list, so a row you have acted on says so after a
+  // reload rather than only in the toast. Read from the offer list itself rather than a field on
+  // the corpus row: provenance lives on `job_offer`, and this keeps it as the single answer.
+  const mine = useQuery({ queryKey: keys.offers, queryFn: listOffers })
+  const promotedBy = new Map(
+    (mine.data ?? [])
+      .filter((row) => row.offer.marketOfferId !== null)
+      .map((row) => [row.offer.marketOfferId as number, row.offer.id]),
+  )
 
   if (offers.isPending) return <Skeleton className="h-96 w-full" />
   if (offers.isError) return <ApiErrorAlert error={offers.error} />
@@ -85,11 +102,12 @@ export function CorpusOffers({ profileId }: { profileId: number | null }) {
               <TableHead>Salary</TableHead>
               <TableHead>Your coverage</TableHead>
               <TableHead className="text-right">Valid to</TableHead>
+              <TableHead className="w-32" />
             </TableRow>
           </TableHeader>
           <TableBody>
             {entries.map((offer) => (
-              <OfferRow key={offer.id} offer={offer} />
+              <OfferRow key={offer.id} offer={offer} promotedOfferId={promotedBy.get(offer.id)} />
             ))}
           </TableBody>
         </Table>
@@ -98,7 +116,13 @@ export function CorpusOffers({ profileId }: { profileId: number | null }) {
   )
 }
 
-function OfferRow({ offer }: { offer: MarketOfferSummary }) {
+function OfferRow({
+  offer,
+  promotedOfferId,
+}: {
+  offer: MarketOfferSummary
+  promotedOfferId: number | undefined
+}) {
   const salary = offer.salary
     ? formatBand({
         medianFrom: offer.salary.from,
@@ -173,7 +197,72 @@ function OfferRow({ offer }: { offer: MarketOfferSummary }) {
       <TableCell className="text-right text-xs text-muted-foreground">
         {formatDate(offer.validTo)}
       </TableCell>
+
+      <TableCell className="text-right">
+        <PromoteAction offer={offer} promotedOfferId={promotedOfferId} />
+      </TableCell>
     </TableRow>
+  )
+}
+
+/**
+ * Copying one listing into the offer list.
+ *
+ * A listing already promoted becomes a link rather than a second button: promoting twice returns
+ * the offer you have, so offering the action again would suggest a choice that does not exist.
+ *
+ * A `409` is its own message. It means the corpus holds no posting text for this row — every offer
+ * ingested before the description was stored is in that state — and a promoted offer carries the
+ * employer's words or it is not the offer. Re-polling fixes any listing still live.
+ */
+function PromoteAction({
+  offer,
+  promotedOfferId,
+}: {
+  offer: MarketOfferSummary
+  promotedOfferId: number | undefined
+}) {
+  const queryClient = useQueryClient()
+  const navigate = useNavigate()
+
+  const promote = useMutation({
+    mutationFn: () => promoteMarketOffer(offer.id),
+    onSuccess: (result) => {
+      toast.success(
+        result.deduplicated ? 'Already in your offers — opening it' : 'Promoted to your offers',
+      )
+      queryClient.invalidateQueries({ queryKey: keys.offers })
+      navigate(`/offers/${result.offerId}`)
+    },
+    onError: (error) => {
+      if (error instanceof ApiError && error.status === 409) {
+        toast.error('No posting text stored for this offer', {
+          description: 'Run a poll to fetch it. A listing already delisted cannot be recovered.',
+        })
+      }
+    },
+  })
+
+  if (promotedOfferId !== undefined) {
+    return (
+      <Button asChild size="sm" variant="ghost">
+        <Link to={`/offers/${promotedOfferId}`}>
+          <SquareArrowOutUpRight /> In your offers
+        </Link>
+      </Button>
+    )
+  }
+
+  return (
+    <Button
+      size="sm"
+      variant="outline"
+      onClick={() => promote.mutate()}
+      disabled={promote.isPending}
+      title="Copy this listing into your offer list, where it can be analysed and tailored to."
+    >
+      <FilePlus2 /> {promote.isPending ? 'Promoting…' : 'Promote'}
+    </Button>
   )
 }
 

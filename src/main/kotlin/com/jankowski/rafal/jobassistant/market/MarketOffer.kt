@@ -22,6 +22,12 @@ data class MarketOffer(
     val category: String?,
     val subCategory: String?,
     val url: String?,
+    /**
+     * The posting prose as the source published it, HTML and all. Null for every row ingested
+     * before V28 and for any source that does not serve one; such a row cannot be promoted, because
+     * a promoted offer carries the employer's words or it is not the offer.
+     */
+    val description: String?,
     val experienceLevel: String?,
     val contractTime: String?,
     val isRemote: Boolean,

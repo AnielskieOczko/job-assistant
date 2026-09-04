@@ -13,11 +13,25 @@ data class JobOffer(
     val seniority: String? = null,
     val detectedLanguage: String? = null,
     val createdAt: Instant,
+    /**
+     * Whether the candidate found this offer or the market poll did.
+     *
+     * Kept as a value on the row rather than inferred from [marketOfferId], which can go null if the
+     * corpus row it names is ever deleted. The distinction is the reason the market corpus is a
+     * separate table at all: an offer list that cannot tell what was read from what was polled has
+     * quietly merged the two.
+     */
+    val origin: OfferOrigin = OfferOrigin.PASTED,
+    /** The corpus listing this was copied from, when [origin] is [OfferOrigin.MARKET]. */
+    val marketOfferId: Long? = null,
 ) {
     /** A short label for listings, before extraction has supplied a real title. */
     val displayTitle: String
         get() = title ?: rawText.lineSequence().firstOrNull { it.isNotBlank() }?.take(80) ?: "Untitled offer"
 }
+
+/** How an offer entered the list: pasted by hand, or copied out of the market corpus. */
+enum class OfferOrigin { PASTED, MARKET }
 
 enum class ApplicationStatus { SAVED, ANALYZED, APPLIED, INTERVIEWING, REJECTED, OFFER }
 

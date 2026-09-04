@@ -36,7 +36,7 @@ deliberately — and to say so here — rather than to quietly promote a single 
 
 | # | Item | Issue | Feasibility | Complexity | Effort | Value on the axis |
 |---|---|---|---|---|---|---|
-| 1 | Promote a corpus offer into a real offer | [#79](https://github.com/AnielskieOczko/job-assistant/issues/79) | certain | low | ~1 session | **Highest** |
+| ~~1~~ | ~~Promote a corpus offer into a real offer~~ | [#79](https://github.com/AnielskieOczko/job-assistant/issues/79) | — | — | **shipped 2026-09-04** | *see below* |
 | ~~2~~ | ~~Record which document was sent~~ | [#85](https://github.com/AnielskieOczko/job-assistant/issues/85) | — | — | **shipped 2026-09-04** | *see below* |
 | 3 | Offer shortlist ranking | [#80](https://github.com/AnielskieOczko/job-assistant/issues/80) | certain | low | ~1 session | **Direct** |
 | 4 | AI-assisted polish of a profile field | [#81](https://github.com/AnielskieOczko/job-assistant/issues/81) | certain | medium | ~2 sessions | **Upstream leverage** |
@@ -48,13 +48,13 @@ deliberately — and to say so here — rather than to quietly promote a single 
 | 10 | The remaining profile-UI refactor | [#72](https://github.com/AnielskieOczko/job-assistant/issues/72) | certain | low | ~1 session | Zero |
 | 11 | Host this application | [#62](https://github.com/AnielskieOczko/job-assistant/issues/62) | needs a decision first | high | many sessions | ~Zero; portfolio |
 
-**The top four are 1–4.** Items 1–6 all carry shaping tickets written to be picked up cold; the
-ranking only required the top four to be shaped, and the other two are features that were asked for
-rather than lines in a list.
+**The top four were 1–4, and items 1 and 2 are done.** Items 1–6 all carry shaping tickets written
+to be picked up cold; the ranking only required the top four to be shaped, and the other two are
+features that were asked for rather than lines in a list.
 
-**The numbers do not move when an item ships.** Item 2 is done and the rest keep the numbers they
-were ranked under: they are how this file and the GitHub tickets refer to each other, and
-renumbering would silently change what a comment saying "item 5" points at.
+**The numbers do not move when an item ships.** Items 1 and 2 are done and the rest keep the numbers
+they were ranked under: they are how this file and the GitHub tickets refer to each other, and
+renumbering would silently change what a comment saying "item 5" points at. **Item 3 is next.**
 
 Three orderings in that table look surprising and are deliberate. **Item 2 was ranked out of
 value-for-effort order** — it was second because its cost rose with every application sent without
@@ -68,23 +68,40 @@ every CV generated from it afterwards, whereas the library improves one document
 
 ---
 
-## 1. Promote a corpus offer into a real offer
+## 1. Promote a corpus offer into a real offer — shipped 2026-09-04
 
-**The market corpus is a thing you look at, not a source you apply from.** 1,505 offers are ingested
-and counted; `CLAUDE.md` specifies the way out — *"Saving one for real is an explicit copy"* — and
-**no code path does it**. There is no endpoint, no service method, nothing. This is the only item on
-the list that converts an already-paid-for corpus into applications, which is the first phrase of
-the ranking axis.
+`POST /api/market/offers/{id}/promote` copies one listing into the offer list, where it is analysed
+and tailored to exactly like a pasted one. The corpus table gains a **Promote** button per row, and
+a row already promoted becomes a link to the offer instead.
 
-It stays small because the pieces exist: `market_offer` carries full posting prose from solid.jobs,
-and `job_offer` already deduplicates by `contentHash`, so promoting is handing the corpus text to
-the paste path that is already there.
+**The issue's premise was wrong, and finding out was half the work.** #79 said the corpus carried
+the posting prose in `market_offer.description`. There was no such column, and the text was not
+recoverable from `payload` either: `SolidJobsOffer` never modelled `description`, so Jackson dropped
+it at parse, and ingestion stored a re-serialisation of that parsed object rather than the response —
+so V14's promise that `payload` held "the whole response verbatim" was false, and the insurance it
+described did not pay out on the first occasion it was needed. Verified against the live API on
+2026-09-04: the field is there, 4,317 characters on the first IT-division offer. All 1,505 stored
+rows had nothing but title, company, skills, salary and location.
 
-- **Provenance is part of the row, not a comment.** A promoted offer must be distinguishable from a
-  pasted one, or the corpus quietly becomes indistinguishable from the candidate's own reading.
-- **One at a time, by an explicit action.** The reason `market_offer` is not `job_offer` is that
-  thousands of rows would become thousands of `SAVED` applications and silently change what
-  `AggregateGapReport.analysedOffers` counts. Promotion must not reopen that door in miniature.
+Fixing that came first, which is why this item cost more than the "~1 session, low" it was ranked
+at. `SolidJobsPages` now keeps each offer's own JSON, `V28` adds the `description` column, and a row
+without one is **refused** rather than promoted from its structured fields.
+
+The decisions worth not undoing:
+
+- **`market` depends on `offer`, never the reverse.** `offer` depends on nothing, and putting an
+  HTTP client and a scheduler into the closure of the module `analysis` and `document` both sit on
+  is ADR-0003's mistake in a new place.
+  `docs/adr/0004-promotion-crosses-from-market-to-offer.md` records the alternatives.
+- **Provenance is two columns, not one.** `origin` (`PASTED`/`MARKET`) and `market_offer_id`:
+  the id is a real foreign key and goes null if its corpus row is deleted, and "did I find this or
+  did the poll" has to survive that.
+- **Promotion shares its whole body with `paste`,** content hash included, so promoting twice
+  returns the offer you have and a listing already pasted by hand keeps its `PASTED` origin.
+- **The listing's own skill names are kept out of the offer text.** They are already resolved
+  through the catalog, so feeding them to the extractor would return our own resolution and make
+  `matchScore` the market dashboard's coverage number under a second name.
+- **No bulk form and no scheduled form.** The scheduled variant stays declined below.
 
 ## 2. Record which document was sent — shipped 2026-09-04
 
@@ -323,7 +340,7 @@ Said plainly rather than ranked politely last.
   `job_offer` in the first place: it would create `SAVED` applications the candidate never chose and
   silently change what `AggregateGapReport.analysedOffers` counts. Research #10 also concluded the
   inflow would be a trickle, which weakens the case rather than strengthening it. The half worth
-  building is item 1 — promotion by an explicit human decision.
+  building was item 1 — promotion by an explicit human decision — and it shipped without it.
 
 ## Recorded as done, not ranked
 

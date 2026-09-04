@@ -11,6 +11,20 @@ interface OfferService {
      */
     fun paste(rawText: String, sourceUrl: String? = null): PastedOffer
 
+    /**
+     * Stores an offer copied out of the market corpus, recording which listing it came from.
+     *
+     * The same path as [paste] in every respect that matters - the same content hash, the same
+     * deduplication, the same `SAVED` application row - because a promoted offer that behaved
+     * differently from a pasted one would be a second class of offer rather than a shortcut. What
+     * differs is provenance, and provenance only.
+     *
+     * Promoting a listing whose text was already pasted by hand returns the offer already stored,
+     * reported through [PastedOffer.deduplicated], and leaves its origin alone: it was found by
+     * reading, and a later poll seeing the same words does not change that.
+     */
+    fun promoteFromMarket(rawText: String, sourceUrl: String?, marketOfferId: Long): PastedOffer
+
     fun findById(id: Long): JobOffer?
 
     fun list(): List<OfferSummary>

@@ -75,6 +75,18 @@ Shipping a change to prod is `scripts/release-prod.sh` followed by `scripts/run-
 lives at `~/Applications/job-assistant/job-assistant.jar` rather than in `target/`, so a routine
 `./mvnw clean` cannot delete the artifact production is running from.
 
+**One-off after the `V28` release: the corpus needs a poll before anything in it can be promoted.**
+Every row ingested before that migration was stored without its posting text — the field was being
+discarded at parse time — and promotion refuses a listing it has no prose for. The nightly poll
+fixes every listing still live on the board; press it once rather than waiting:
+
+```bash
+curl -X POST http://127.0.0.1:8090/api/market/ingest
+```
+
+Listings already delisted cannot be recovered and stay unpromotable. That is the honest outcome:
+the text was never stored and the board no longer serves it.
+
 ## Backups
 
 `scripts/db-backup.sh` writes `jobassistant-<utc-stamp>-<label>.dump` (pg_dump custom format) to

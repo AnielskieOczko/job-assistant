@@ -3,6 +3,7 @@ package com.jankowski.rafal.jobassistant.offer.internal
 import com.jankowski.rafal.jobassistant.offer.Application
 import com.jankowski.rafal.jobassistant.offer.ApplicationStatus
 import com.jankowski.rafal.jobassistant.offer.JobOffer
+import com.jankowski.rafal.jobassistant.offer.OfferOrigin
 import com.jankowski.rafal.jobassistant.offer.OfferService
 import com.jankowski.rafal.jobassistant.offer.OfferSummary
 import com.jankowski.rafal.jobassistant.offer.PastedOffer
@@ -19,7 +20,24 @@ internal class JdbcOfferService(
 ) : OfferService {
 
     @Transactional
-    override fun paste(rawText: String, sourceUrl: String?): PastedOffer {
+    override fun paste(rawText: String, sourceUrl: String?): PastedOffer =
+        store(rawText, sourceUrl, OfferOrigin.PASTED, marketOfferId = null)
+
+    @Transactional
+    override fun promoteFromMarket(rawText: String, sourceUrl: String?, marketOfferId: Long): PastedOffer =
+        store(rawText, sourceUrl, OfferOrigin.MARKET, marketOfferId)
+
+    /**
+     * One path for both entry points, so a promoted offer is a pasted offer that knows where it
+     * came from rather than a second kind of row. The deduplication is deliberately shared: it is
+     * what makes promoting twice return the offer you already have instead of forking its history.
+     */
+    private fun store(
+        rawText: String,
+        sourceUrl: String?,
+        origin: OfferOrigin,
+        marketOfferId: Long?,
+    ): PastedOffer {
         require(rawText.isNotBlank()) { "Offer text must not be blank" }
 
         val hash = OfferContentHash.of(rawText)
@@ -34,6 +52,8 @@ internal class JdbcOfferService(
                 company = null,
                 seniority = null,
                 detectedLanguage = null,
+                origin = origin.name,
+                marketOfferId = marketOfferId,
             )
         )
         applications.save(
@@ -140,6 +160,8 @@ private fun JobOfferRow.toDomain() = JobOffer(
     seniority = seniority,
     detectedLanguage = detectedLanguage,
     createdAt = createdAt,
+    origin = OfferOrigin.valueOf(origin),
+    marketOfferId = marketOfferId,
 )
 
 private fun ApplicationRow.toDomain() = Application(
