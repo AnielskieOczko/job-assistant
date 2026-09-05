@@ -1,6 +1,7 @@
 package com.jankowski.rafal.jobassistant
 
 import com.jankowski.rafal.jobassistant.analysis.AggregateGapEntry
+import com.jankowski.rafal.jobassistant.analysis.AggregateGapReport
 import com.jankowski.rafal.jobassistant.analysis.AnalysisReport
 import com.jankowski.rafal.jobassistant.analysis.AnalysisState
 import com.jankowski.rafal.jobassistant.analysis.Importance
@@ -23,6 +24,7 @@ import com.jankowski.rafal.jobassistant.document.DocumentType
 import com.jankowski.rafal.jobassistant.document.GeneratedDocument
 import com.jankowski.rafal.jobassistant.llm.BudgetStatus
 import com.jankowski.rafal.jobassistant.llm.LlmCall
+import com.jankowski.rafal.jobassistant.llm.LlmCallDetail
 import com.jankowski.rafal.jobassistant.llm.ProviderAccount
 import com.jankowski.rafal.jobassistant.llm.SpendBucket
 import com.jankowski.rafal.jobassistant.llm.SpendGroup
@@ -49,6 +51,8 @@ import com.jankowski.rafal.jobassistant.offer.Application
 import com.jankowski.rafal.jobassistant.offer.ApplicationStatus
 import com.jankowski.rafal.jobassistant.offer.JobOffer
 import com.jankowski.rafal.jobassistant.offer.OfferOrigin
+import com.jankowski.rafal.jobassistant.offer.OfferSummary
+import com.jankowski.rafal.jobassistant.offer.PastedOffer
 import com.jankowski.rafal.jobassistant.polish.PolishField
 import com.jankowski.rafal.jobassistant.polish.PolishSuggestion
 import com.jankowski.rafal.jobassistant.privacy.PrivacyField
@@ -74,12 +78,15 @@ import com.jankowski.rafal.jobassistant.profile.ProfileSkill
 import com.jankowski.rafal.jobassistant.profile.Project
 import com.jankowski.rafal.jobassistant.profile.WorkExperience
 import com.jankowski.rafal.jobassistant.profile.internal.ProfileSummary
+import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertAll
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
+import kotlin.reflect.KClass
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 import tools.jackson.databind.json.JsonMapper
 import tools.jackson.module.kotlin.kotlinModule
 
@@ -96,48 +103,99 @@ import tools.jackson.module.kotlin.kotlinModule
  * Note that computed Kotlin getters are serialized too, and some of them keep an `is` prefix
  * (`WorkExperience.isCurrent` is emitted as `isCurrent`, not `current`) - that is exactly the kind
  * of detail this test exists to hold still. No Docker and no Spring context: fast tier.
+ *
+ * *Which* types get pinned above used to be a second hand-maintained list - the imports at the top
+ * of this file - so a DTO added to a controller with no corresponding [assertKeys] call was
+ * unprotected, and nothing said so. [ApiContractCoverage] closes that: every [assertKeys] call
+ * records the class it was given, and a companion `@AfterAll` check fails the build if a type
+ * reachable from a controller was never recorded.
  */
 class ApiContractTest {
+
+    companion object {
+        private val covered = mutableSetOf<KClass<*>>()
+
+        @JvmStatic
+        @AfterAll
+        fun `every reachable wire type is pinned`() {
+            val scanned = ApiContractCoverage.discoverWireResponseTypes()
+            // Tripwire against the scanner itself finding (almost) nothing - a misconfigured
+            // filter or base package must fail loudly, not pass on an empty comparison. Measured
+            // at 60 when this was written; raise this as coverage grows, never lower it to make a
+            // failure go away.
+            assertTrue(
+                scanned.size >= 55,
+                "Scanner only found ${scanned.size} candidate wire types - suspiciously low, " +
+                    "check ApiContractCoverage's base package or controller filter",
+            )
+            val missing = (scanned - covered).mapNotNull { it.qualifiedName }.sorted()
+            assertTrue(
+                missing.isEmpty(),
+                "New wire type(s) reachable from a controller with no assertKeys(...) fixture in " +
+                    "ApiContractTest: ${missing.joinToString()}. Add a fixture (and update " +
+                    "frontend/src/api/types.ts if the shape is new).",
+            )
+        }
+    }
 
     private val mapper = JsonMapper.builder().addModule(kotlinModule()).build()
 
     private fun keysOf(value: Any): Set<String> =
         mapper.readTree(mapper.writeValueAsString(value)).propertyNames().toSet()
 
-    private fun assertKeys(value: Any, vararg expected: String) =
+    private fun assertKeys(value: Any, vararg expected: String) {
+        covered += value::class
         assertEquals(expected.toSet(), keysOf(value), "${value::class.simpleName} field names changed")
+    }
 
     @Test
-    fun `offer module wire format`() = assertAll(
-        {
-            assertKeys(
-                JobOffer(
-                    id = 1, contentHash = "h", rawText = "text", sourceUrl = null, title = null,
-                    company = null, seniority = null, detectedLanguage = null,
-                    createdAt = Instant.EPOCH, origin = OfferOrigin.PASTED, marketOfferId = null,
-                ),
-                "id", "contentHash", "rawText", "sourceUrl", "title", "company", "seniority",
-                "detectedLanguage", "createdAt", "origin", "marketOfferId", "displayTitle",
-            )
-        },
-        {
-            assertKeys(
-                PromotedOffer(offerId = 1, marketOfferId = 2, deduplicated = false),
-                "offerId", "marketOfferId", "deduplicated",
-            )
-        },
-        {
-            assertKeys(
-                Application(
-                    id = 1, offerId = 1, status = ApplicationStatus.SAVED,
-                    statusChangedAt = Instant.EPOCH, appliedOn = null, notes = null,
-                    sentCvDocumentId = null, sentCoverLetterDocumentId = null,
-                ),
-                "id", "offerId", "status", "statusChangedAt", "appliedOn", "notes",
-                "sentCvDocumentId", "sentCoverLetterDocumentId",
-            )
-        },
-    )
+    fun `offer module wire format`() {
+        val offer = JobOffer(
+            id = 1, contentHash = "h", rawText = "text", sourceUrl = null, title = null,
+            company = null, seniority = null, detectedLanguage = null,
+            createdAt = Instant.EPOCH, origin = OfferOrigin.PASTED, marketOfferId = null,
+        )
+        val application = Application(
+            id = 1, offerId = 1, status = ApplicationStatus.SAVED,
+            statusChangedAt = Instant.EPOCH, appliedOn = null, notes = null,
+            sentCvDocumentId = null, sentCoverLetterDocumentId = null,
+        )
+
+        assertAll(
+            {
+                assertKeys(
+                    offer,
+                    "id", "contentHash", "rawText", "sourceUrl", "title", "company", "seniority",
+                    "detectedLanguage", "createdAt", "origin", "marketOfferId", "displayTitle",
+                )
+            },
+            {
+                assertKeys(
+                    PromotedOffer(offerId = 1, marketOfferId = 2, deduplicated = false),
+                    "offerId", "marketOfferId", "deduplicated",
+                )
+            },
+            {
+                assertKeys(
+                    application,
+                    "id", "offerId", "status", "statusChangedAt", "appliedOn", "notes",
+                    "sentCvDocumentId", "sentCoverLetterDocumentId",
+                )
+            },
+            {
+                assertKeys(
+                    OfferSummary(offer = offer, application = application),
+                    "offer", "application",
+                )
+            },
+            {
+                assertKeys(
+                    PastedOffer(offer = offer, deduplicated = false),
+                    "offer", "deduplicated",
+                )
+            },
+        )
+    }
 
     @Test
     fun `analysis module wire format`() {
@@ -188,6 +246,15 @@ class ApiContractTest {
                     AggregateGapEntry(1, "Kotlin", 2, 1, 1),
                     "skillId", "skillName", "demandCount", "gapCount", "mustHaveGapCount",
                     "category", "gapRatio",
+                )
+            },
+            {
+                assertKeys(
+                    AggregateGapReport(
+                        analysedOffers = 1,
+                        entries = listOf(AggregateGapEntry(1, "Kotlin", 2, 1, 1)),
+                    ),
+                    "analysedOffers", "entries",
                 )
             },
             {
@@ -375,56 +442,66 @@ class ApiContractTest {
     )
 
     @Test
-    fun `catalog document and llm wire formats`() = assertAll(
-        { assertKeys(CanonicalSkill(1, "Kotlin", SkillCategory.LANGUAGE), "id", "name", "category") },
-        {
-            assertKeys(
-                UnmatchedTerm(1, "iceberg", 2, 47, Instant.EPOCH, Instant.EPOCH, UnmatchedTermStatus.PENDING, null),
-                "id", "term", "occurrences", "marketOccurrences", "firstSeenAt", "lastSeenAt", "status",
-                "resolvedSkillId",
-            )
-        },
-        {
-            assertKeys(
-                GeneratedDocument(
-                    id = 1, offerId = 1, profileId = 1, analysisId = 1, type = DocumentType.CV,
-                    language = "English", html = "<html/>", createdAt = Instant.EPOCH,
-                ),
-                "id", "offerId", "profileId", "analysisId", "type", "language", "html", "createdAt",
-                "profileRevision", "droppedBulletCount", "droppedSkillCount", "consentClauseLanguage",
-                "sourceDocumentId",
-            )
-        },
-        {
-            assertKeys(
-                DocumentLibraryEntry(
-                    document = GeneratedDocument(
+    fun `catalog document and llm wire formats`() {
+        val call = LlmCall(
+            id = 1, task = "EXTRACTION", modelProfile = "openrouter", modelName = "model",
+            servingProvider = "CoreWeave", providerCallId = "gen-1",
+            costUsd = BigDecimal("0.00012345"), inputTokens = 1, outputTokens = 1,
+            cachedInputTokens = 1, reasoningOutputTokens = 1, finishReason = "STOP",
+            latencyMs = 1L, error = null, subjectKind = "OFFER", subjectId = 1,
+            createdAt = Instant.EPOCH,
+        )
+
+        assertAll(
+            { assertKeys(CanonicalSkill(1, "Kotlin", SkillCategory.LANGUAGE), "id", "name", "category") },
+            {
+                assertKeys(
+                    UnmatchedTerm(1, "iceberg", 2, 47, Instant.EPOCH, Instant.EPOCH, UnmatchedTermStatus.PENDING, null),
+                    "id", "term", "occurrences", "marketOccurrences", "firstSeenAt", "lastSeenAt", "status",
+                    "resolvedSkillId",
+                )
+            },
+            {
+                assertKeys(
+                    GeneratedDocument(
                         id = 1, offerId = 1, profileId = 1, analysisId = 1, type = DocumentType.CV,
                         language = "English", html = "<html/>", createdAt = Instant.EPOCH,
                     ),
-                    offerTitle = "Kotlin Engineer",
-                    offerCompany = "Acme",
-                ),
-                "document", "offerTitle", "offerCompany",
-            )
-        },
-        {
-            assertKeys(
-                LlmCall(
-                    id = 1, task = "EXTRACTION", modelProfile = "openrouter", modelName = "model",
-                    servingProvider = "CoreWeave", providerCallId = "gen-1",
-                    costUsd = BigDecimal("0.00012345"), inputTokens = 1, outputTokens = 1,
-                    cachedInputTokens = 1, reasoningOutputTokens = 1, finishReason = "STOP",
-                    latencyMs = 1L, error = null, subjectKind = "OFFER", subjectId = 1,
-                    createdAt = Instant.EPOCH,
-                ),
-                "id", "task", "modelProfile", "modelName", "servingProvider", "providerCallId",
-                "costUsd", "inputTokens", "outputTokens", "cachedInputTokens",
-                "reasoningOutputTokens", "finishReason", "latencyMs", "error", "subjectKind",
-                "subjectId", "createdAt",
-            )
-        },
-    )
+                    "id", "offerId", "profileId", "analysisId", "type", "language", "html", "createdAt",
+                    "profileRevision", "droppedBulletCount", "droppedSkillCount", "consentClauseLanguage",
+                    "sourceDocumentId",
+                )
+            },
+            {
+                assertKeys(
+                    DocumentLibraryEntry(
+                        document = GeneratedDocument(
+                            id = 1, offerId = 1, profileId = 1, analysisId = 1, type = DocumentType.CV,
+                            language = "English", html = "<html/>", createdAt = Instant.EPOCH,
+                        ),
+                        offerTitle = "Kotlin Engineer",
+                        offerCompany = "Acme",
+                    ),
+                    "document", "offerTitle", "offerCompany",
+                )
+            },
+            {
+                assertKeys(
+                    call,
+                    "id", "task", "modelProfile", "modelName", "servingProvider", "providerCallId",
+                    "costUsd", "inputTokens", "outputTokens", "cachedInputTokens",
+                    "reasoningOutputTokens", "finishReason", "latencyMs", "error", "subjectKind",
+                    "subjectId", "createdAt",
+                )
+            },
+            {
+                assertKeys(
+                    LlmCallDetail(call = call, requestJson = "{}", responseText = null),
+                    "call", "requestJson", "responseText",
+                )
+            },
+        )
+    }
 
     @Test
     fun `llm spend wire formats`() {
