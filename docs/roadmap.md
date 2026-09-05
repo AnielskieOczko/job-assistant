@@ -40,7 +40,7 @@ deliberately — and to say so here — rather than to quietly promote a single 
 | ~~2~~ | ~~Record which document was sent~~ | [#85](https://github.com/AnielskieOczko/job-assistant/issues/85) | — | — | **shipped 2026-09-04** | *see below* |
 | ~~3~~ | ~~Offer shortlist ranking~~ | [#80](https://github.com/AnielskieOczko/job-assistant/issues/80) | — | — | **shipped 2026-09-04** | *see below* |
 | ~~4~~ | ~~AI-assisted polish of a profile field~~ | [#81](https://github.com/AnielskieOczko/job-assistant/issues/81) | — | — | **shipped 2026-09-04** | *see below* |
-| 5 | Generated-document library and reuse | [#82](https://github.com/AnielskieOczko/job-assistant/issues/82) | certain | low–medium | ~1.5 sessions | **Visibility** |
+| ~~5~~ | ~~Generated-document library and reuse~~ | [#82](https://github.com/AnielskieOczko/job-assistant/issues/82) | — | — | **shipped 2026-09-04** | *see below* |
 | 6 | Privacy indicators in the UI | [#83](https://github.com/AnielskieOczko/job-assistant/issues/83) | certain | low–medium | ~1 session | Zero; wins the tiebreak |
 | 7 | The dialog-reseed rule, stated once with a test | [#72](https://github.com/AnielskieOczko/job-assistant/issues/72) | certain | low | ~½ session | Zero, but a real bug |
 | 8 | The wire-contract guard, Path B | [#68](https://github.com/AnielskieOczko/job-assistant/issues/68) | certain | low | ~½ session | Zero; closes a silent hole |
@@ -48,13 +48,13 @@ deliberately — and to say so here — rather than to quietly promote a single 
 | 10 | The remaining profile-UI refactor | [#72](https://github.com/AnielskieOczko/job-assistant/issues/72) | certain | low | ~1 session | Zero |
 | 11 | Host this application | [#62](https://github.com/AnielskieOczko/job-assistant/issues/62) | needs a decision first | high | many sessions | ~Zero; portfolio |
 
-**The top four were 1–4, and all four are done.** Items 1–6 all carry shaping tickets
+**The top five were 1–5, and all five are done.** Items 1–6 all carry shaping tickets
 written to be picked up cold; the ranking only required the top four to be shaped, and the other two
 are features that were asked for rather than lines in a list.
 
-**The numbers do not move when an item ships.** Items 1 to 4 are done and the rest keep the
+**The numbers do not move when an item ships.** Items 1 to 5 are done and the rest keep the
 numbers they were ranked under: they are how this file and the GitHub tickets refer to each other,
-and renumbering would silently change what a comment saying "item 5" points at. **Item 5 is next.**
+and renumbering would silently change what a comment saying "item 5" points at. **Item 6 is next.**
 
 Three orderings in that table look surprising and are deliberate. **Item 2 was ranked out of
 value-for-effort order** — it was second because its cost rose with every application sent without
@@ -212,28 +212,32 @@ Cheaper than its "~2 sessions, medium" estimate: the shaping ticket had already 
 questions, and the only thing the build discovered was that the module placement needed an ADR of
 its own rather than a paragraph.
 
-## 5. Generated-document library and reuse
+## 5. Generated-document library and reuse — shipped 2026-09-04
 
-Every generated document is reachable **only through the offer that produced it**. There is no
-cross-offer view, which means there is no way to look at what you actually sent an employer. Two
-similar Java offers do not always justify two generations — reusing a CV you already read and
-approved is a legitimate decision the application currently cannot express.
+`GET /api/documents` lists every generated document for the selected profile across every offer,
+and `POST /api/offers/{offerId}/documents/reuse` attaches an existing CV to a second offer as an
+explicit, provenance-carrying copy instead of a fresh generation. A top-level **Documents** route
+sits beside Offers, Profile and Market; an offer's Documents tab gains a *"reuse an existing CV"*
+action that opens the same list filtered.
 
-`GeneratedDocument` already carries what a library needs: type, language, `createdAt`,
-`profileRevision`, both drop counts and `consentClauseLanguage`. What is missing is the read path
-and one column.
+The decisions worth not undoing:
 
 - **Reuse is a copy with provenance**, not a link. A new `generated_document` row for the target
-  offer carrying `source_document_id`, so the list can say *"reused from &lt;offer&gt;"* and the
-  drop counts are never misread as this offer's tailoring. A row that claims a tailoring which never
+  offer carries `source_document_id`, so the list can say *"reused from &lt;offer&gt;"* and the drop
+  counts are never misread as this offer's own tailoring. A row that claims a tailoring which never
   happened is the same failure as a rate without its denominator.
-- **The copy re-runs `CvInvariant`.** It costs no model call, and it catches the case the original
-  generation could not: a skill deleted from the profile since is now a fabricated claim on a
-  document about to be sent.
-- **A trailing `profileRevision` is reported, not hidden.** The stored HTML was true when written;
-  a moved revision makes it out of date rather than wrong, and the library should say which.
-- **Where it lives:** a top-level `Documents` route beside Offers, Profile and Market, plus a
-  *"reuse an existing CV"* action on an offer's Documents tab that opens the same list filtered.
+- **The copy re-runs `CvInvariant`, at no model cost.** It catches the case the original generation
+  could not: a skill deleted from the profile since is now a fabricated claim on a document about to
+  be sent. A refused reuse writes no row, matching how a rejected generation already behaves.
+- **Drop counts and `profileRevision` are carried from the source row, not recomputed** — nothing
+  was regenerated, so nothing new was dropped. A trailing `profileRevision` is reported rather than
+  hidden: the stored HTML was true when written, and a moved revision makes it out of date rather
+  than wrong.
+- **Reuse is scoped to `DocumentType.CV` only.** Reusing a cover letter is refused with 400 — a
+  cover letter is written to one employer's posting, and copying it to a second reads as a mistake
+  a CV reuse does not carry.
+- **No bulk reuse, no cross-offer diffing, no document deletion** — out of scope, same as the other
+  items ranked here.
 
 ## 6. Privacy indicators in the UI
 
