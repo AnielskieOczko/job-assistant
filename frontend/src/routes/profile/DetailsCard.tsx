@@ -22,6 +22,7 @@ function LinkedinMark({ className }: { className?: string }) {
   )
 }
 import { ApiErrorAlert } from '@/components/ApiErrorAlert'
+import { PrivacyIndicator } from '@/components/PrivacyIndicator'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import {
@@ -63,21 +64,28 @@ export function DetailsCard({ profileId, profile }: { profileId: number; profile
         <div className="flex items-start justify-between gap-4">
           <PortraitControl profileId={profileId} profile={profile} />
           <div className="min-w-0 flex-1">
-            <h2 className="font-heading text-xl font-semibold">{details.fullName}</h2>
+            <h2 className="flex items-center gap-1.5 font-heading text-xl font-semibold">
+              {details.fullName}
+              <PrivacyIndicator field="fullName" />
+            </h2>
             {details.headline ? <p className="text-muted-foreground">{details.headline}</p> : null}
             <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1.5 text-sm text-muted-foreground">
               {(
                 [
-                  [Mail, details.email],
-                  [Phone, details.phone],
-                  [MapPin, details.location],
+                  [Mail, 'email', details.email],
+                  [Phone, 'phone', details.phone],
+                  [MapPin, 'location', details.location],
                 ] as const
               )
-                .filter((entry): entry is [typeof Mail, string] => Boolean(entry[1]))
-                .map(([Icon, value]) => (
-                  <span key={value} className="inline-flex items-center gap-1.5">
+                .filter(
+                  (entry): entry is [typeof Mail, 'email' | 'phone' | 'location', string] =>
+                    Boolean(entry[2]),
+                )
+                .map(([Icon, field, value]) => (
+                  <span key={field} className="inline-flex items-center gap-1.5">
                     <Icon className="size-3.5 shrink-0" />
                     {value}
+                    <PrivacyIndicator field={field} />
                   </span>
                 ))}
             </div>
@@ -100,7 +108,10 @@ export function DetailsCard({ profileId, profile }: { profileId: number; profile
 
         <div className="mt-4 border-t pt-3">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Links</p>
+            <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Links
+              <PrivacyIndicator field="links" />
+            </p>
             <Button variant="ghost" size="sm" onClick={() => setLinkDialog('new')}>
               <Plus /> Add link
             </Button>
@@ -178,6 +189,7 @@ function PortraitControl({ profileId, profile }: { profileId: number; profile: C
 
   return (
     <div className="shrink-0">
+      <div className="mb-1 flex justify-end"><PrivacyIndicator field="portrait" /></div>
       <input
         ref={picker}
         type="file"

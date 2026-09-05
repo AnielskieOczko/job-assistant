@@ -4,6 +4,7 @@ import { addSkill, deleteSkill, reorderSkills, updateSkill } from '@/api/profile
 import { PROFICIENCIES, SKILL_CATEGORIES, SKILL_CATEGORY_LABELS } from '@/api/types'
 import type { CandidateProfile, Proficiency, ProfileSkill, SkillCategory } from '@/api/types'
 import { ApiErrorAlert } from '@/components/ApiErrorAlert'
+import { PrivacyIndicator } from '@/components/PrivacyIndicator'
 import { SkillCombobox } from '@/components/SkillCombobox'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -67,7 +68,10 @@ export function SkillsCard({ profileId, profile }: { profileId: number; profile:
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Skills ({skills.length})</CardTitle>
+        <CardTitle className="flex items-center gap-1.5 text-base">
+          Skills ({skills.length})
+          <PrivacyIndicator field="skills" />
+        </CardTitle>
         <CardAction>
           <Button variant="outline" size="sm" onClick={() => setDialog('new')}>
                 <Plus /> Add skill

@@ -7,6 +7,7 @@ import {
 import { isCurrentRole } from '@/api/types'
 import type { CandidateProfile, ExperienceBullet, WorkExperience } from '@/api/types'
 import { ApiErrorAlert } from '@/components/ApiErrorAlert'
+import { PrivacyIndicatorGroup } from '@/components/PrivacyIndicator'
 import { SkillCombobox } from '@/components/SkillCombobox'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -51,7 +52,10 @@ export function ExperienceCard({ profileId, profile }: { profileId: number; prof
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Experience</CardTitle>
+        <CardTitle className="flex items-center gap-1.5 text-base">
+          Experience
+          <PrivacyIndicatorGroup fields={['employers', 'dates', 'bulletText']} />
+        </CardTitle>
         <CardAction>
           <Button variant="outline" size="sm" onClick={() => setDialog('new')}>
                 <Plus /> Add role

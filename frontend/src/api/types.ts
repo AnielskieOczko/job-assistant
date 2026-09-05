@@ -1066,6 +1066,30 @@ export interface CorpusSummary {
   lastSeenAt: string | null
 }
 
+/* ------------------------------------------------------------------- privacy */
+
+/**
+ * How one category of profile data is kept from - or sent to - a model provider.
+ *
+ * A two-state shield would be a lie: `location` and the portrait are never sent but nothing
+ * refuses them, which is a different guarantee from a name a guard actively blocks.
+ */
+export type PrivacyState = 'ENFORCED' | 'OMITTED' | 'SENT'
+
+/** One row of the manifest. `name` is a stable key, never a value - the manifest describes fields. */
+export interface PrivacyField {
+  name: string
+  label: string
+  state: PrivacyState
+  mechanism: string
+}
+
+/** The whole answer to "what does this application do with my data", from `GET /api/privacy/manifest`. */
+export interface PrivacyManifest {
+  fields: PrivacyField[]
+  offerScrubbing: string
+}
+
 /* -------------------------------------------------------------------- polish */
 
 /**

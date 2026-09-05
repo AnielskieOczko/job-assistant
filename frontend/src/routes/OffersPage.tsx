@@ -11,6 +11,7 @@ import { ApiErrorAlert } from '@/components/ApiErrorAlert'
 import { EmptyState } from '@/components/EmptyState'
 import { PageHeader } from '@/components/PageHeader'
 import { ApplicationStatusBadge } from '@/components/StatusBadges'
+import { usePrivacyManifest } from '@/hooks/usePrivacyManifest'
 import { Button } from '@/components/ui/button'
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
@@ -265,6 +266,7 @@ function PasteOfferDialog({
   const [sourceUrl, setSourceUrl] = useState('')
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const privacy = usePrivacyManifest()
 
   const paste = useMutation({
     mutationFn: () => pasteOffer({ text, sourceUrl: sourceUrl.trim() || null }),
@@ -290,7 +292,8 @@ function PasteOfferDialog({
           <DialogTitle>Paste a job offer</DialogTitle>
           <DialogDescription>
             The raw text is stored verbatim and hashed. Pasting the same posting twice returns the
-            offer you already have.
+            offer you already have.{' '}
+            {privacy.data ? privacy.data.offerScrubbing : null}
           </DialogDescription>
         </DialogHeader>
 
