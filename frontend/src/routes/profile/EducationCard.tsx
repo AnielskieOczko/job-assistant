@@ -3,6 +3,7 @@ import { Plus } from 'lucide-react'
 import { addEducation, deleteEducation, reorderEducation, updateEducation } from '@/api/profile'
 import type { CandidateProfile, Education } from '@/api/types'
 import { ApiErrorAlert } from '@/components/ApiErrorAlert'
+import { PrivacyIndicatorGroup } from '@/components/PrivacyIndicator'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -25,7 +26,10 @@ export function EducationCard({ profileId, profile }: { profileId: number; profi
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Education</CardTitle>
+        <CardTitle className="flex items-center gap-1.5 text-base">
+          Education
+          <PrivacyIndicatorGroup fields={['schools', 'dates']} />
+        </CardTitle>
         <CardAction>
           <Button variant="outline" size="sm" onClick={() => setDialog('new')}>
                 <Plus /> Add

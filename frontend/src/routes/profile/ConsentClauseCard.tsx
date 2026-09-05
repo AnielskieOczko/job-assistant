@@ -5,6 +5,7 @@ import {
 } from '@/api/profile'
 import type { CandidateProfile, ConsentClause } from '@/api/types'
 import { ApiErrorAlert } from '@/components/ApiErrorAlert'
+import { PrivacyIndicator } from '@/components/PrivacyIndicator'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -38,7 +39,10 @@ export function ConsentClauseCard({ profileId, profile }: { profileId: number; p
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Consent clauses</CardTitle>
+        <CardTitle className="flex items-center gap-1.5 text-base">
+          Consent clauses
+          <PrivacyIndicator field="consentClause" />
+        </CardTitle>
         <CardAction>
           <Button variant="outline" size="sm" onClick={() => setDialog('new')}>
             <Plus /> Add

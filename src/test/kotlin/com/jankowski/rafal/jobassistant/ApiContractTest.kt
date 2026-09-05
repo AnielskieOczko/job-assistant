@@ -51,6 +51,9 @@ import com.jankowski.rafal.jobassistant.offer.JobOffer
 import com.jankowski.rafal.jobassistant.offer.OfferOrigin
 import com.jankowski.rafal.jobassistant.polish.PolishField
 import com.jankowski.rafal.jobassistant.polish.PolishSuggestion
+import com.jankowski.rafal.jobassistant.privacy.PrivacyField
+import com.jankowski.rafal.jobassistant.privacy.PrivacyManifest
+import com.jankowski.rafal.jobassistant.privacy.PrivacyState
 import com.jankowski.rafal.jobassistant.profile.CandidateProfile
 import com.jankowski.rafal.jobassistant.profile.ConsentClause
 import com.jankowski.rafal.jobassistant.profile.Credential
@@ -332,6 +335,25 @@ class ApiContractTest {
                 SuggestionRun(termsConsidered = 25, termsSent = 12, suggestionsStored = 4),
                 "termsConsidered", "termsSent", "suggestionsStored", "droppedUnresolvable",
                 "droppedUnrequested",
+            )
+        },
+    )
+
+    @Test
+    fun `privacy wire format`() = assertAll(
+        {
+            assertKeys(
+                PrivacyField(
+                    name = "fullName", label = "Full name", state = PrivacyState.ENFORCED,
+                    mechanism = "refused outright",
+                ),
+                "name", "label", "state", "mechanism",
+            )
+        },
+        {
+            assertKeys(
+                PrivacyManifest(fields = emptyList(), offerScrubbing = "stripped"),
+                "fields", "offerScrubbing",
             )
         },
     )

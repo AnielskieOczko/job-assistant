@@ -48,4 +48,7 @@ export const keys = {
   llmCall: (id: number) => ['llm', 'call', id] as const,
   llmSpend: (days: number, bucket: SpendBucket) => ['llm', 'spend', days, bucket] as const,
   llmAccount: ['llm', 'account'] as const,
+
+  /** Static and profile-independent, so one key serves every indicator on every card. */
+  privacyManifest: ['privacy', 'manifest'] as const,
 }
