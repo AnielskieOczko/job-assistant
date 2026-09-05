@@ -795,6 +795,19 @@ calibration will eventually read. The link is optional, replaceable and reversib
 key is `on delete set null` — the opposite of `llm_call.subject_id`, because this link exists so the
 document can be opened rather than so history outlives it.
 
+**A generated document is reusable across offers, and reuse is a copy, not a link.**
+`GET /api/documents` lists every `generated_document` for the selected profile regardless of which
+offer produced it — the cross-offer view `sent_cv_document_id` alone could not give, since that link
+only names what went out, not what exists. `POST /api/offers/{offerId}/documents/reuse` attaches an
+existing CV to a second offer by inserting a new row carrying `source_document_id`, scoped to
+`DocumentType.CV` only: a cover letter is written to one employer's posting and copying it to a
+second is a mistake reuse for a CV is not. The copy re-runs `CvInvariant` at no model cost — nothing
+was regenerated, but the profile may have changed since the source was written, and a skill dropped
+from it since is now a fabricated claim on a document about to be sent. Drop counts and
+`profileRevision` are carried from the source row rather than recomputed, since nothing new was
+dropped; a trailing `profileRevision` is reported rather than hidden, the same rule `CvSelection`'s
+fallback follows.
+
 `CvSelection` counts what it drops, and those counts are persisted on `generated_document`
 (`dropped_bullet_count`, `dropped_skill_count`, added in `V12`) and served on `GeneratedDocument`.
 They are not a warning about any one document — selection already removed the offending choices, so
