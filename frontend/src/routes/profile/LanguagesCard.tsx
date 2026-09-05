@@ -16,16 +16,19 @@ import {
 import { ConfirmDelete } from './ConfirmDelete'
 import { Field } from './Field'
 import { RowActions } from './RowActions'
-import { movedIds, useProfileEdit } from './mutations'
+import { useProfileEdit, useReorderableRows } from './mutations'
 import { useSeededKey } from './seededKey'
 
 export function LanguagesCard({ profileId, profile }: { profileId: number; profile: CandidateProfile }) {
   const [dialog, setDialog] = useState<LanguageSkill | 'new' | null>(null)
-  const [deleting, setDeleting] = useState<LanguageSkill | null>(null)
-
-  const reorder = useProfileEdit(profileId, (ids: number[]) => reorderLanguages(profileId, ids), 'Languages reordered')
-  const remove = useProfileEdit(profileId, (id: number) => deleteLanguage(profileId, id), 'Language removed')
   const { languages } = profile
+
+  const { reorder, deleting, rowActions, confirmDeleteProps } = useReorderableRows(profileId, languages, {
+    reorder: (ids: number[]) => reorderLanguages(profileId, ids),
+    remove: (id: number) => deleteLanguage(profileId, id),
+    reorderSuccess: 'Languages reordered',
+    removeSuccess: 'Language removed',
+  })
 
   return (
     <Card>
@@ -50,16 +53,7 @@ export function LanguagesCard({ profileId, profile }: { profileId: number; profi
                 <span className="ml-2 text-muted-foreground">{language.level}</span>
               </p>
               <RowActions
-                label={language.language}
-                disabled={reorder.isPending}
-                onUp={index > 0 ? () => reorder.mutate(movedIds(languages, index, index - 1)) : undefined}
-                onDown={
-                  index < languages.length - 1
-                    ? () => reorder.mutate(movedIds(languages, index, index + 1))
-                    : undefined
-                }
-                onEdit={() => setDialog(language)}
-                onDelete={() => setDeleting(language)}
+                {...rowActions(index, { label: language.language, onEdit: () => setDialog(language) })}
               />
             </div>
           ))
@@ -69,17 +63,10 @@ export function LanguagesCard({ profileId, profile }: { profileId: number; profi
 
       <LanguageDialog profileId={profileId} language={dialog} onClose={() => setDialog(null)} />
       <ConfirmDelete
-        open={deleting !== null}
-        onOpenChange={(open) => {
-          if (!open) { setDeleting(null); remove.reset() }
-        }}
-        title={`Remove ${deleting?.language ?? 'language'}?`}
-        description="Future analyses will report any offer requiring it as unmet."
-        pending={remove.isPending}
-        error={remove.error}
-        onConfirm={() => {
-          if (deleting) remove.mutate(deleting.id, { onSuccess: () => setDeleting(null) })
-        }}
+        {...confirmDeleteProps(
+          `Remove ${deleting?.language ?? 'language'}?`,
+          'Future analyses will report any offer requiring it as unmet.',
+        )}
       />
     </Card>
   )

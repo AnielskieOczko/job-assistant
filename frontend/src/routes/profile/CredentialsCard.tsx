@@ -17,16 +17,19 @@ import { formatCredentialPeriod } from '@/lib/format'
 import { ConfirmDelete } from './ConfirmDelete'
 import { Field } from './Field'
 import { RowActions } from './RowActions'
-import { blankToNull, movedIds, useProfileEdit } from './mutations'
+import { blankToNull, useProfileEdit, useReorderableRows } from './mutations'
 import { useSeededKey } from './seededKey'
 
 export function CredentialsCard({ profileId, profile }: { profileId: number; profile: CandidateProfile }) {
   const [dialog, setDialog] = useState<Credential | 'new' | null>(null)
-  const [deleting, setDeleting] = useState<Credential | null>(null)
-
-  const reorder = useProfileEdit(profileId, (ids: number[]) => reorderCredentials(profileId, ids), 'Credentials reordered')
-  const remove = useProfileEdit(profileId, (id: number) => deleteCredential(profileId, id), 'Credential removed')
   const entries = profile.credentials
+
+  const { reorder, deleting, rowActions, confirmDeleteProps } = useReorderableRows(profileId, entries, {
+    reorder: (ids: number[]) => reorderCredentials(profileId, ids),
+    remove: (id: number) => deleteCredential(profileId, id),
+    reorderSuccess: 'Credentials reordered',
+    removeSuccess: 'Credential removed',
+  })
 
   return (
     <Card>
@@ -64,16 +67,7 @@ export function CredentialsCard({ profileId, profile }: { profileId: number; pro
                 ) : null}
               </div>
               <RowActions
-                label={entry.title}
-                disabled={reorder.isPending}
-                onUp={index > 0 ? () => reorder.mutate(movedIds(entries, index, index - 1)) : undefined}
-                onDown={
-                  index < entries.length - 1
-                    ? () => reorder.mutate(movedIds(entries, index, index + 1))
-                    : undefined
-                }
-                onEdit={() => setDialog(entry)}
-                onDelete={() => setDeleting(entry)}
+                {...rowActions(index, { label: entry.title, onEdit: () => setDialog(entry) })}
               />
             </div>
           ))
@@ -83,17 +77,10 @@ export function CredentialsCard({ profileId, profile }: { profileId: number; pro
 
       <CredentialDialog profileId={profileId} entry={dialog} onClose={() => setDialog(null)} />
       <ConfirmDelete
-        open={deleting !== null}
-        onOpenChange={(open) => {
-          if (!open) { setDeleting(null); remove.reset() }
-        }}
-        title={`Remove ${deleting?.title ?? 'entry'}?`}
-        description="It disappears from any CV generated from now on."
-        pending={remove.isPending}
-        error={remove.error}
-        onConfirm={() => {
-          if (deleting) remove.mutate(deleting.id, { onSuccess: () => setDeleting(null) })
-        }}
+        {...confirmDeleteProps(
+          `Remove ${deleting?.title ?? 'entry'}?`,
+          'It disappears from any CV generated from now on.',
+        )}
       />
     </Card>
   )

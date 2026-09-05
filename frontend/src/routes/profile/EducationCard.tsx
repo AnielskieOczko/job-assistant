@@ -13,16 +13,19 @@ import { formatPeriod } from '@/lib/format'
 import { ConfirmDelete } from './ConfirmDelete'
 import { Field } from './Field'
 import { RowActions } from './RowActions'
-import { blankToNull, movedIds, useProfileEdit } from './mutations'
+import { blankToNull, useProfileEdit, useReorderableRows } from './mutations'
 import { useSeededKey } from './seededKey'
 
 export function EducationCard({ profileId, profile }: { profileId: number; profile: CandidateProfile }) {
   const [dialog, setDialog] = useState<Education | 'new' | null>(null)
-  const [deleting, setDeleting] = useState<Education | null>(null)
-
-  const reorder = useProfileEdit(profileId, (ids: number[]) => reorderEducation(profileId, ids), 'Education reordered')
-  const remove = useProfileEdit(profileId, (id: number) => deleteEducation(profileId, id), 'Entry removed')
   const entries = profile.education
+
+  const { reorder, deleting, rowActions, confirmDeleteProps } = useReorderableRows(profileId, entries, {
+    reorder: (ids: number[]) => reorderEducation(profileId, ids),
+    remove: (id: number) => deleteEducation(profileId, id),
+    reorderSuccess: 'Education reordered',
+    removeSuccess: 'Entry removed',
+  })
 
   return (
     <Card>
@@ -54,16 +57,7 @@ export function EducationCard({ profileId, profile }: { profileId: number; profi
                 </p>
               </div>
               <RowActions
-                label={entry.degree}
-                disabled={reorder.isPending}
-                onUp={index > 0 ? () => reorder.mutate(movedIds(entries, index, index - 1)) : undefined}
-                onDown={
-                  index < entries.length - 1
-                    ? () => reorder.mutate(movedIds(entries, index, index + 1))
-                    : undefined
-                }
-                onEdit={() => setDialog(entry)}
-                onDelete={() => setDeleting(entry)}
+                {...rowActions(index, { label: entry.degree, onEdit: () => setDialog(entry) })}
               />
             </div>
           ))
@@ -73,17 +67,10 @@ export function EducationCard({ profileId, profile }: { profileId: number; profi
 
       <EducationDialog profileId={profileId} entry={dialog} onClose={() => setDialog(null)} />
       <ConfirmDelete
-        open={deleting !== null}
-        onOpenChange={(open) => {
-          if (!open) { setDeleting(null); remove.reset() }
-        }}
-        title={`Remove ${deleting?.degree ?? 'entry'}?`}
-        description="It disappears from any CV generated from now on."
-        pending={remove.isPending}
-        error={remove.error}
-        onConfirm={() => {
-          if (deleting) remove.mutate(deleting.id, { onSuccess: () => setDeleting(null) })
-        }}
+        {...confirmDeleteProps(
+          `Remove ${deleting?.degree ?? 'entry'}?`,
+          'It disappears from any CV generated from now on.',
+        )}
       />
     </Card>
   )

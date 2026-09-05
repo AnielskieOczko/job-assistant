@@ -15,7 +15,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { ConfirmDelete } from './ConfirmDelete'
 import { Field } from './Field'
 import { RowActions } from './RowActions'
-import { useProfileEdit } from './mutations'
+import { useDeleteConfirm, useProfileEdit } from './mutations'
 import { useSeededKey } from './seededKey'
 
 /**
@@ -32,10 +32,13 @@ const STANDARD_POLISH_WORDING =
 
 export function ConsentClauseCard({ profileId, profile }: { profileId: number; profile: CandidateProfile }) {
   const [dialog, setDialog] = useState<ConsentClause | 'new' | null>(null)
-  const [deleting, setDeleting] = useState<ConsentClause | null>(null)
-
-  const remove = useProfileEdit(profileId, (id: number) => deleteConsentClause(profileId, id), 'Consent clause removed')
   const entries = profile.consentClauses
+
+  const { deleting, requestDelete, remove, confirmDeleteProps } = useDeleteConfirm<ConsentClause>(
+    profileId,
+    (id: number) => deleteConsentClause(profileId, id),
+    'Consent clause removed',
+  )
 
   return (
     <Card>
@@ -68,7 +71,7 @@ export function ConsentClauseCard({ profileId, profile }: { profileId: number; p
                 label={entry.language}
                 disabled={remove.isPending}
                 onEdit={() => setDialog(entry)}
-                onDelete={() => setDeleting(entry)}
+                onDelete={() => requestDelete(entry)}
               />
             </div>
           ))
@@ -77,17 +80,10 @@ export function ConsentClauseCard({ profileId, profile }: { profileId: number; p
 
       <ConsentClauseDialog profileId={profileId} entry={dialog} onClose={() => setDialog(null)} />
       <ConfirmDelete
-        open={deleting !== null}
-        onOpenChange={(open) => {
-          if (!open) { setDeleting(null); remove.reset() }
-        }}
-        title={`Remove the ${deleting?.language ?? ''} consent clause?`}
-        description="CVs generated in this language from now on will render without one."
-        pending={remove.isPending}
-        error={remove.error}
-        onConfirm={() => {
-          if (deleting) remove.mutate(deleting.id, { onSuccess: () => setDeleting(null) })
-        }}
+        {...confirmDeleteProps(
+          `Remove the ${deleting?.language ?? ''} consent clause?`,
+          'CVs generated in this language from now on will render without one.',
+        )}
       />
     </Card>
   )

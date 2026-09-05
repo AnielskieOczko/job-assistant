@@ -24,7 +24,7 @@ import { ConfirmDelete } from './ConfirmDelete'
 import { Field } from './Field'
 import { PolishAction } from './PolishAction'
 import { RowActions } from './RowActions'
-import { blankToNull, movedIds, useProfileEdit } from './mutations'
+import { blankToNull, useProfileEdit, useReorderableRows } from './mutations'
 import { useSeededKey } from './seededKey'
 
 /** The distinct skills across a role's bullets, for scanning a role without reading every bullet. */
@@ -44,11 +44,14 @@ function RoleSkillSummary({ experience }: { experience: WorkExperience }) {
 
 export function ExperienceCard({ profileId, profile }: { profileId: number; profile: CandidateProfile }) {
   const [dialog, setDialog] = useState<WorkExperience | 'new' | null>(null)
-  const [deleting, setDeleting] = useState<WorkExperience | null>(null)
-
-  const reorder = useProfileEdit(profileId, (ids: number[]) => reorderExperiences(profileId, ids), 'Roles reordered')
-  const remove = useProfileEdit(profileId, (id: number) => deleteExperience(profileId, id), 'Role removed')
   const { experiences } = profile
+
+  const { reorder, deleting, rowActions, confirmDeleteProps } = useReorderableRows(profileId, experiences, {
+    reorder: (ids: number[]) => reorderExperiences(profileId, ids),
+    remove: (id: number) => deleteExperience(profileId, id),
+    reorderSuccess: 'Roles reordered',
+    removeSuccess: 'Role removed',
+  })
 
   return (
     <Card>
@@ -92,16 +95,7 @@ export function ExperienceCard({ profileId, profile }: { profileId: number; prof
                     </p>
                   </div>
                   <RowActions
-                    label={experience.roleTitle}
-                    disabled={reorder.isPending}
-                    onUp={index > 0 ? () => reorder.mutate(movedIds(experiences, index, index - 1)) : undefined}
-                    onDown={
-                      index < experiences.length - 1
-                        ? () => reorder.mutate(movedIds(experiences, index, index + 1))
-                        : undefined
-                    }
-                    onEdit={() => setDialog(experience)}
-                    onDelete={() => setDeleting(experience)}
+                    {...rowActions(index, { label: experience.roleTitle, onEdit: () => setDialog(experience) })}
                   />
                 </div>
 
@@ -119,17 +113,10 @@ export function ExperienceCard({ profileId, profile }: { profileId: number; prof
 
       <ExperienceDialog profileId={profileId} experience={dialog} onClose={() => setDialog(null)} />
       <ConfirmDelete
-        open={deleting !== null}
-        onOpenChange={(open) => {
-          if (!open) { setDeleting(null); remove.reset() }
-        }}
-        title={`Remove ${deleting?.roleTitle ?? 'role'}?`}
-        description={`This also removes its ${deleting?.bullets.length ?? 0} bullet(s). Any CV already generated from them keeps its stored text but will read as stale.`}
-        pending={remove.isPending}
-        error={remove.error}
-        onConfirm={() => {
-          if (deleting) remove.mutate(deleting.id, { onSuccess: () => setDeleting(null) })
-        }}
+        {...confirmDeleteProps(
+          `Remove ${deleting?.roleTitle ?? 'role'}?`,
+          `This also removes its ${deleting?.bullets.length ?? 0} bullet(s). Any CV already generated from them keeps its stored text but will read as stale.`,
+        )}
       />
     </Card>
   )
@@ -145,16 +132,15 @@ function Bullets({
   profile: CandidateProfile
 }) {
   const [dialog, setDialog] = useState<ExperienceBullet | 'new' | null>(null)
-  const [deleting, setDeleting] = useState<ExperienceBullet | null>(null)
   const names = useSkillNames()
-
-  const reorder = useProfileEdit(
-    profileId,
-    (ids: number[]) => reorderBullets(profileId, experience.id, ids),
-    'Bullets reordered',
-  )
-  const remove = useProfileEdit(profileId, (id: number) => deleteBullet(profileId, id), 'Bullet removed')
   const { bullets } = experience
+
+  const { reorder, confirmDeleteProps, rowActions } = useReorderableRows(profileId, bullets, {
+    reorder: (ids: number[]) => reorderBullets(profileId, experience.id, ids),
+    remove: (id: number) => deleteBullet(profileId, id),
+    reorderSuccess: 'Bullets reordered',
+    removeSuccess: 'Bullet removed',
+  })
 
   return (
     <>
@@ -171,18 +157,7 @@ function Bullets({
                 </div>
               ) : null}
             </div>
-            <RowActions
-              label="bullet"
-              disabled={reorder.isPending}
-              onUp={index > 0 ? () => reorder.mutate(movedIds(bullets, index, index - 1)) : undefined}
-              onDown={
-                index < bullets.length - 1
-                  ? () => reorder.mutate(movedIds(bullets, index, index + 1))
-                  : undefined
-              }
-              onEdit={() => setDialog(bullet)}
-              onDelete={() => setDeleting(bullet)}
-            />
+            <RowActions {...rowActions(index, { label: 'bullet', onEdit: () => setDialog(bullet) })} />
           </li>
         ))}
       </ul>
@@ -200,17 +175,10 @@ function Bullets({
         onClose={() => setDialog(null)}
       />
       <ConfirmDelete
-        open={deleting !== null}
-        onOpenChange={(open) => {
-          if (!open) { setDeleting(null); remove.reset() }
-        }}
-        title="Remove this bullet?"
-        description="A CV that cited it keeps its stored text, but the evidence behind that claim is gone from the profile."
-        pending={remove.isPending}
-        error={remove.error}
-        onConfirm={() => {
-          if (deleting) remove.mutate(deleting.id, { onSuccess: () => setDeleting(null) })
-        }}
+        {...confirmDeleteProps(
+          'Remove this bullet?',
+          'A CV that cited it keeps its stored text, but the evidence behind that claim is gone from the profile.',
+        )}
       />
     </>
   )
