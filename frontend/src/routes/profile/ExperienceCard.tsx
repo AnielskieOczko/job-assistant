@@ -25,6 +25,7 @@ import { Field } from './Field'
 import { PolishAction } from './PolishAction'
 import { RowActions } from './RowActions'
 import { blankToNull, movedIds, useProfileEdit } from './mutations'
+import { useSeededKey } from './seededKey'
 
 /** The distinct skills across a role's bullets, for scanning a role without reading every bullet. */
 function RoleSkillSummary({ experience }: { experience: WorkExperience }) {
@@ -228,17 +229,16 @@ function BulletDialog({
   profile: CandidateProfile
   onClose: () => void
 }) {
-  const [seeded, setSeeded] = useState<number | 'new' | null>(null)
   const [text, setText] = useState('')
   const [skillIds, setSkillIds] = useState<number[]>([])
   const [picking, setPicking] = useState<number | null>(null)
   const names = useSkillNames()
 
   const key = bullet === 'new' ? 'new' : (bullet?.id ?? null)
-  if (bullet !== null && seeded !== key) {
-    setSeeded(key)
-    setText(bullet === 'new' ? '' : bullet.text)
-    setSkillIds(bullet === 'new' ? [] : [...bullet.skillIds])
+  if (useSeededKey(key)) {
+    const source = bullet === 'new' ? null : bullet
+    setText(source?.text ?? '')
+    setSkillIds(source ? [...source.skillIds] : [])
     setPicking(null)
   }
 
@@ -353,7 +353,6 @@ function ExperienceDialog({
   experience: WorkExperience | 'new' | null
   onClose: () => void
 }) {
-  const [seeded, setSeeded] = useState<number | 'new' | null>(null)
   const [company, setCompany] = useState('')
   const [roleTitle, setRoleTitle] = useState('')
   const [location, setLocation] = useState('')
@@ -362,8 +361,7 @@ function ExperienceDialog({
   const [summary, setSummary] = useState('')
 
   const key = experience === 'new' ? 'new' : (experience?.id ?? null)
-  if (experience !== null && seeded !== key) {
-    setSeeded(key)
+  if (useSeededKey(key)) {
     const source = experience === 'new' ? null : experience
     setCompany(source?.company ?? '')
     setRoleTitle(source?.roleTitle ?? '')

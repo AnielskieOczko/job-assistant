@@ -22,6 +22,7 @@ import { cn } from '@/lib/utils'
 import { ConfirmDelete } from './ConfirmDelete'
 import { RowActions } from './RowActions'
 import { swappedIds, useProfileEdit } from './mutations'
+import { useSeededKey } from './seededKey'
 
 /**
  * Mastery as ink, not hue: this app is deliberately near-monochrome, so proficiency reads as
@@ -159,19 +160,18 @@ function SkillDialog({
   skill: ProfileSkill | 'new' | null
   onClose: () => void
 }) {
-  const [seeded, setSeeded] = useState<number | 'new' | null>(null)
   const [skillId, setSkillId] = useState<number | null>(null)
   const [proficiency, setProficiency] = useState<Proficiency>('WORKING')
   const [years, setYears] = useState('')
   const [lastUsed, setLastUsed] = useState('')
 
   const key = skill === 'new' ? 'new' : (skill?.id ?? null)
-  if (skill !== null && seeded !== key) {
-    setSeeded(key)
-    setSkillId(skill === 'new' ? null : skill.skillId)
-    setProficiency(skill === 'new' ? 'WORKING' : skill.proficiency)
-    setYears(skill === 'new' || skill.yearsOfExperience === null ? '' : String(skill.yearsOfExperience))
-    setLastUsed(skill === 'new' || skill.lastUsedYear === null ? '' : String(skill.lastUsedYear))
+  if (useSeededKey(key)) {
+    const source = skill === 'new' ? null : skill
+    setSkillId(source?.skillId ?? null)
+    setProficiency(source?.proficiency ?? 'WORKING')
+    setYears(source?.yearsOfExperience != null ? String(source.yearsOfExperience) : '')
+    setLastUsed(source?.lastUsedYear != null ? String(source.lastUsedYear) : '')
   }
 
   const create = useProfileEdit(

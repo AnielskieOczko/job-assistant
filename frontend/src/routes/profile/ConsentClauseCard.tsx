@@ -16,6 +16,7 @@ import { ConfirmDelete } from './ConfirmDelete'
 import { Field } from './Field'
 import { RowActions } from './RowActions'
 import { useProfileEdit } from './mutations'
+import { useSeededKey } from './seededKey'
 
 /**
  * Standard Polish RODO wording, offered as a starting point to paste and edit - never inserted
@@ -101,18 +102,14 @@ function ConsentClauseDialog({
   entry: ConsentClause | 'new' | null
   onClose: () => void
 }) {
-  const [seeded, setSeeded] = useState<number | 'new' | null>(null)
   const [language, setLanguage] = useState('')
   const [text, setText] = useState('')
 
   const key = entry === 'new' ? 'new' : (entry?.id ?? null)
-  if (entry !== null && seeded !== key) {
-    setSeeded(key)
+  if (useSeededKey(key)) {
     const source = entry === 'new' ? null : entry
     setLanguage(source?.language ?? '')
     setText(source?.text ?? '')
-  } else if (entry === null && seeded !== null) {
-    setSeeded(null)
   }
 
   const create = useProfileEdit(
