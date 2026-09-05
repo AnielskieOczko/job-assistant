@@ -18,6 +18,7 @@ import { ConfirmDelete } from './ConfirmDelete'
 import { Field } from './Field'
 import { RowActions } from './RowActions'
 import { blankToNull, movedIds, useProfileEdit } from './mutations'
+import { useSeededKey } from './seededKey'
 
 export function CredentialsCard({ profileId, profile }: { profileId: number; profile: CandidateProfile }) {
   const [dialog, setDialog] = useState<Credential | 'new' | null>(null)
@@ -107,7 +108,6 @@ function CredentialDialog({
   entry: Credential | 'new' | null
   onClose: () => void
 }) {
-  const [seeded, setSeeded] = useState<number | 'new' | null>(null)
   const [title, setTitle] = useState('')
   const [issuer, setIssuer] = useState('')
   const [kind, setKind] = useState<CredentialKind>('COURSE')
@@ -117,8 +117,7 @@ function CredentialDialog({
   const [expiresOn, setExpiresOn] = useState('')
 
   const key = entry === 'new' ? 'new' : (entry?.id ?? null)
-  if (entry !== null && seeded !== key) {
-    setSeeded(key)
+  if (useSeededKey(key)) {
     const source = entry === 'new' ? null : entry
     setTitle(source?.title ?? '')
     setIssuer(source?.issuer ?? '')
@@ -127,11 +126,6 @@ function CredentialDialog({
     setCredentialId(source?.credentialId ?? '')
     setIssuedOn(source?.issuedOn ?? '')
     setExpiresOn(source?.expiresOn ?? '')
-  } else if (entry === null && seeded !== null) {
-    // Forces a reseed on the next open, even if it reuses the same key (another "new", or the
-    // same row edited twice) - otherwise the dialog would reopen showing whatever was left in
-    // these fields from the last time it was open, discarded or not.
-    setSeeded(null)
   }
 
   const create = useProfileEdit(

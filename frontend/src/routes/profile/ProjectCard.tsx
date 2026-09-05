@@ -23,6 +23,7 @@ import { Field } from './Field'
 import { PolishAction } from './PolishAction'
 import { RowActions } from './RowActions'
 import { blankToNull, movedIds, useProfileEdit } from './mutations'
+import { useSeededKey } from './seededKey'
 
 export function ProjectCard({ profileId, profile }: { profileId: number; profile: CandidateProfile }) {
   const [dialog, setDialog] = useState<Project | 'new' | null>(null)
@@ -223,17 +224,16 @@ function ProjectBulletDialog({
   profile: CandidateProfile
   onClose: () => void
 }) {
-  const [seeded, setSeeded] = useState<number | 'new' | null>(null)
   const [text, setText] = useState('')
   const [skillIds, setSkillIds] = useState<number[]>([])
   const [picking, setPicking] = useState<number | null>(null)
   const names = useSkillNames()
 
   const key = bullet === 'new' ? 'new' : (bullet?.id ?? null)
-  if (bullet !== null && seeded !== key) {
-    setSeeded(key)
-    setText(bullet === 'new' ? '' : bullet.text)
-    setSkillIds(bullet === 'new' ? [] : [...bullet.skillIds])
+  if (useSeededKey(key)) {
+    const source = bullet === 'new' ? null : bullet
+    setText(source?.text ?? '')
+    setSkillIds(source ? [...source.skillIds] : [])
     setPicking(null)
   }
 
@@ -348,7 +348,6 @@ function ProjectDialog({
   project: Project | 'new' | null
   onClose: () => void
 }) {
-  const [seeded, setSeeded] = useState<number | 'new' | null>(null)
   const [name, setName] = useState('')
   const [url, setUrl] = useState('')
   const [description, setDescription] = useState('')
@@ -359,8 +358,7 @@ function ProjectDialog({
   const names = useSkillNames()
 
   const key = project === 'new' ? 'new' : (project?.id ?? null)
-  if (project !== null && seeded !== key) {
-    setSeeded(key)
+  if (useSeededKey(key)) {
     const source = project === 'new' ? null : project
     setName(source?.name ?? '')
     setUrl(source?.url ?? '')

@@ -35,6 +35,7 @@ import { Field } from './Field'
 import { PolishAction } from './PolishAction'
 import { RowActions } from './RowActions'
 import { blankToNull, movedIds, useProfileEdit } from './mutations'
+import { useSeededKey } from './seededKey'
 
 /** Falls back to a generic link icon for anything that isn't a recognized platform. */
 function iconForLink(url: string) {
@@ -261,7 +262,6 @@ function DetailsDialog({
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
-  const [seeded, setSeeded] = useState<number | null>(null)
   const [fullName, setFullName] = useState('')
   const [headline, setHeadline] = useState('')
   const [email, setEmail] = useState('')
@@ -270,9 +270,9 @@ function DetailsDialog({
   const [summary, setSummary] = useState('')
   const [careerGoal, setCareerGoal] = useState('')
 
-  // Seed during render rather than in an effect - the idiom the rest of the app uses.
-  if (open && seeded !== profile.revision) {
-    setSeeded(profile.revision)
+  // Null while closed, same as the row dialogs' `entry === null` - closing without saving must
+  // force a reseed on the next open, or a cancelled edit reappears as though it had been saved.
+  if (useSeededKey(open ? profile.revision : null)) {
     setFullName(profile.details.fullName)
     setHeadline(profile.details.headline ?? '')
     setEmail(profile.details.email ?? '')
@@ -370,15 +370,14 @@ function LinkDialog({
   link: ProfileLink | 'new' | null
   onClose: () => void
 }) {
-  const [seeded, setSeeded] = useState<number | 'new' | null>(null)
   const [label, setLabel] = useState('')
   const [url, setUrl] = useState('')
 
   const key = link === 'new' ? 'new' : (link?.id ?? null)
-  if (link !== null && seeded !== key) {
-    setSeeded(key)
-    setLabel(link === 'new' ? '' : link.label)
-    setUrl(link === 'new' ? '' : link.url)
+  if (useSeededKey(key)) {
+    const source = link === 'new' ? null : link
+    setLabel(source?.label ?? '')
+    setUrl(source?.url ?? '')
   }
 
   const create = useProfileEdit(profileId, (body: LinkRequest) => addLink(profileId, body), 'Link added')

@@ -17,6 +17,7 @@ import { ConfirmDelete } from './ConfirmDelete'
 import { Field } from './Field'
 import { RowActions } from './RowActions'
 import { movedIds, useProfileEdit } from './mutations'
+import { useSeededKey } from './seededKey'
 
 export function LanguagesCard({ profileId, profile }: { profileId: number; profile: CandidateProfile }) {
   const [dialog, setDialog] = useState<LanguageSkill | 'new' | null>(null)
@@ -93,15 +94,14 @@ function LanguageDialog({
   language: LanguageSkill | 'new' | null
   onClose: () => void
 }) {
-  const [seeded, setSeeded] = useState<number | 'new' | null>(null)
   const [name, setName] = useState('')
   const [level, setLevel] = useState<LanguageLevel>('B2')
 
   const key = language === 'new' ? 'new' : (language?.id ?? null)
-  if (language !== null && seeded !== key) {
-    setSeeded(key)
-    setName(language === 'new' ? '' : language.language)
-    setLevel(language === 'new' ? 'B2' : language.level)
+  if (useSeededKey(key)) {
+    const source = language === 'new' ? null : language
+    setName(source?.language ?? '')
+    setLevel(source?.level ?? 'B2')
   }
 
   const create = useProfileEdit(
