@@ -21,7 +21,7 @@ import { useSkillNames } from '@/hooks/useSkillNames'
 import { cn } from '@/lib/utils'
 import { ConfirmDelete } from './ConfirmDelete'
 import { RowActions } from './RowActions'
-import { swappedIds, useProfileEdit } from './mutations'
+import { swappedIds, useDeleteConfirm, useProfileEdit } from './mutations'
 import { useSeededKey } from './seededKey'
 
 /**
@@ -46,11 +46,14 @@ function ProficiencyBadge({ level }: { level: Proficiency }) {
 
 export function SkillsCard({ profileId, profile }: { profileId: number; profile: CandidateProfile }) {
   const [dialog, setDialog] = useState<ProfileSkill | 'new' | null>(null)
-  const [deleting, setDeleting] = useState<ProfileSkill | null>(null)
   const names = useSkillNames()
 
   const reorder = useProfileEdit(profileId, (ids: number[]) => reorderSkills(profileId, ids), 'Skills reordered')
-  const remove = useProfileEdit(profileId, (id: number) => deleteSkill(profileId, id), 'Skill removed')
+  const { deleting, requestDelete, confirmDeleteProps } = useDeleteConfirm<ProfileSkill>(
+    profileId,
+    (id: number) => deleteSkill(profileId, id),
+    'Skill removed',
+  )
   const { skills } = profile
 
   const groups: { category: SkillCategory | 'UNCATEGORIZED'; label: string; items: ProfileSkill[] }[] = [
@@ -120,7 +123,7 @@ export function SkillsCard({ profileId, profile }: { profileId: number; profile:
                             : undefined
                         }
                         onEdit={() => setDialog(skill)}
-                        onDelete={() => setDeleting(skill)}
+                        onDelete={() => requestDelete(skill)}
                       />
                     </li>
                     )
@@ -135,17 +138,10 @@ export function SkillsCard({ profileId, profile }: { profileId: number; profile:
 
       <SkillDialog profileId={profileId} skill={dialog} onClose={() => setDialog(null)} />
       <ConfirmDelete
-        open={deleting !== null}
-        onOpenChange={(open) => {
-          if (!open) { setDeleting(null); remove.reset() }
-        }}
-        title={`Remove ${deleting ? names.nameOf(deleting.skillId) : 'skill'}?`}
-        description="If any experience bullet still cites this skill the removal is refused, and the bullets in the way are listed here."
-        pending={remove.isPending}
-        error={remove.error}
-        onConfirm={() => {
-          if (deleting) remove.mutate(deleting.id, { onSuccess: () => setDeleting(null) })
-        }}
+        {...confirmDeleteProps(
+          `Remove ${deleting ? names.nameOf(deleting.skillId) : 'skill'}?`,
+          'If any experience bullet still cites this skill the removal is refused, and the bullets in the way are listed here.',
+        )}
       />
     </Card>
   )

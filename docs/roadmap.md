@@ -41,20 +41,24 @@ deliberately — and to say so here — rather than to quietly promote a single 
 | ~~3~~ | ~~Offer shortlist ranking~~ | [#80](https://github.com/AnielskieOczko/job-assistant/issues/80) | — | — | **shipped 2026-09-04** | *see below* |
 | ~~4~~ | ~~AI-assisted polish of a profile field~~ | [#81](https://github.com/AnielskieOczko/job-assistant/issues/81) | — | — | **shipped 2026-09-04** | *see below* |
 | ~~5~~ | ~~Generated-document library and reuse~~ | [#82](https://github.com/AnielskieOczko/job-assistant/issues/82) | — | — | **shipped 2026-09-04** | *see below* |
-| 6 | Privacy indicators in the UI | [#83](https://github.com/AnielskieOczko/job-assistant/issues/83) | certain | low–medium | ~1 session | Zero; wins the tiebreak |
-| 7 | The dialog-reseed rule, stated once with a test | [#72](https://github.com/AnielskieOczko/job-assistant/issues/72) | certain | low | ~½ session | Zero, but a real bug |
-| 8 | The wire-contract guard, Path B | [#68](https://github.com/AnielskieOczko/job-assistant/issues/68) | certain | low | ~½ session | Zero; closes a silent hole |
+| ~~6~~ | ~~Privacy indicators in the UI~~ | [#83](https://github.com/AnielskieOczko/job-assistant/issues/83) | — | — | **shipped 2026-09-05** | *see below* |
+| ~~7~~ | ~~The dialog-reseed rule, stated once with a test~~ | [#72](https://github.com/AnielskieOczko/job-assistant/issues/72) | — | — | **shipped 2026-09-05** | *see below* |
+| ~~8~~ | ~~The wire-contract guard, Path B~~ | [#68](https://github.com/AnielskieOczko/job-assistant/issues/68) | — | — | **shipped 2026-09-05** | *see below* |
 | 9 | GitHub repository → profile Project import | [#19](https://github.com/AnielskieOczko/job-assistant/issues/19) | thin source data | medium | ~2 sessions | ~Zero |
 | 10 | The remaining profile-UI refactor | [#72](https://github.com/AnielskieOczko/job-assistant/issues/72) | certain | low | ~1 session | Zero |
 | 11 | Host this application | [#62](https://github.com/AnielskieOczko/job-assistant/issues/62) | needs a decision first | high | many sessions | ~Zero; portfolio |
 
-**The top five were 1–5, and all five are done.** Items 1–6 all carry shaping tickets
+**The top eight were 1–8, and all eight are done.** Items 1–6 all carry shaping tickets
 written to be picked up cold; the ranking only required the top four to be shaped, and the other two
-are features that were asked for rather than lines in a list.
+are features that were asked for rather than lines in a list. Items 7 and 8 came out of the
+August 2026 architecture review rather than the ranking itself, and shipped alongside it.
 
-**The numbers do not move when an item ships.** Items 1 to 5 are done and the rest keep the
+**The numbers do not move when an item ships.** Items 1 to 8 are done and the rest keep the
 numbers they were ranked under: they are how this file and the GitHub tickets refer to each other,
-and renumbering would silently change what a comment saying "item 5" points at. **Item 6 is next.**
+and renumbering would silently change what a comment saying "item 5" points at. **Item 10 is next**,
+picked over item 9: #19 is still gated on the thin-source-data caveat from research #12 with nothing
+new to change that, while #72's remaining half already has a complete spec and a measured bar to hit
+(9 and 10 are independent — either could go first, but 10 is the one ready to execute).
 
 Three orderings in that table look surprising and are deliberate. **Item 2 was ranked out of
 value-for-effort order** — it was second because its cost rose with every application sent without
@@ -239,7 +243,7 @@ The decisions worth not undoing:
 - **No bulk reuse, no cross-offer diffing, no document deletion** — out of scope, same as the other
   items ranked here.
 
-## 6. Privacy indicators in the UI
+## 6. Privacy indicators in the UI — shipped 2026-09-05
 
 The application has a genuinely strong privacy architecture — ADR-0002, three enforced layers, a
 guard that refuses outgoing prompts — and the UI says nothing about any of it. This scores zero on
@@ -268,17 +272,19 @@ private"* and later sees their employer history in a prompt has been misled by a
 
 ## 7–10. The tail
 
-- **7 — The dialog-reseed rule** (part of [#72](https://github.com/AnielskieOczko/job-assistant/issues/72)).
-  A subtle correctness rule with a non-obvious failure mode — a *discarded* edit reappearing as
-  though it had been saved — currently living as three independent copies with no test behind any.
-  It ranks above the refactor that surrounds it because it is a bug, and because what it corrupts is
-  hand-authored ground truth.
-- **8 — [#68](https://github.com/AnielskieOczko/job-assistant/issues/68) Path B.** `ApiContractTest`
-  discovers wire DTOs by scan rather than by 62 hand-written imports. Cheap, and it closes the hole
-  that is genuinely silent today: a DTO added without a test entry is unprotected and nothing says
-  so. **Path A — generating the TypeScript from an OpenAPI schema — is not ranked here**, because
-  it changes a convention `CLAUDE.md` states deliberately; that decision is #68's deliverable, and
-  doing Path B after Path A would be wasted work.
+- **7 — The dialog-reseed rule — shipped 2026-09-05, PR #96** (part of
+  [#72](https://github.com/AnielskieOczko/job-assistant/issues/72)). A subtle correctness rule with a
+  non-obvious failure mode — a *discarded* edit reappearing as though it had been saved — turned out
+  to live as eleven copies rather than the three the issue's own audit had found, with no test behind
+  any of them. `frontend/src/routes/profile/seededKey.ts` states the rule once (`decideSeed`, a pure
+  function, plus `useSeededKey`) and all eleven sites now call it. It ranked above the refactor that
+  surrounds it because it is a bug, and because what it corrupts is hand-authored ground truth.
+- **8 — [#68](https://github.com/AnielskieOczko/job-assistant/issues/68) Path B — shipped 2026-09-05,
+  PR #95.** `ApiContractTest` discovers wire DTOs by scan rather than by 62 hand-written imports.
+  Cheap, and it closes the hole that is genuinely silent today: a DTO added without a test entry is
+  unprotected and nothing says so. **Path A — generating the TypeScript from an OpenAPI schema — is
+  not ranked here**, because it changes a convention `CLAUDE.md` states deliberately; that decision
+  is #68's deliverable, and doing Path B after Path A would be wasted work.
 - **9 — [#19](https://github.com/AnielskieOczko/job-assistant/issues/19), the GitHub import.**
   Ranked normally rather than declined, and it lands low. Research #12 found `description` on 5 of
   11 repositories, `topics` on none, `license` on none, and the SBOM endpoint 404ing unpredictably;
