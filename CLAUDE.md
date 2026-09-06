@@ -30,9 +30,11 @@ each have a shaping ticket on GitHub (#79–#83 and #85); where an item has an i
 is canonical** and the file is a summary. Items 1 (#79, promoting a corpus offer), 2 (#85, recording
 which document was sent), 3 (#80, ranking the offer list by match score) and 4 (#81, AI-assisted
 polish of a profile field) shipped on 2026-09-04; items 5 (#82, the document library), 6 (#83,
-privacy indicators) and 8 (#68, the wire-contract guard) followed by 2026-09-05, along with 7
-(#72's dialog-reseed half). The numbers in that file deliberately do not move when an item ships, so
-item 10 (#72's remaining profile-UI refactor) is the next thing to build.
+privacy indicators) and 8 (#68, the wire-contract guard) followed by 2026-09-05, along with both
+halves of 7 and 10 (#72's dialog-reseed rule and its remaining profile-UI refactor). The numbers in
+that file deliberately do not move when an item ships. Nothing is currently the obvious next item:
+item 9 is gated on thin source data and item 11 needs a decision first — read `docs/roadmap.md`'s
+ranking axis before picking either up.
 
 The ranking axis is **application quality first, learning direction second, explicitly not
 throughput**, with portfolio value breaking ties. Hosting ranks last under it, deliberately — see

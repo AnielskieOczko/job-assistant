@@ -45,20 +45,22 @@ deliberately — and to say so here — rather than to quietly promote a single 
 | ~~7~~ | ~~The dialog-reseed rule, stated once with a test~~ | [#72](https://github.com/AnielskieOczko/job-assistant/issues/72) | — | — | **shipped 2026-09-05** | *see below* |
 | ~~8~~ | ~~The wire-contract guard, Path B~~ | [#68](https://github.com/AnielskieOczko/job-assistant/issues/68) | — | — | **shipped 2026-09-05** | *see below* |
 | 9 | GitHub repository → profile Project import | [#19](https://github.com/AnielskieOczko/job-assistant/issues/19) | thin source data | medium | ~2 sessions | ~Zero |
-| 10 | The remaining profile-UI refactor | [#72](https://github.com/AnielskieOczko/job-assistant/issues/72) | certain | low | ~1 session | Zero |
+| ~~10~~ | ~~The remaining profile-UI refactor~~ | [#72](https://github.com/AnielskieOczko/job-assistant/issues/72) | — | — | **shipped 2026-09-05, PR #97** | *see below* |
 | 11 | Host this application | [#62](https://github.com/AnielskieOczko/job-assistant/issues/62) | needs a decision first | high | many sessions | ~Zero; portfolio |
 
-**The top eight were 1–8, and all eight are done.** Items 1–6 all carry shaping tickets
+**Items 1–8 and 10 are done.** Items 1–6 all carry shaping tickets
 written to be picked up cold; the ranking only required the top four to be shaped, and the other two
-are features that were asked for rather than lines in a list. Items 7 and 8 came out of the
+are features that were asked for rather than lines in a list. Items 7, 8 and 10 came out of the
 August 2026 architecture review rather than the ranking itself, and shipped alongside it.
 
-**The numbers do not move when an item ships.** Items 1 to 8 are done and the rest keep the
+**The numbers do not move when an item ships.** Items 1 to 8 and 10 are done and the rest keep the
 numbers they were ranked under: they are how this file and the GitHub tickets refer to each other,
-and renumbering would silently change what a comment saying "item 5" points at. **Item 10 is next**,
-picked over item 9: #19 is still gated on the thin-source-data caveat from research #12 with nothing
-new to change that, while #72's remaining half already has a complete spec and a measured bar to hit
-(9 and 10 are independent — either could go first, but 10 is the one ready to execute).
+and renumbering would silently change what a comment saying "item 5" points at. **Nothing is
+currently the obvious next item to pick up cold**: item 9 (#19) is still gated on the
+thin-source-data caveat from research #12 with nothing new to change that, and item 11 (hosting)
+needs the decision described in its caveat above before it can start. A new session should read this
+file's ranking axis again before promoting either past that gate, rather than defaulting to
+whichever is numerically next.
 
 Three orderings in that table look surprising and are deliberate. **Item 2 was ranked out of
 value-for-effort order** — it was second because its cost rose with every application sent without
@@ -293,11 +295,16 @@ private"* and later sees their employer history in a prompt has been misled by a
   on eleven repositories once — which is throughput, and the axis excludes throughput by name. The
   reusable part is the review-queue pattern, not the data. Revisit if the repository count passes
   roughly thirty.
-- **10 — [#72](https://github.com/AnielskieOczko/job-assistant/issues/72), the remaining refactor.**
-  The row-actions and confirm-delete wiring across seven profile cards. It carries its own bar,
-  set by the issue and kept here: **it must reduce lines, or it should be closed undone** — measured
-  before the PR is opened, not after, because #65 was judged on a line count that turned out to be a
-  wash.
+- **10 — [#72](https://github.com/AnielskieOczko/job-assistant/issues/72), the remaining refactor —
+  shipped 2026-09-05, PR #97.** The row-actions and confirm-delete wiring across seven profile
+  cards, collapsed into two hooks in `frontend/src/routes/profile/mutations.ts`:
+  `useDeleteConfirm` and `useReorderableRows` (which composes it). `CredentialsCard`, `EducationCard`,
+  `LanguagesCard`, `ExperienceCard` and `ProjectCard` adopted `useReorderableRows`; `ConsentClauseCard`
+  and `SkillsCard` adopted `useDeleteConfirm` alone, keeping their own subgroup-based reorder.
+  `ExperienceCard` and `ProjectCard` kept their own bodies otherwise, per the issue's explicit
+  instruction not to force them through a generic `<CollectionCard>`. It carries the bar the issue
+  set — **it must reduce lines, or it should be closed undone** — and PR #97 measured it before
+  merging: 1962 → 1916 lines, **-46**.
 
 ## 11. Host this application ([#62](https://github.com/AnielskieOczko/job-assistant/issues/62))
 
