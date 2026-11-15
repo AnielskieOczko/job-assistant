@@ -13,8 +13,15 @@ import com.jankowski.rafal.jobassistant.analysis.ScoringRule
 import com.jankowski.rafal.jobassistant.analysis.ShortlistEntry
 import com.jankowski.rafal.jobassistant.analysis.RequirementFinding
 import com.jankowski.rafal.jobassistant.analysis.RequirementStatus
+import com.jankowski.rafal.jobassistant.career.CareerPlan
+import com.jankowski.rafal.jobassistant.career.CareerPlanSummary
+import com.jankowski.rafal.jobassistant.career.PlanTopic
+import com.jankowski.rafal.jobassistant.career.SkillProgress
+import com.jankowski.rafal.jobassistant.career.SkillProgressState
+import com.jankowski.rafal.jobassistant.career.internal.UpdateSkillProgressRequest
 import com.jankowski.rafal.jobassistant.catalog.CanonicalSkill
 import com.jankowski.rafal.jobassistant.catalog.CoverageStatus
+import com.jankowski.rafal.jobassistant.catalog.SeniorityLevel
 import com.jankowski.rafal.jobassistant.catalog.SkillCategory
 import com.jankowski.rafal.jobassistant.catalog.SkillSuggestion
 import com.jankowski.rafal.jobassistant.catalog.UnmatchedTerm
@@ -22,6 +29,9 @@ import com.jankowski.rafal.jobassistant.catalog.UnmatchedTermStatus
 import com.jankowski.rafal.jobassistant.document.DocumentLibraryEntry
 import com.jankowski.rafal.jobassistant.document.DocumentType
 import com.jankowski.rafal.jobassistant.document.GeneratedDocument
+import com.jankowski.rafal.jobassistant.linkedin.LinkedInDraft
+import com.jankowski.rafal.jobassistant.linkedin.LinkedInSection
+import com.jankowski.rafal.jobassistant.linkedin.internal.LinkedInDraftRequest
 import com.jankowski.rafal.jobassistant.llm.BudgetStatus
 import com.jankowski.rafal.jobassistant.llm.LlmCall
 import com.jankowski.rafal.jobassistant.llm.LlmCallDetail
@@ -76,8 +86,11 @@ import com.jankowski.rafal.jobassistant.profile.ProfileDetails
 import com.jankowski.rafal.jobassistant.profile.ProfileLink
 import com.jankowski.rafal.jobassistant.profile.ProfileSkill
 import com.jankowski.rafal.jobassistant.profile.Project
+import com.jankowski.rafal.jobassistant.profile.TargetRole
+import com.jankowski.rafal.jobassistant.profile.TargetRoleSkill
 import com.jankowski.rafal.jobassistant.profile.WorkExperience
 import com.jankowski.rafal.jobassistant.profile.internal.ProfileSummary
+import com.jankowski.rafal.jobassistant.profile.internal.TargetRoleRequest
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertAll
@@ -361,6 +374,90 @@ class ApiContractTest {
                 )
             },
             { assertKeys(ProfileSummary(1, "Java developer", true), "id", "name", "isDefault") },
+            {
+                assertKeys(
+                    SkillProgress(1, 10, SkillProgressState.LEARNING, Instant.EPOCH),
+                    "profileId", "skillId", "state", "updatedAt",
+                )
+            },
+            {
+                assertKeys(
+                    UpdateSkillProgressRequest(SkillProgressState.READY_TO_DECLARE),
+                    "state",
+                )
+            },
+            {
+                assertKeys(
+                    PlanTopic(
+                        id = 1, skillId = 10, skillName = "Kafka", priority = 1,
+                        targetLevel = SeniorityLevel.SENIOR, why = "High demand",
+                        practiceProject = null, effortEstimate = "2 weeks",
+                        demandOffers = 18, demandRequiredOffers = 15,
+                        coverageStatus = CoverageStatus.MISSING,
+                        progressState = SkillProgressState.NOT_STARTED,
+                    ),
+                    "id", "skillId", "skillName", "priority", "targetLevel", "why",
+                    "practiceProject", "effortEstimate", "demandOffers", "demandRequiredOffers",
+                    "coverageStatus", "progressState",
+                )
+            },
+            {
+                assertKeys(
+                    CareerPlan(
+                        id = 1, profileId = 1, profileRevision = 1,
+                        targetLevel = SeniorityLevel.SENIOR, targetSkills = listOf("Java"),
+                        matchedOfferCount = 12, corpusOfferCount = 100, droppedTopicCount = 0,
+                        modelProfile = "openrouter", createdAt = Instant.EPOCH, topics = emptyList(),
+                    ),
+                    "id", "profileId", "profileRevision", "targetLevel", "targetSkills",
+                    "matchedOfferCount", "corpusOfferCount", "droppedTopicCount",
+                    "modelProfile", "createdAt", "topics",
+                )
+            },
+            {
+                assertKeys(
+                    CareerPlanSummary(
+                        id = 1, profileId = 1, profileRevision = 1,
+                        targetLevel = SeniorityLevel.SENIOR, targetSkills = listOf("Java"),
+                        matchedOfferCount = 12, corpusOfferCount = 100, droppedTopicCount = 0,
+                        modelProfile = "openrouter", createdAt = Instant.EPOCH,
+                    ),
+                    "id", "profileId", "profileRevision", "targetLevel", "targetSkills",
+                    "matchedOfferCount", "corpusOfferCount", "droppedTopicCount",
+                    "modelProfile", "createdAt",
+                )
+            },
+            {
+                assertKeys(
+                    LinkedInDraft(
+                        id = 1, profileId = 1, section = LinkedInSection.ABOUT,
+                        subjectId = null, profileRevision = 2, stale = false,
+                        content = "Backend engineer", unheldSkills = emptyList(),
+                        modelProfile = "openrouter", createdAt = Instant.EPOCH,
+                    ),
+                    "id", "profileId", "section", "subjectId", "profileRevision", "stale",
+                    "content", "unheldSkills", "modelProfile", "createdAt",
+                )
+            },
+            {
+                assertKeys(
+                    LinkedInDraftRequest(LinkedInSection.ABOUT, null, null),
+                    "section", "subjectId", "notes",
+                )
+            },
+            { assertKeys(TargetRoleSkill(1, "Kotlin"), "id", "name") },
+            {
+                assertKeys(
+                    TargetRole(SeniorityLevel.SENIOR, listOf(TargetRoleSkill(1, "Kotlin")), listOf("Backend")),
+                    "targetLevel", "skills", "titleKeywords",
+                )
+            },
+            {
+                assertKeys(
+                    TargetRoleRequest(SeniorityLevel.SENIOR, listOf(1L), listOf("Backend")),
+                    "targetLevel", "skillIds", "titleKeywords",
+                )
+            },
         )
     }
 
@@ -615,7 +712,7 @@ class ApiContractTest {
                         offers = 31, requiredOffers = 29, status = CoverageStatus.MISSING,
                     ),
                     "skillId", "skillName", "category", "offers", "requiredOffers", "status",
-                    "coveredBySkillId", "coveredBySkillName", "levelMix", "salary",
+                    "coveredBySkillId", "coveredBySkillName", "levelMix", "seniorityMix", "salary",
                 )
             },
             {

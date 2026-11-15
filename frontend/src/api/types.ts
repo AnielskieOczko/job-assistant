@@ -526,6 +526,26 @@ export interface CandidateProfile {
   bullets?: ExperienceBullet[]
 }
 
+export const SENIORITY_LEVELS = ['INTERN', 'JUNIOR', 'REGULAR', 'SENIOR'] as const
+export type SeniorityLevel = (typeof SENIORITY_LEVELS)[number]
+
+export interface TargetRoleSkill {
+  id: number
+  name: string
+}
+
+export interface TargetRole {
+  targetLevel: SeniorityLevel | null
+  skills: TargetRoleSkill[]
+  titleKeywords: string[]
+}
+
+export interface TargetRoleRequest {
+  targetLevel: SeniorityLevel | null
+  skillIds: number[]
+  titleKeywords: string[]
+}
+
 /* --- import document (names, not ids; array order becomes CV display order) --- */
 
 export interface LinkImport { label: string; url: string }
@@ -962,6 +982,7 @@ export interface DemandEntry {
   coveredBySkillId: number | null
   coveredBySkillName: string | null
   levelMix: Partial<Record<MarketSkillLevel, number>>
+  seniorityMix: Partial<Record<SeniorityLevel, number>>
   /** Null below the five-offer floor. Null is "too few offers", never "pays nothing". */
   salary: SalaryBand | null
 }
@@ -1116,6 +1137,94 @@ export interface PolishSuggestion {
    */
   unheldSkills: string[]
   modelProfile: string
+}
+
+/* -------------------------------------------------------------------- career */
+
+export const SKILL_PROGRESS_STATES = ['NOT_STARTED', 'LEARNING', 'READY_TO_DECLARE'] as const
+export type SkillProgressState = (typeof SKILL_PROGRESS_STATES)[number]
+
+export interface SkillProgress {
+  profileId: number
+  skillId: number
+  state: SkillProgressState
+  updatedAt: string
+}
+
+export interface PlanTopic {
+  id: number
+  skillId: number
+  skillName: string
+  priority: number
+  targetLevel: SeniorityLevel
+  why: string
+  practiceProject: string | null
+  effortEstimate: string | null
+  demandOffers: number
+  demandRequiredOffers: number
+  coverageStatus: CoverageStatus
+  progressState: SkillProgressState
+}
+
+export interface CareerPlan {
+  id: number
+  profileId: number
+  profileRevision: number
+  targetLevel: SeniorityLevel | null
+  targetSkills: string[]
+  matchedOfferCount: number
+  corpusOfferCount: number
+  droppedTopicCount: number
+  modelProfile: string | null
+  createdAt: string
+  topics: PlanTopic[]
+}
+
+export interface CareerPlanSummary {
+  id: number
+  profileId: number
+  profileRevision: number
+  targetLevel: SeniorityLevel | null
+  targetSkills: string[]
+  matchedOfferCount: number
+  corpusOfferCount: number
+  droppedTopicCount: number
+  modelProfile: string | null
+  createdAt: string
+}
+
+export interface UpdateSkillProgressRequest {
+  state: SkillProgressState
+}
+
+/* ------------------------------------------------------------------ linkedin */
+
+export const LINKEDIN_SECTIONS = [
+  'HEADLINE',
+  'ABOUT',
+  'EXPERIENCE_ENTRY',
+  'PROJECT_ENTRY',
+  'SKILL_OR_CREDENTIAL_POST',
+] as const
+export type LinkedInSection = (typeof LINKEDIN_SECTIONS)[number]
+
+export interface LinkedInDraft {
+  id: number
+  profileId: number
+  section: LinkedInSection
+  subjectId: number | null
+  profileRevision: number
+  stale: boolean
+  content: string
+  unheldSkills: string[]
+  modelProfile: string | null
+  createdAt: string
+}
+
+export interface LinkedInDraftRequest {
+  section: LinkedInSection
+  subjectId?: number | null
+  notes?: string | null
 }
 
 /* ------------------------------------------------------------------ helpers */
