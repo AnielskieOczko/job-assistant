@@ -10,6 +10,7 @@ import {
   updateSkillProgress,
 } from '@/api/career'
 import { keys } from '@/api/keys'
+import { getProfile } from '@/api/profile'
 import type { SkillProgressState } from '@/api/types'
 import { ApiErrorAlert } from '@/components/ApiErrorAlert'
 import { EmptyState } from '@/components/EmptyState'
@@ -18,6 +19,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useSelectedProfile } from '@/hooks/useSelectedProfile'
+import { SkillDialog } from '@/routes/profile/SkillsCard'
 import { PlanHistory } from './PlanHistory'
 import { PlanTopicCard } from './PlanTopicCard'
 import { TargetRoleCard } from './TargetRoleCard'
@@ -27,6 +29,13 @@ export function CareerPlanPage() {
   const qc = useQueryClient()
   const { profileId, isLoading: profileLoading } = useSelectedProfile()
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null)
+  const [declareSkillId, setDeclareSkillId] = useState<number | null>(null)
+
+  const profile = useQuery({
+    queryKey: keys.profile(profileId ?? -1),
+    queryFn: () => getProfile(profileId!),
+    enabled: profileId !== null,
+  })
 
   const currentPlan = useQuery({
     queryKey: keys.careerPlan(profileId ?? -1),
@@ -84,6 +93,7 @@ export function CareerPlanPage() {
   }
 
   const activePlan = selectedPlanId !== null ? selectedPlan.data : currentPlan.data
+  const heldSkillIds = new Set((profile.data?.skills ?? []).map((s) => s.skillId))
 
   return (
     <div className="space-y-6">
@@ -135,8 +145,10 @@ export function CareerPlanPage() {
               <PlanTopicCard
                 key={topic.skillId}
                 topic={topic}
+                heldSkillIds={heldSkillIds}
                 updating={toggleProgress.isPending}
                 onToggleProgress={(skillId, state) => toggleProgress.mutate({ skillId, state })}
+                onDeclareSkill={(skillId) => setDeclareSkillId(skillId)}
               />
             ))}
           </div>
@@ -153,6 +165,13 @@ export function CareerPlanPage() {
         history={history.data ?? []}
         activePlanId={activePlan?.id ?? null}
         onSelectPlan={(id) => setSelectedPlanId(id)}
+      />
+
+      <SkillDialog
+        profileId={profileId}
+        skill={declareSkillId !== null ? 'new' : null}
+        initialSkillId={declareSkillId}
+        onClose={() => setDeclareSkillId(null)}
       />
     </div>
   )

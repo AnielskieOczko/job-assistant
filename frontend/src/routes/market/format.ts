@@ -1,4 +1,4 @@
-import type { MarketSkillLevel, SalaryBand, SalaryGroup } from '@/api/types'
+import type { MarketSkillLevel, SalaryBand, SalaryGroup, SeniorityLevel } from '@/api/types'
 
 /**
  * Formatting for the market dashboard.
@@ -94,3 +94,29 @@ export const coveredBy = (entry: {
   entry.coveredBySkillName && entry.coveredBySkillName !== entry.skillName
     ? entry.coveredBySkillName
     : null
+
+const SENIORITY_LABELS: Record<SeniorityLevel, string> = {
+  INTERN: 'Intern',
+  JUNIOR: 'Junior',
+  REGULAR: 'Regular',
+  SENIOR: 'Senior',
+}
+
+export function dominantSeniority(seniorityMix: Partial<Record<SeniorityLevel, number>>) {
+  const entries = (Object.entries(seniorityMix) as [SeniorityLevel, number][]).filter(
+    ([, count]) => count > 0,
+  )
+  if (entries.length === 0) return null
+  const [level, count] = entries.reduce((best, entry) => (entry[1] > best[1] ? entry : best))
+  return { level, count }
+}
+
+export function formatSeniorityMix(
+  seniorityMix: Partial<Record<SeniorityLevel, number>>,
+): string | null {
+  const entries = (Object.entries(seniorityMix) as [SeniorityLevel, number][])
+    .filter(([, count]) => count > 0)
+    .sort((a, b) => b[1] - a[1])
+  if (entries.length === 0) return null
+  return entries.map(([level, count]) => `${SENIORITY_LABELS[level]} ${count}`).join(' · ')
+}

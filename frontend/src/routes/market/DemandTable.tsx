@@ -13,7 +13,8 @@ import {
 } from '@/components/ui/table'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
-  MARKET_LEVEL_LABELS, coveredBy, dominantLevel, employmentLabel, formatBand, percent,
+  MARKET_LEVEL_LABELS, coveredBy, dominantLevel, dominantSeniority, employmentLabel, formatBand,
+  formatSeniorityMix, percent,
 } from './format'
 
 type Column = 'skillName' | 'offers' | 'requiredOffers' | 'status'
@@ -101,6 +102,7 @@ export function DemandTable({
               </SortableHead>
               <SortableHead column="status" sort={sort} setSort={setSort}>Your status</SortableHead>
               <TableHead>Asked at</TableHead>
+              <TableHead>Seniority</TableHead>
               <TableHead>These offers pay</TableHead>
             </TableRow>
           </TableHeader>
@@ -130,6 +132,8 @@ function DemandRow({
   dominantEmploymentType: string | null
 }) {
   const level = dominantLevel(entry.levelMix)
+  const seniority = dominantSeniority(entry.seniorityMix)
+  const senioritySummary = formatSeniorityMix(entry.seniorityMix)
   const band = entry.salary ? formatBand(entry.salary) : null
 
   return (
@@ -171,6 +175,22 @@ function DemandRow({
                   </p>
                 ))}
             </TooltipContent>
+          </Tooltip>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        )}
+      </TableCell>
+
+      <TableCell className="text-sm">
+        {seniority && senioritySummary ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="cursor-default capitalize">
+                {seniority.level.toLowerCase()}{' '}
+                <span className="text-xs text-muted-foreground">({seniority.count})</span>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>{senioritySummary}</TooltipContent>
           </Tooltip>
         ) : (
           <span className="text-muted-foreground">—</span>

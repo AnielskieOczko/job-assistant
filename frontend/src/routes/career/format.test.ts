@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { countReadyTopics, formatSeniority, nextProgressState, progressLabel } from './format'
+import { canDeclareToProfile, countReadyTopics, formatSeniority, nextProgressState, progressLabel } from './format'
 import type { CareerPlan } from '@/api/types'
 
 describe('career format helpers', () => {
@@ -65,5 +65,12 @@ describe('career format helpers', () => {
     }
 
     expect(countReadyTopics(plan)).toBe(1)
+  })
+
+  it('allows declaring only READY_TO_DECLARE topics not already on profile', () => {
+    const held = new Set([2])
+    expect(canDeclareToProfile({ skillId: 1, progressState: 'READY_TO_DECLARE' }, held)).toBe(true)
+    expect(canDeclareToProfile({ skillId: 2, progressState: 'READY_TO_DECLARE' }, held)).toBe(false)
+    expect(canDeclareToProfile({ skillId: 1, progressState: 'LEARNING' }, held)).toBe(false)
   })
 })

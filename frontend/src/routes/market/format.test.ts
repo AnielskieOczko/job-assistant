@@ -5,9 +5,11 @@ import {
   byOffers,
   coveredBy,
   dominantLevel,
+  dominantSeniority,
   employmentLabel,
   formatAmount,
   formatBand,
+  formatSeniorityMix,
   percent,
   plural,
 } from './format'
@@ -178,5 +180,19 @@ describe('coveredBy', () => {
   /** The sentence that stops an amber badge being a mystery: "Partial — via Docker". */
   it('names the other skill that earned the verdict', () => {
     expect(coveredBy({ skillName: 'Kubernetes', coveredBySkillName: 'Docker' })).toBe('Docker')
+  })
+})
+
+describe('seniorityMix formatting', () => {
+  it('picks dominant seniority and formats breakdown', () => {
+    expect(dominantSeniority({ SENIOR: 12, REGULAR: 8, JUNIOR: 2 })).toEqual({
+      level: 'SENIOR',
+      count: 12,
+    })
+    expect(dominantSeniority({})).toBeNull()
+    expect(formatSeniorityMix({ SENIOR: 12, REGULAR: 8, JUNIOR: 2 })).toBe(
+      'Senior 12 · Regular 8 · Junior 2',
+    )
+    expect(formatSeniorityMix({})).toBeNull()
   })
 })
