@@ -147,13 +147,15 @@ export function SkillsCard({ profileId, profile }: { profileId: number; profile:
   )
 }
 
-function SkillDialog({
+export function SkillDialog({
   profileId,
   skill,
+  initialSkillId = null,
   onClose,
 }: {
   profileId: number
   skill: ProfileSkill | 'new' | null
+  initialSkillId?: number | null
   onClose: () => void
 }) {
   const [skillId, setSkillId] = useState<number | null>(null)
@@ -161,10 +163,10 @@ function SkillDialog({
   const [years, setYears] = useState('')
   const [lastUsed, setLastUsed] = useState('')
 
-  const key = skill === 'new' ? 'new' : (skill?.id ?? null)
+  const key = skill === 'new' ? `new-${initialSkillId ?? ''}` : (skill?.id ?? null)
   if (useSeededKey(key)) {
     const source = skill === 'new' ? null : skill
-    setSkillId(source?.skillId ?? null)
+    setSkillId(source?.skillId ?? initialSkillId ?? null)
     setProficiency(source?.proficiency ?? 'WORKING')
     setYears(source?.yearsOfExperience != null ? String(source.yearsOfExperience) : '')
     setLastUsed(source?.lastUsedYear != null ? String(source.lastUsedYear) : '')

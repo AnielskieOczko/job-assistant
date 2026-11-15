@@ -28,3 +28,8 @@ export const nextProgressState = (state: SkillProgressState): SkillProgressState
 
 export const countReadyTopics = (plan: CareerPlan): number =>
   plan.topics.filter((t) => t.progressState === 'READY_TO_DECLARE').length
+
+export const canDeclareToProfile = (
+  topic: { skillId: number; progressState: SkillProgressState },
+  heldSkillIds: Set<number>,
+): boolean => topic.progressState === 'READY_TO_DECLARE' && !heldSkillIds.has(topic.skillId)

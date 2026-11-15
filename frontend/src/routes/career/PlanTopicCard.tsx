@@ -1,8 +1,9 @@
+import { Plus } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import type { PlanTopic, SkillProgressState } from '@/api/types'
-import { formatSeniority, nextProgressState, progressLabel } from './format'
+import { canDeclareToProfile, formatSeniority, nextProgressState, progressLabel } from './format'
 
 const PROGRESS_BADGE: Record<SkillProgressState, string> = {
   NOT_STARTED: 'border-foreground/20 text-foreground/60',
@@ -12,14 +13,19 @@ const PROGRESS_BADGE: Record<SkillProgressState, string> = {
 
 export function PlanTopicCard({
   topic,
+  heldSkillIds,
   updating,
   onToggleProgress,
+  onDeclareSkill,
 }: {
   topic: PlanTopic
+  heldSkillIds: Set<number>
   updating: boolean
   onToggleProgress: (skillId: number, next: SkillProgressState) => void
+  onDeclareSkill: (skillId: number) => void
 }) {
   const next = nextProgressState(topic.progressState)
+  const declarable = canDeclareToProfile(topic, heldSkillIds)
 
   return (
     <Card>
@@ -36,7 +42,12 @@ export function PlanTopicCard({
           {formatSeniority(topic.targetLevel)}
           {topic.effortEstimate ? ` · Est. ${topic.effortEstimate}` : ''}
         </CardDescription>
-        <CardAction>
+        <CardAction className="flex flex-wrap gap-2">
+          {declarable ? (
+            <Button size="sm" onClick={() => onDeclareSkill(topic.skillId)}>
+              <Plus className="size-3.5" /> Add to Profile
+            </Button>
+          ) : null}
           <Button
             size="sm"
             variant="outline"
