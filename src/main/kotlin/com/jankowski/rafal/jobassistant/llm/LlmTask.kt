@@ -37,4 +37,20 @@ enum class LlmTask {
      * than inflating [DOCUMENT].
      */
     POLISH,
+
+    /**
+     * Authoring an immutable, evidence-bounded Career Plan from unmet market demand (#99).
+     *
+     * Every topic returned by the model is re-resolved against the catalog and the demand
+     * evidence; unbacked topics are dropped and counted.
+     */
+    CAREER_PLAN,
+
+    /**
+     * Drafting copy-ready LinkedIn profile content and updates from the verified profile.
+     *
+     * Strictly non-authoritative: no direct LinkedIn API integration, no profile writes, and
+     * every draft is scanned with `SkillMentions` for unheld skills.
+     */
+    LINKEDIN,
 }

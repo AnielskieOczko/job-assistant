@@ -64,10 +64,17 @@ data class AccountProperties(
     val cacheTtl: Duration = Duration.ofMinutes(5),
 )
 
+enum class TransportType {
+    OPENAI,
+    CLAUDE_CLI,
+}
+
 data class ModelProfile(
-    val baseUrl: String,
-    val apiKey: String,
+    val transport: TransportType = TransportType.OPENAI,
+    val baseUrl: String = "",
+    val apiKey: String = "",
     val model: String,
+    val cliCommand: String = "claude",
     val temperature: Double = 0.2,
     /**
      * Whether the provider honours OpenAI strict JSON-schema mode. Small local models generally
