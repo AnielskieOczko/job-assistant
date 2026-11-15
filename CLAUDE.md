@@ -273,6 +273,9 @@ Feature slices under the base package, each a Spring Modulith module. Anything i
 | `market` | Ingested board offers as a market corpus, the solid.jobs client, the scheduled poll, promotion into a real offer |
 | `triage` | The ranked, filtered review queue, plus model-assisted suggestions for it |
 | `polish` | Model-suggested rewrites of the profile's free prose. Suggests only; never writes |
+| `career` | Evidence-bounded learning plans from target-role unmet demand, plus independent skill progress (`NOT_STARTED -> LEARNING -> READY_TO_DECLARE`) |
+| `linkedin` | Copy-ready LinkedIn section drafts (`HEADLINE`, `ABOUT`, `EXPERIENCE_ENTRY`, `PROJECT_ENTRY`, `SKILL_OR_CREDENTIAL_POST`) with `profile_revision` staleness tracking; never auto-writes |
+| `mcp` | PII-safe JSON-RPC 2.0 MCP endpoint (`POST /api/mcp`) exposing target role, market demand, career plan, and LinkedIn drafting tools to external subscription clients |
 
 `catalog` is depended on by nearly everything; it has no dependencies of its own — and keeping it
 that way is why `triage` exists.
@@ -540,9 +543,11 @@ party, whether or not the network is up.
 Providers are configured, not coded. OpenRouter, Requesty, Ollama and LM Studio are all
 OpenAI-compatible, so a "profile" under `job-assistant.llm.profiles` is just a base URL, key, model
 name and a `strict-schema` flag — there is no provider SPI, and adding one would be a mistake.
+Profiles with `transport: CLAUDE_CLI` invoke the local `claude -p` CLI (`ClaudeCliChatModel`) for
+subscription-backed runs without API keys.
 
 `job-assistant.llm.tasks` routes each `LlmTask` (`EXTRACTION`, `NARRATIVE`, `DOCUMENT`, `TRIAGE`,
-`POLISH`) to a profile by name, so extraction can run on a different provider from narrative writing
+`POLISH`, `CAREER_PLAN`, `LINKEDIN`) to a profile by name, so extraction can run on a different provider from narrative writing
 with no code change. A task pointing at an undefined profile fails loudly at first use, which is why
 the enum and that map are never allowed to drift apart.
 

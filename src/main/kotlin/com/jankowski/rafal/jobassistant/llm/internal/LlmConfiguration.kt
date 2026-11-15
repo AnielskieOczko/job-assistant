@@ -10,6 +10,7 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.http.client.SimpleClientHttpRequestFactory
 import org.springframework.scheduling.annotation.EnableScheduling
 import org.springframework.web.client.RestClient
+import tools.jackson.databind.json.JsonMapper
 import java.time.Duration
 
 @Configuration(proxyBeanMethods = false)
@@ -21,7 +22,8 @@ internal class LlmConfiguration {
     fun chatModelRegistry(
         properties: LlmProperties,
         auditing: ChatModelAuditing,
-    ): ChatModelRegistry = OpenAiCompatibleChatModelRegistry(properties, auditing)
+        json: JsonMapper,
+    ): ChatModelRegistry = OpenAiCompatibleChatModelRegistry(properties, auditing, json)
 
     @Bean
     fun aiServiceFactory(

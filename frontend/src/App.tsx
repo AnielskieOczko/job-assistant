@@ -10,6 +10,8 @@ import { ProfilePage } from '@/routes/profile/ProfilePage'
 import { CatalogPage } from '@/routes/CatalogPage'
 import { GapsPage } from '@/routes/GapsPage'
 import { MarketPage } from '@/routes/market/MarketPage'
+import { CareerPlanPage } from '@/routes/career/CareerPlanPage'
+import { LinkedInPage } from '@/routes/linkedin/LinkedInPage'
 import { LlmLayout } from '@/routes/llm/LlmLayout'
 import { LlmCallsPage } from '@/routes/llm/LlmCallsPage'
 import { LlmSpendPage } from '@/routes/llm/LlmSpendPage'
@@ -31,6 +33,8 @@ export default function App() {
         <Route path="catalog" element={<CatalogPage />} />
         <Route path="gaps" element={<GapsPage />} />
         <Route path="market" element={<MarketPage />} />
+        <Route path="career" element={<CareerPlanPage />} />
+        <Route path="linkedin" element={<LinkedInPage />} />
         <Route path="llm" element={<LlmLayout />}>
           <Route index element={<LlmCallsPage />} />
           <Route path="spend" element={<LlmSpendPage />} />

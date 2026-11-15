@@ -1,5 +1,6 @@
 package com.jankowski.rafal.jobassistant.market.internal
 
+import com.jankowski.rafal.jobassistant.catalog.SeniorityLevel
 import com.jankowski.rafal.jobassistant.market.MarketSalary
 import com.jankowski.rafal.jobassistant.market.MarketSkillLevel
 import com.jankowski.rafal.jobassistant.market.SalaryGroup
@@ -203,6 +204,43 @@ internal class MarketStatisticsRepository(private val jdbc: JdbcClient) {
                 )
             }
             .list()
+    }
+
+    /**
+     * Seniority distribution per skill over in-scope offers, parsed through [SeniorityLevel.parse].
+     */
+    fun demandSeniority(scopeSkillIds: Collection<Long>): Map<Long, Map<SeniorityLevel, Int>> {
+        require(scopeSkillIds.isNotEmpty()) { "an in-scope query needs at least one scope skill" }
+
+        val rows = jdbc.sql(
+            """
+            select mos.canonical_skill_id as skill_id, o.experience_level,
+                   count(distinct mos.market_offer_id) as offers
+            from market_offer_skill mos
+            join market_offer o on o.id = mos.market_offer_id
+            where mos.canonical_skill_id is not null
+              and $VALID_NOW
+              and o.id in (select market_offer_id from market_offer_skill where canonical_skill_id in (:scopeSkillIds))
+            group by mos.canonical_skill_id, o.experience_level
+            """
+        )
+            .param("scopeSkillIds", scopeSkillIds)
+            .query { rs, _ ->
+                Triple(
+                    rs.getLong("skill_id"),
+                    SeniorityLevel.parse(rs.getString("experience_level")),
+                    rs.getInt("offers"),
+                )
+            }
+            .list()
+
+        val result = mutableMapOf<Long, MutableMap<SeniorityLevel, Int>>()
+        rows.forEach { (skillId, level, offers) ->
+            if (level == null) return@forEach
+            val mix = result.getOrPut(skillId) { mutableMapOf() }
+            mix[level] = (mix[level] ?: 0) + offers
+        }
+        return result
     }
 
     /**

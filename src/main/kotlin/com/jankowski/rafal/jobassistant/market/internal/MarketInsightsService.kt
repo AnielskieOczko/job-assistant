@@ -47,7 +47,7 @@ internal class MarketInsightsService(
     override fun demand(profileId: Long?, ranking: DemandRanking, limit: Int): DemandReport {
         require(limit > 0) { "limit must be positive" }
 
-        val scope = scopeResolver.resolve()
+        val scope = scopeResolver.resolve(profileId)
         val report = scopeReport(scope)
         if (scope.isEmpty) {
             return DemandReport(emptyList(), report, skillsInScope = 0, unmetSkillsInScope = 0, ranking, limit)
@@ -56,6 +56,7 @@ internal class MarketInsightsService(
         val coverage = coverages.of(profileId)
         val totals = statistics.demandTotals(scope.ids)
         val levels = statistics.demandLevels(scope.ids).groupBy { it.skillId }
+        val seniorities = statistics.demandSeniority(scope.ids)
         // Every skill named on the page in one lookup: the ones the corpus asks for, plus the held
         // skills that account for a MET or PARTIAL. Resolving the second set per row would be a
         // query per entry to render a column that is empty on most of them.
@@ -88,6 +89,7 @@ internal class MarketInsightsService(
                 coveredBySkillId = covering,
                 coveredBySkillName = covering?.let { skills[it]?.name },
                 levelMix = levels[skill.id].orEmpty().associate { it.level to it.offers },
+                seniorityMix = seniorities[skill.id].orEmpty(),
                 salary = bands[skill.id]?.let { band ->
                     SalaryBand(
                         offers = band.offers,
@@ -115,7 +117,7 @@ internal class MarketInsightsService(
         require(limit > 0) { "limit must be positive" }
         require(offset >= 0) { "offset must not be negative" }
 
-        val scope = scopeResolver.resolve()
+        val scope = scopeResolver.resolve(profileId)
         if (inScopeOnly && scope.isEmpty) return MarketOfferPage(emptyList(), total = 0, limit, offset)
 
         // The covered count is over held-or-reachable skills, not held ones, so an offer asking for

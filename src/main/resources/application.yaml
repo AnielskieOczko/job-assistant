@@ -132,6 +132,14 @@ job-assistant:
         timeout: PT300S
         log-requests: false
         log-responses: false
+      claude-cli:
+        transport: CLAUDE_CLI
+        cli-command: claude
+        model: sonnet
+        strict-schema: true
+        timeout: PT180S
+        log-requests: false
+        log-responses: false
     audit:
       # How long a copy of a prompt is kept in llm_call. Even with identifiers kept out of prompts,
       # what remains describes who worked where. PT0S keeps rows forever.
@@ -166,3 +174,8 @@ job-assistant:
       # schema to hold, one short paragraph in and one out - so it is the first task worth pointing
       # at a smaller model when one is configured.
       polish: openrouter
+      # Evidence-bounded Career Plan authoring (#99). Can be routed to `claude-cli` to use a local
+      # Claude subscription.
+      career-plan: openrouter
+      # Copy-ready LinkedIn section drafting. Can be routed to `claude-cli`.
+      linkedin: openrouter

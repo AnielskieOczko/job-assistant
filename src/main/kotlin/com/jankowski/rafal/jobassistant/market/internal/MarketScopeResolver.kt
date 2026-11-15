@@ -2,30 +2,38 @@ package com.jankowski.rafal.jobassistant.market.internal
 
 import com.jankowski.rafal.jobassistant.catalog.CanonicalSkill
 import com.jankowski.rafal.jobassistant.catalog.SkillCatalog
+import com.jankowski.rafal.jobassistant.profile.ProfileTargetRole
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 
 /**
- * Turns the configured scope names into catalog identity, for every reader of the corpus.
+ * Turns the active scope into catalog identity, for every reader of the corpus.
  *
- * One resolver rather than one per consumer. The review queue ranks by in-scope demand and the
- * dashboard reports against the same scope, and two copies of "which skills mark an offer as this
- * job hunt's" would be two notions of relevance under one name -- the trap this module already
- * avoided by refusing to reuse `matchScore`.
+ * When the profile has a [com.jankowski.rafal.jobassistant.profile.TargetRole] with at least one
+ * skill, that target is the scope; otherwise it falls back to `job-assistant.market.scope.skills`
+ * so a fresh install or a profile without a target still renders the configured market slice.
  *
  * Resolved on every call rather than cached at startup. It is a handful of lookups against a table
- * small enough to sit in memory, and a scope cached past a skill rename would silently start
- * ranking by something other than what it claims to.
+ * small enough to sit in memory, and a scope cached past a skill rename or target edit would
+ * silently start ranking by something other than what it claims to.
  */
 @Component
 internal class MarketScopeResolver(
     private val catalog: SkillCatalog,
     private val properties: MarketProperties,
+    private val targetRoles: ProfileTargetRole,
 ) {
 
     private val log = LoggerFactory.getLogger(javaClass)
 
-    fun resolve(): ResolvedScope {
+    fun resolve(profileId: Long? = null): ResolvedScope {
+        val target = targetRoles.of(profileId)
+        if (target != null && target.skills.isNotEmpty()) {
+            val skills = catalog.findAllById(target.skills.map { it.id })
+                .sortedBy { it.name }
+            return ResolvedScope(skills, unresolvedNames = emptyList())
+        }
+
         val resolved = mutableListOf<CanonicalSkill>()
         val unresolved = mutableListOf<String>()
 

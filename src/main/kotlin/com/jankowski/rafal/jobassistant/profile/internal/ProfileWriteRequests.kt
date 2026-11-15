@@ -1,5 +1,6 @@
 package com.jankowski.rafal.jobassistant.profile.internal
 
+import com.jankowski.rafal.jobassistant.catalog.SeniorityLevel
 import com.jankowski.rafal.jobassistant.profile.CredentialKind
 import com.jankowski.rafal.jobassistant.profile.LanguageLevel
 import com.jankowski.rafal.jobassistant.profile.Proficiency
@@ -116,4 +117,10 @@ internal data class LanguageRequest(
  */
 internal data class ReorderRequest(
     @field:NotEmpty val ids: List<Long> = emptyList(),
+)
+
+internal data class TargetRoleRequest(
+    val targetLevel: SeniorityLevel? = null,
+    val skillIds: List<Long> = emptyList(),
+    val titleKeywords: List<String> = emptyList(),
 )

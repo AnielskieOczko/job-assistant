@@ -19,6 +19,7 @@ import { LanguagesCard } from './LanguagesCard'
 import { ProjectCard } from './ProjectCard'
 import { SkillsCard } from './SkillsCard'
 import { StartProfileDialog } from './StartProfileDialog'
+import { TargetRoleCard } from '../career/TargetRoleCard'
 
 export function ProfilePage() {
   const [importOpen, setImportOpen] = useState(false)
@@ -79,6 +80,7 @@ export function ProfilePage() {
       ) : (
         <div className="space-y-6">
           <DetailsCard profileId={profileId} profile={profile.data} />
+          <TargetRoleCard profileId={profileId} />
           <SkillsCard profileId={profileId} profile={profile.data} />
           <ExperienceCard profileId={profileId} profile={profile.data} />
           <ProjectCard profileId={profileId} profile={profile.data} />

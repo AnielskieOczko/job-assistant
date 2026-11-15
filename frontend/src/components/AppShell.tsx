@@ -1,11 +1,13 @@
 import { NavLink, Outlet } from 'react-router'
 import {
   BookOpen,
+  Compass,
   FileStack,
   Files,
   Layers,
   Radar,
   ScrollText,
+  Share2,
   TrendingDown,
   UserRound,
 } from 'lucide-react'
@@ -18,6 +20,8 @@ const NAV = [
   { to: '/profile', label: 'Profile', icon: UserRound },
   { to: '/gaps', label: 'Gaps', icon: TrendingDown },
   { to: '/market', label: 'Market', icon: Radar },
+  { to: '/career', label: 'Career Plan', icon: Compass },
+  { to: '/linkedin', label: 'LinkedIn', icon: Share2 },
   { to: '/catalog', label: 'Catalog', icon: Layers },
   { to: '/llm', label: 'Model calls', icon: ScrollText },
 ]

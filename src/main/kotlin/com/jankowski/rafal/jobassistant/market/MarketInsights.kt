@@ -1,6 +1,7 @@
 package com.jankowski.rafal.jobassistant.market
 
 import com.jankowski.rafal.jobassistant.catalog.CoverageStatus
+import com.jankowski.rafal.jobassistant.catalog.SeniorityLevel
 import com.jankowski.rafal.jobassistant.catalog.SkillCategory
 import java.math.BigDecimal
 import java.time.Instant
@@ -219,6 +220,8 @@ data class DemandEntry(
     val coveredBySkillName: String? = null,
     /** Offers per stated level, so "asked at Advanced in 60% of them" is renderable. */
     val levelMix: Map<MarketSkillLevel, Int> = emptyMap(),
+    /** Offers per parsed offer seniority, used to compute modal difficulty per topic. */
+    val seniorityMix: Map<SeniorityLevel, Int> = emptyMap(),
     /**
      * The salary band of the offers asking for this skill, or null below the per-skill floor.
      *

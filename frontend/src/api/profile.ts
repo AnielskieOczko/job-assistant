@@ -13,6 +13,8 @@ import type {
   ProjectRequest,
   SkillRequest,
   SkillUpdateRequest,
+  TargetRole,
+  TargetRoleRequest,
 } from './types'
 
 /** Returns null when the profile has no details yet: the endpoint answers 204, not 404. */
@@ -145,3 +147,12 @@ export const deleteLanguage = (profileId: number, id: number) =>
   remove(`/api/profiles/${profileId}/languages/${id}`)
 export const reorderLanguages = (profileId: number, ids: number[]) =>
   put(`/api/profiles/${profileId}/languages/order`, { ids })
+
+export const getTargetRole = (profileId: number) =>
+  request<TargetRole | null>(`/api/profiles/${profileId}/target-role`)
+
+export const putTargetRole = (profileId: number, body: TargetRoleRequest) =>
+  request<TargetRole>(`/api/profiles/${profileId}/target-role`, { method: 'PUT', ...json(body) })
+
+export const deleteTargetRole = (profileId: number) =>
+  request<void>(`/api/profiles/${profileId}/target-role`, { method: 'DELETE' })

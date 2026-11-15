@@ -7,6 +7,7 @@ import dev.langchain4j.model.chat.Capability
 import dev.langchain4j.model.chat.ChatModel
 import dev.langchain4j.model.openai.OpenAiChatModel
 import org.slf4j.LoggerFactory
+import tools.jackson.databind.json.JsonMapper
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -19,6 +20,7 @@ import java.util.concurrent.ConcurrentHashMap
 internal class OpenAiCompatibleChatModelRegistry(
     private val properties: LlmProperties,
     private val auditing: ChatModelAuditing,
+    private val json: JsonMapper = JsonMapper.builder().build(),
 ) : ChatModelRegistry {
 
     private val log = LoggerFactory.getLogger(OpenAiCompatibleChatModelRegistry::class.java)
@@ -32,6 +34,21 @@ internal class OpenAiCompatibleChatModelRegistry(
         val profileName = properties.profileNameFor(task)
         val profile = properties.profileFor(task)
 
+        if (profile.transport == TransportType.CLAUDE_CLI) {
+            log.info("Task {} -> profile '{}' ({} via {})", task, profileName, profile.model, profile.cliCommand)
+            return ClaudeCliChatModel(
+                command = profile.cliCommand,
+                modelName = profile.model,
+                timeout = profile.timeout,
+                strictSchema = profile.strictSchema,
+                listeners = listOf(auditing.listenerFor(task, profileName)),
+                json = json,
+            )
+        }
+
+        check(profile.baseUrl.isNotBlank()) {
+            "Model profile '$profileName' (task $task) has no base-url."
+        }
         check(profile.apiKey.isNotBlank()) {
             "Model profile '$profileName' (task $task) has no API key. Set the environment " +
                 "variable referenced by job-assistant.llm.profiles.$profileName.api-key."

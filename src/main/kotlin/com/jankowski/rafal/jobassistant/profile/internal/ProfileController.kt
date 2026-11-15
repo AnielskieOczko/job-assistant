@@ -4,6 +4,7 @@ import com.jankowski.rafal.jobassistant.profile.CandidateProfile
 import com.jankowski.rafal.jobassistant.profile.ProfileImport
 import com.jankowski.rafal.jobassistant.profile.ProfileImportException
 import com.jankowski.rafal.jobassistant.profile.ProfileService
+import com.jankowski.rafal.jobassistant.profile.TargetRole
 import jakarta.validation.Valid
 import org.springframework.http.CacheControl
 import org.springframework.http.HttpStatus
@@ -44,6 +45,7 @@ internal class ProfileController(
     private val writes: ProfileWriteService,
     private val collections: ProfileCollections,
     private val portraits: ProfilePortraits,
+    private val targetRoles: ProfileTargetRoles,
 ) {
 
     @GetMapping
@@ -58,6 +60,21 @@ internal class ProfileController(
     @PutMapping("/details")
     fun putDetails(@PathVariable profileId: Long, @Valid @RequestBody request: DetailsRequest): CandidateProfile =
         writes.putDetails(profileId, request)
+
+    // ------------------------------------------------------------ target role
+
+    @GetMapping("/target-role")
+    fun getTargetRole(@PathVariable profileId: Long): ResponseEntity<TargetRole> =
+        targetRoles.get(profileId)?.let { ResponseEntity.ok(it) } ?: ResponseEntity.noContent().build()
+
+    @PutMapping("/target-role")
+    fun putTargetRole(@PathVariable profileId: Long, @RequestBody request: TargetRoleRequest): TargetRole =
+        targetRoles.put(profileId, request)
+
+    @DeleteMapping("/target-role")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun deleteTargetRole(@PathVariable profileId: Long) =
+        targetRoles.delete(profileId)
 
     // --------------------------------------------------------------- portrait
 

@@ -24,6 +24,13 @@ export const keys = {
 
   profiles: ['profiles'] as const,
   profile: (profileId: number) => ['profile', profileId] as const,
+  targetRole: (profileId: number) => ['profile', profileId, 'targetRole'] as const,
+
+  careerPlan: (profileId: number) => ['career', 'plan', profileId] as const,
+  careerHistory: (profileId: number) => ['career', 'history', profileId] as const,
+  careerPlanDetail: (planId: number) => ['career', 'plan', 'detail', planId] as const,
+
+  linkedinDrafts: (profileId: number) => ['linkedin', 'drafts', profileId] as const,
 
   skills: ['catalog', 'skills'] as const,
   unmatched: ['catalog', 'unmatched'] as const,
